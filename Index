@@ -1077,7 +1077,8 @@
 @media(max-width:420px){.product-info{padding:8px!important}.product-name{font-size:11px!important}.product-price{font-size:15px!important}}
 
     /* Home marketplace layout refresh: layout-only overrides; existing theme colors are inherited. */
-    .home-marketplace{max-width:1320px;margin:0 auto}
+    .home-marketplace{width:100%;max-width:1200px;margin:0 auto;box-sizing:border-box}
+    .home-marketplace>*{max-width:100%;box-sizing:border-box}
     .home-marketplace .home-hero{min-height:300px;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);border-radius:14px;margin:4px 0 16px}
     .home-marketplace .home-hero .hero-copy{padding:34px 38px}
     .home-marketplace .home-hero .hero-art{min-height:300px}
