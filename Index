@@ -2276,15 +2276,19 @@
       if(!items.length){html+='<div class="catalog-filter-empty">ยังไม่มีข้อมูล</div>';}
       else{html+='<div class="catalog-filter-options">'+items.map(function(item,index){
         var extra=index>=visibleCount?' catalog-filter-extra':'';
-        return '<label class="catalog-check-row'+extra+'"><input type="checkbox" class="catalog-filter-choice" data-filter-group="'+esc(id)+'" value="'+esc(item.value)+'" onchange="applyCatalogFilter(1)"><span>'+esc(item.label)+'</span></label>';
+        var changeHandler=['shipping','condition','payment'].indexOf(id)>=0?'':' onchange="applyCatalogFilter(1)"';
+        return '<label class="catalog-check-row'+extra+'"><input type="checkbox" class="catalog-filter-choice" data-filter-group="'+esc(id)+'" value="'+esc(item.value)+'"'+changeHandler+'><span>'+esc(item.label)+'</span></label>';
       }).join('')+'</div>';}
       if(items.length>visibleCount)html+='<button type="button" class="catalog-filter-more" aria-expanded="false" onclick="toggleCatalogFilterGroup(\''+esc(id)+'\',this)">เพิ่มเติม ⌄</button>';
       return html+'</section>';
     }
     function catalogFilterCategoryItems(){
       var categories=safeArray(APP.categories).filter(function(c){return c&&c.id&&c.name;});
-      if(categories.length)return categories.map(function(c){return {value:String(c.id),label:String(c.name)};});
-      return ['เฟอร์นิเจอร์ / อื่นๆ','อุปกรณ์รักษาความปลอดภัย','อุปกรณ์ปรับปรุงบ้าน / อื่นๆ','เครื่องมือไฟฟ้าและเครื่องมือช่าง'].map(function(name){return {value:'name:'+name,label:name};});
+      var preferred=['เฟอร์นิเจอร์ / อื่นๆ','อุปกรณ์รักษาความปลอดภัย','อุปกรณ์ปรับปรุงบ้าน / อื่นๆ','เครื่องมือไฟฟ้าและเครื่องมือช่าง'];
+      return preferred.map(function(name){
+        var match=categories.filter(function(c){return String(c.name).trim().toLowerCase()===name.toLowerCase();})[0];
+        return {value:match?String(match.id):'name:'+name,label:name};
+      });
     }
     function catalogFilterBrandItems(){
       var seen={},items=[];
