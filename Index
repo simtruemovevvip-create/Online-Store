@@ -2270,10 +2270,11 @@
       html+='</div>';document.getElementById('appRoot').innerHTML=html;initHomeHeroSwiper();initHomeCategoryCarousel();initHomeHeroSwiper();initHomeCategoryCarousel();
     }
     function goHome(){if(APP.accessMode==='seller'||APP.accessMode==='owner'){toast('กรุณาออกจากระบบ Portal ปัจจุบันก่อนเปลี่ยนประเภทบัญชี','warning');return;}APP.currentView='home';if(!APP.products.length&&!APP.categories.length){loadPublicData();}else renderHome();window.scrollTo({top:0,behavior:'smooth'});var nav=document.getElementById('mainNav');if(nav)nav.classList.remove('open');}
-    function showAllProducts(initialSearch){
+    function showAllProducts(initialSearch,initialSort){
       APP.currentView='products';
       APP.productPage=1;
       var initialQuery=String(initialSearch||'').trim();
+      var initialSortValue=String(initialSort||'relevance');
       var categoryOptions='<option value="">ทุกหมวดหมู่</option>'+safeArray(APP.categories).map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
       var pageTitle=initialQuery?'ผลการค้นหาสินค้า':'สินค้าทั้งหมด';
       var pageIntro=initialQuery?'ค้นหาสินค้าที่ตรงกับคำว่า “'+esc(initialQuery)+'”':'เลือกดูสินค้าและใช้ตัวกรองเพื่อค้นหาสินค้าที่ต้องการ';
@@ -2301,7 +2302,7 @@
                   '<button type="button" class="catalog-sort-button" data-catalog-sort="best_seller" onclick="setCatalogSort(&quot;best_seller&quot;)">สินค้าขายดี</button>'+
                 '</div>'+
                 '<label class="catalog-price-sort-label" for="catalogPriceSort">ราคา <select id="catalogPriceSort" onchange="changeCatalogPriceSort()"><option value="">ค่าเริ่มต้น</option><option value="price_asc">ราคาต่ำไปสูง</option><option value="price_desc">ราคาสูงไปต่ำ</option></select></label>'+
-                '<input id="catalogSort" type="hidden" value="relevance">'+
+                '<input id="catalogSort" type="hidden" value="'+esc(initialSortValue)+'">'+
               '</div>'+
               '<div class="catalog-results-meta" id="catalogResultsMeta">แสดงสินค้าที่ตรงกับเงื่อนไข</div>'+
               '<div id="catalogResults" class="catalog-results-host">กำลังโหลดสินค้า...</div>'+
@@ -2383,14 +2384,14 @@
     }
     function searchProducts(){
       var q=document.getElementById('globalSearch').value||'';
-      showAllProducts(q);
+      showAllProducts(q,'relevance');
     }
     function filterCategory(id){
       showAllProducts();
       setTimeout(function(){var el=document.getElementById('catalogCategory');if(el){el.value=id;applyCatalogFilter(1);}},30);
     }
-    function loadBestSellers(){showAllProducts();setTimeout(function(){setCatalogSort('best_seller');},30);}
-    function loadNewArrivals(){showAllProducts();setTimeout(function(){setCatalogSort('newest');},30);}
+    function loadBestSellers(){showAllProducts('','best_seller');}
+    function loadNewArrivals(){showAllProducts('','newest');}
     function showPromotions(){APP.currentView='promotions';var html='<div class="section-head"><div><h1 class="section-title">โปรโมชั่นและข้อเสนอพิเศษ</h1><div class="section-sub">โปรดตรวจสอบวันใช้งานและเงื่อนไขของแต่ละโปรโมชั่น</div></div></div>';if(!APP.promotions.length)html+='<div class="empty-state"><i class="fa-solid fa-tags"></i><h3>ยังไม่มีโปรโมชั่น</h3><p>ติดตามข้อเสนอพิเศษจากร้านค้าได้เร็ว ๆ นี้</p></div>';else html+='<div class="product-grid">'+APP.promotions.map(function(p){return '<div class="panel"><div class="category-icon"><i class="fa-solid fa-ticket"></i></div><h3>'+esc(p.name)+'</h3><p class="muted">'+esc(p.type)+' '+esc(p.value)+'</p><small class="muted">'+esc(p.startDate||'ไม่ระบุวันเริ่ม')+' - '+esc(p.endDate||'ไม่ระบุวันสิ้นสุด')+'</small></div>';}).join('')+'</div>';document.getElementById('appRoot').innerHTML=html;}
     function showAbout(){var html='<div class="panel"><h1 class="section-title">เกี่ยวกับเรา</h1><div class="rich-content-display">'+sanitizeRichEditorHtml(APP.settings.storeDescription||'ร้านค้าออนไลน์ของเรา')+'</div><p class="muted">'+esc(APP.settings.address||'')+'</p></div>';document.getElementById('appRoot').innerHTML=html;}
     function showContact(){document.getElementById('appRoot').innerHTML='<div class="panel"><h1 class="section-title">ติดต่อเรา</h1><p><i class="fa-solid fa-phone"></i> '+esc(APP.settings.phone||'ไม่ระบุ')+'</p><p><i class="fa-solid fa-envelope"></i> '+esc(APP.settings.email||'ไม่ระบุ')+'</p><p><i class="fa-solid fa-location-dot"></i> '+esc(APP.settings.address||'ไม่ระบุ')+'</p>'+(APP.settings.googleMaps?'<a class="btn btn-primary" href="'+esc(APP.settings.googleMaps)+'" target="_blank">เปิด Google Maps</a>':'')+'</div>';}
