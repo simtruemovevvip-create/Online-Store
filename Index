@@ -1489,7 +1489,7 @@
       </div>
     </div>
     <nav class="nav-bar" id="mainNav" aria-label="เมนูหลัก">
-      <a href="#" data-nav-key="home" onclick="goHome();return false" class="active">หน้าแรก</a><a href="#products" data-nav-key="products" onclick="showAllProducts();return false">สินค้าทั้งหมด</a><a href="#stores" data-nav-key="stores" onclick="showStores();return false">ร้านค้าทั้งหมด</a><a href="#flash" data-nav-key="flash" onclick="showFlashDeals();return false">Flash Sale</a><a href="#vouchers" data-nav-key="vouchers" onclick="showMarketplaceVouchers();return false">Voucher</a><a href="#categories" data-nav-key="categories" onclick="navigateToHomeSection('categories');return false">หมวดหมู่สินค้า</a><a href="#best" data-nav-key="best" onclick="loadBestSellers();return false">สินค้าขายดี</a><a href="#new" data-nav-key="new" onclick="loadNewArrivals();return false">สินค้าใหม่</a><a href="#promotions" data-nav-key="promotions" onclick="showPromotions();return false">โปรโมชั่น</a><a href="#chat" data-nav-key="chat" onclick="openChatInbox();return false">แชต</a><a href="#about" data-nav-key="about" onclick="showAbout();return false">เกี่ยวกับร้าน</a><a href="#contact" data-nav-key="contact" onclick="showContact();return false">ติดต่อเรา</a>
+      <a href="#" data-nav-key="home" onclick="goHome();return false" class="active">หน้าแรก</a><a href="#products" data-nav-key="products" onclick="showAllProducts();return false">สินค้าทั้งหมด</a><a href="#stores" data-nav-key="stores" onclick="showStores();return false">ร้านค้าทั้งหมด</a><a href="#flash" data-nav-key="flash" onclick="showFlashDeals();return false">Flash Sale</a><a href="#vouchers" data-nav-key="vouchers" onclick="showMarketplaceVouchers();return false">Voucher</a><a href="#categories" data-nav-key="categories" onclick="navigateToHomeSection('categories');return false">หมวดหมู่สินค้า</a><a href="#best" data-nav-key="best" onclick="loadBestSellers();return false">สินค้าขายดี</a><a href="#new" data-nav-key="new" onclick="loadNewArrivals();return false">สินค้าใหม่</a><a href="#promotions" data-nav-key="promotions" onclick="showPromotions();return false">โปรโมชั่น</a>
     </nav>
   </header>
 
@@ -1514,7 +1514,7 @@
     var APP = {
       settings:{}, categories:[], products:[], banners:[], promotions:[], stores:[], flashDeals:[], vouchers:[], liveRooms:[], cart:{items:[],subtotal:0,count:0},
       sessionId:'', customerToken:'', customer:null, adminToken:'', adminUser:null, adminPage:'dashboard', adminData:[],
-      currentProduct:null, currentVariants:[], selectedVariant:'', currentQuantity:1, currentView:'home', chart:null, uploadTarget:null, productPage:1, productPageSize:24, productTotal:0, addresses:[], currentStore:null, sellerStore:null, sellerPage:'dashboard', chatThread:null, chatMode:'customer', customerChatStores:[], customerChatActiveStoreId:'', customerChatPollTimer:null, customerChatListPollTimer:null, sellerChatPollTimer:null, sellerChatListPollTimer:null, chatVisibilityListenerBound:false, chatLastMessageAt:'', chatLastReadAt:'', chatSeenMessageIds:{}, chatOutbox:{}, chatSending:false, chatPollBusy:false, chatPendingFile:null, chatPendingPreviewUrl:'', qrLoginChallenge:'', authProviders:null,
+      currentProduct:null, currentVariants:[], selectedVariant:'', currentQuantity:1, currentView:'home', chart:null, uploadTarget:null, productPage:1, productPageSize:20, productTotal:0, addresses:[], currentStore:null, sellerStore:null, sellerPage:'dashboard', chatThread:null, chatMode:'customer', customerChatStores:[], customerChatActiveStoreId:'', customerChatPollTimer:null, customerChatListPollTimer:null, sellerChatPollTimer:null, sellerChatListPollTimer:null, chatVisibilityListenerBound:false, chatLastMessageAt:'', chatLastReadAt:'', chatSeenMessageIds:{}, chatOutbox:{}, chatSending:false, chatPollBusy:false, chatPendingFile:null, chatPendingPreviewUrl:'', qrLoginChallenge:'', authProviders:null,
       authDestination: 'customer', registration:null, registrationTimer:null, accessMode:'guest', pageLoadingCount:0, lastActionButton:null, lastActionAt:0, lastActionIsNavigation:false, pendingInitialAccount:false, adminRequestId:0, driveImageCache:{}
     };
     function safeArray(value){return Array.isArray(value)?value:[];}
@@ -2411,6 +2411,35 @@
       updateCatalogSortButtons();
       applyCatalogFilter(1);
     }
+    function renderCatalogPagination(totalPages,currentPage){
+      totalPages=Math.max(1,Number(totalPages)||1);
+      currentPage=Math.max(1,Math.min(totalPages,Number(currentPage)||1));
+      if(!APP.productTotal)return '';
+      var pages=[],html='';
+      function addPage(n){pages.push(n);}
+      function addGap(){pages.push('...');}
+      if(totalPages<=7){
+        for(var n=1;n<=totalPages;n++)addPage(n);
+      }else if(currentPage<=4){
+        for(var n=1;n<=5;n++)addPage(n);
+        addGap();addPage(totalPages);
+      }else if(currentPage>=totalPages-3){
+        addPage(1);addGap();
+        for(var n=totalPages-4;n<=totalPages;n++)addPage(n);
+      }else{
+        addPage(1);addGap();
+        addPage(currentPage-1);addPage(currentPage);addPage(currentPage+1);
+        addGap();addPage(totalPages);
+      }
+      html+='<button type="button" class="catalog-page-button catalog-page-arrow" aria-label="หน้าก่อนหน้า" '+(currentPage<=1?'disabled':' onclick="applyCatalogFilter('+(currentPage-1)+')"')+'>&lt;</button>';
+      pages.forEach(function(item){
+        if(item==='...'){html+='<span class="catalog-page-ellipsis" aria-hidden="true">...</span>';return;}
+        var active=Number(item)===currentPage;
+        html+='<button type="button" class="catalog-page-button catalog-page-number'+(active?' active':'')+'" '+(active?'aria-current="page"':'onclick="applyCatalogFilter('+Number(item)+')"')+'>'+Number(item)+'</button>';
+      });
+      html+='<button type="button" class="catalog-page-button catalog-page-arrow" aria-label="หน้าถัดไป" '+(currentPage>=totalPages?'disabled':' onclick="applyCatalogFilter('+(currentPage+1)+')"')+'>&gt;</button>';
+      return html;
+    }
     function applyCatalogFilter(page){
       if(page!==undefined)APP.productPage=Math.max(1,Number(page)||1);
       var search=document.getElementById('catalogSearch');
@@ -2439,8 +2468,7 @@
         var meta=document.getElementById('catalogResultsMeta');
         if(meta)meta.textContent=query?'ผลการค้นหา “'+query+'” · '+total.toLocaleString('th-TH')+' รายการ':'แสดงสินค้า '+total.toLocaleString('th-TH')+' รายการ';
         var pages=Math.max(1,Math.ceil(total/APP.productPageSize)),pager=document.getElementById('catalogPagination');
-        if(pager){pager.innerHTML=pages>1?
-          '<button class="catalog-page-button" '+(APP.productPage<=1?'disabled':'')+' onclick="applyCatalogFilter('+(APP.productPage-1)+')">ก่อนหน้า</button><span>หน้า '+APP.productPage+' / '+pages+'</span><button class="catalog-page-button" '+(APP.productPage>=pages?'disabled':'')+' onclick="applyCatalogFilter('+(APP.productPage+1)+')">ถัดไป</button>':'';}
+        if(pager)pager.innerHTML=renderCatalogPagination(pages,APP.productPage);
         updateCatalogSortButtons();
       });
     }
@@ -5441,9 +5469,13 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     #appRoot #catalogResults .catalog-product-card .product-rating-badge{font-size:9px}
     #appRoot #catalogResults .catalog-product-card .product-sold{margin-left:auto;font-size:9px;white-space:nowrap}
     #appRoot #catalogResults .catalog-product-card .product-origin-row{margin-top:auto;padding-top:3px;color:var(--muted);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    #appRoot .catalog-page-button{min-height:34px;padding:7px 13px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--ink);font-size:11px;cursor:pointer}
-    #appRoot .catalog-page-button:disabled{opacity:.45;cursor:not-allowed}
-    #appRoot #catalogPagination{display:flex;justify-content:center;align-items:center;gap:12px;margin:22px 0}
+    #appRoot #catalogPagination{display:flex;justify-content:center;align-items:center;gap:14px;width:100%;margin:28px 0 34px}
+    #appRoot .catalog-page-button{display:inline-flex;align-items:center;justify-content:center;flex:0 0 40px;width:40px;min-width:40px;height:30px;padding:0;border:0;border-radius:2px;background:transparent;color:#666;font-size:14px;font-weight:400;line-height:1;cursor:pointer;transition:color .15s ease,background .15s ease}
+    #appRoot .catalog-page-button:hover:not(:disabled):not(.active){background:transparent;color:#ee4d2d}
+    #appRoot .catalog-page-button.active{background:#ee4d2d;color:#fff;font-weight:600;cursor:default}
+    #appRoot .catalog-page-button:disabled{background:transparent;color:#c8c8c8;opacity:1;cursor:not-allowed}
+    #appRoot .catalog-page-ellipsis{display:inline-flex;align-items:center;justify-content:center;flex:0 0 24px;min-width:24px;height:30px;color:#666;font-size:14px;letter-spacing:1px;user-select:none}
+    @media(max-width:520px){#appRoot #catalogPagination{gap:7px;margin:22px 0 28px}#appRoot .catalog-page-button{flex-basis:34px;width:34px;min-width:34px}#appRoot .catalog-page-ellipsis{flex-basis:18px;min-width:18px}}
     @media(max-width:1000px){
       #appRoot .search-results-page{max-width:100%}
       #appRoot .marketplace-catalog-shell{grid-template-columns:200px minmax(0,1fr)}
