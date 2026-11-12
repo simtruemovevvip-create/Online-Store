@@ -1627,13 +1627,67 @@ function getProducts(options) {
     if (options.token) { try { requireAdmin_(options.token, 'products.view'); isAdmin = true; } catch (e) {} }
     var searchQuery = text_(options.search, 120).toLowerCase();
     var inventoryForFilter = readTable_('Inventory', true);
-    var rows = readTable_('Products', true).filter(function(p) {
+    var allProductsForFilter = readTable_('Products', true);
+    productPublicMetrics_(allProductsForFilter);
+    var categoriesForFilter = readTable_('Categories', true);
+    var selectedCategoryIds = safeArray_(options.categoryIds).map(function(v){return String(v);});
+    var selectedCategoryNames = safeArray_(options.categoryNames).map(function(v){return String(v).trim().toLowerCase();});
+    var selectedBrands = safeArray_(options.brands).map(function(v){return String(v).trim().toLowerCase();});
+    var selectedOrigins = safeArray_(options.origins).map(function(v){return String(v).trim();});
+    var selectedSellerTypes = safeArray_(options.sellerTypes).map(function(v){return String(v);});
+    var selectedPromotions = safeArray_(options.promotions).map(function(v){return String(v);});
+    var minimumRating = Math.max(0, Math.min(5, number_(options.minRating, 0)));
+    var rows = allProductsForFilter.filter(function(p) {
       var invForProduct = inventoryForFilter.filter(function(x) { return x.productId === p.id && !x.variantId; })[0];
       var childVariants=readTable_('ProductVariants',true).filter(function(v){return v.productId===p.id&&v.status==='Active';});
       var computedStock = childVariants.length?childVariants.reduce(function(sum,v){var vi=inventoryForFilter.filter(function(z){return z.productId===p.id&&z.variantId===v.id;})[0];return sum+(vi?Math.max(0,number_(vi.quantity,0)-number_(vi.reserved,0)):number_(v.stock,0));},0):(invForProduct?Math.max(0, number_(invForProduct.quantity, 0) - number_(invForProduct.reserved, 0)):number_(p.stock,0));
       if (!isAdmin && p.status !== 'Active') return false;
       if (!isAdmin && p.sellerId && !readTable_('Stores',true).some(function(st){return st.id===p.sellerId&&st.status==='Active';})) return false;
       if (options.categoryId && String(p.categoryId) !== String(options.categoryId)) return false;
+      if (selectedCategoryIds.length && selectedCategoryIds.indexOf(String(p.categoryId || '')) < 0) return false;
+      if (selectedCategoryNames.length) {
+        var productCategory = categoriesForFilter.filter(function(c){return String(c.id)===String(p.categoryId);})[0] || {};
+        if (selectedCategoryNames.indexOf(String(productCategory.name || '').trim().toLowerCase()) < 0) return false;
+      }
+      if (selectedBrands.length && selectedBrands.indexOf(String(p.brand || '').trim().toLowerCase()) < 0) return false;
+      if (minimumRating > 0 && number_(p.ratingAverage, 0) < minimumRating) return false;
+      if (selectedOrigins.length) {
+        var originText = String(p.originProvince || '').trim();
+        var originIsForeign = /ต่างประเทศ|นำเข้า|import|china|จีน|ญี่ปุ่น|เกาหลี|usa|อเมริกา/i.test(originText);
+        var southNames = /กระบี่|ชุมพร|ตรัง|นครศรีธรรมราช|นราธิวาส|ปัตตานี|พังงา|พัทลุง|ภูเก็ต|ยะลา|ระนอง|สงขลา|สตูล|สุราษฎร์ธานี/;
+        var metroNames = /กรุงเทพ|กทม|นนทบุรี|ปทุมธานี|สมุทรปราการ|สมุทรสาคร|นครปฐม/;
+        var originMatch = selectedOrigins.some(function(v){
+          if (v === 'ต่างประเทศ') return originIsForeign;
+          if (v === 'ภายในประเทศ') return !!originText && !originIsForeign;
+          if (v === 'ภาคใต้') return southNames.test(originText);
+          if (v === 'กรุงเทพและปริมณฑล') return metroNames.test(originText);
+          return originText.toLowerCase() === v.toLowerCase();
+        });
+        if (!originMatch) return false;
+      }
+      if (selectedSellerTypes.length) {
+        var productTags = String(p.tags || '').toLowerCase();
+        var sellerTypeMatch = selectedSellerTypes.some(function(v){
+          if (v === 'mall') return parseBool_(p.mallBadgeEnabled);
+          if (v === 'recommended') return parseBool_(p.featured);
+          if (v === 'fulfilled') return /fulfilled by shopee|fulfilled_by_shopee|fbs/i.test(productTags);
+          return false;
+        });
+        if (!sellerTypeMatch) return false;
+      }
+      if (selectedPromotions.length) {
+        var currentPrice = number_(p.salePrice, 0) > 0 ? number_(p.salePrice, 0) : number_(p.price, 0);
+        var originalPrice = number_(p.price, 0);
+        var promoTagText = String(p.promoTag || '').toLowerCase();
+        var promotionMatch = selectedPromotions.some(function(v){
+          if (v === 'free_shipping') return number_(p.freeShippingMinimum, 0) > 0 || /ส่งฟรี|free.?shipping/.test(promoTagText);
+          if (v === 'spaylater') return /spaylater|ผ่อน 0%/.test(promoTagText);
+          if (v === 'discount') return currentPrice > 0 && originalPrice > currentPrice;
+          if (v === 'wholesale') return parseBool_(p.quantityPromoEnabled);
+          return false;
+        });
+        if (!promotionMatch) return false;
+      }
       if (options.storeId && String(p.sellerId || '') !== String(options.storeId)) return false;
       if (options.featured && !parseBool_(p.featured)) return false;
       if (options.bestSeller && !parseBool_(p.bestSeller)) return false;
@@ -1645,7 +1699,6 @@ function getProducts(options) {
       if (options.maxPrice !== undefined && options.maxPrice !== '' && price > number_(options.maxPrice, 0)) return false;
       return true;
     });
-    productPublicMetrics_(rows);
     var sort = options.sort || (searchQuery?'relevance':'newest');
     rows.sort(function(a,b) {
       if (sort === 'price_asc') return effectivePrice_(a) - effectivePrice_(b);
