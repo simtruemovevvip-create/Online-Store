@@ -3398,20 +3398,23 @@
     function clearAdminImageField(inputId,previewId){var input=document.getElementById(inputId);if(input)input.value='';previewAdminImageField(inputId,previewId);}
     function uploadAdminImageToField(fileInput,inputId,previewId,folder){
       var file=fileInput.files&&fileInput.files[0];if(!file)return;
+      if(inputId==='edit_campaignImage'&&APP.productCampaignImageUploadPending){toast('กำลังอัปโหลดภาพแคมเปญอยู่ กรุณารอให้เสร็จก่อน','info');if(fileInput)fileInput.value='';return;}
       var isFaviconField=inputId==='setting_setFaviconUrl';
       var statusNode=isFaviconField?document.getElementById('setting_favicon_upload_status'):null;
       if(file.type.indexOf('image/')!==0){alertError('กรุณาเลือกไฟล์รูปภาพ');if(statusNode)statusNode.textContent='ไฟล์ที่เลือกไม่ใช่รูปภาพ';fileInput.value='';return;}
       if(isFaviconField&&['image/png','image/jpeg','image/gif','image/bmp'].indexOf(file.type.toLowerCase())<0){alertError('ไอคอนเว็บไซต์รองรับ PNG, JPG, GIF หรือ BMP กรุณาเลือกไฟล์ชนิดที่รองรับ');if(statusNode)statusNode.textContent='ชนิดไฟล์ไม่รองรับ กรุณาเลือก PNG, JPG, GIF หรือ BMP';fileInput.value='';return;}
       if(file.size>5*1024*1024){alertError('รูปภาพต้องมีขนาดไม่เกิน 5 MB');if(statusNode)statusNode.textContent='ไฟล์มีขนาดเกิน 5 MB';fileInput.value='';return;}
+      if(inputId==='edit_campaignImage')APP.productCampaignImageUploadPending=true;
       if(statusNode)statusNode.textContent='กำลังอัปโหลด '+file.name+' ...';
       var reader=new FileReader();reader.onload=function(){var localPreview=String(reader.result||'');
         apiCall('uploadFile',[APP.adminToken,{folder:folder||'Products',purpose:isFaviconField?'favicon':(folder==='Customers'?'profile':''),name:file.name,mimeType:file.type,data:localPreview,visibility:'public'}],function(r){
+          if(inputId==='edit_campaignImage')APP.productCampaignImageUploadPending=false;
           if(!r.success){if(statusNode)statusNode.textContent='อัปโหลดไม่สำเร็จ: '+(r.message||'กรุณาลองอีกครั้ง');alertError(r.message);return;}
           var input=document.getElementById(inputId);
           if(r.data&&(r.data.public||r.data.displayable)){if(input)input.value=r.data.url;previewAdminImageField(inputId,previewId);if(statusNode)statusNode.textContent='อัปโหลดสำเร็จแล้ว อย่าลืมกด “บันทึกการตั้งค่า” เพื่อใช้ Favicon นี้';toast(isFaviconField?'อัปโหลด Favicon สำเร็จ':'อัปโหลดรูปภาพสำเร็จ','success','ต้นฉบับเก็บเป็น Private ใน Google Drive และแสดงผลผ่าน Image Service');}
           else{if(input)input.value='';previewAdminImageField(inputId,previewId,localPreview,(r.data&&r.data.warning)||'ไฟล์อยู่ใน Drive แต่ยังไม่เปิดสิทธิ์ให้หน้าเว็บแสดง');if(statusNode)statusNode.textContent='อัปโหลดแล้ว แต่ยังแสดงผลไม่ได้: '+((r.data&&r.data.warning)||'ตรวจสอบ Asset Reference');toast('ไฟล์ถูกบันทึกแล้ว แต่ยังแสดงบนหน้าเว็บไซต์ไม่ได้','warning',((r.data&&r.data.warning)||'กรุณาตรวจนโยบายการแชร์ Google Drive')+((r.data&&r.data.sharingError)?' รายละเอียด: '+r.data.sharingError:''));}
         },true,isFaviconField?'กำลังอัปโหลด Favicon...':'กำลังอัปโหลดรูปภาพ...');
-      };reader.onerror=function(){if(statusNode)statusNode.textContent='อ่านไฟล์ไม่สำเร็จ';alertError('ไม่สามารถอ่านไฟล์รูปภาพได้');};reader.readAsDataURL(file);fileInput.value='';
+      };reader.onerror=function(){if(inputId==='edit_campaignImage')APP.productCampaignImageUploadPending=false;if(statusNode)statusNode.textContent='อ่านไฟล์ไม่สำเร็จ';alertError('ไม่สามารถอ่านไฟล์รูปภาพได้');};reader.readAsDataURL(file);fileInput.value='';
     }
 
     function uploadProductVideoFile(fileInput,inputId,statusId,accountType){
@@ -3485,6 +3488,7 @@
       var html='<div class="admin-editor-intro"><span class="admin-editor-icon"><i class="fa-solid fa-pen-to-square"></i></span><span><b>'+(id?'แก้ไขข้อมูล':'กรอกข้อมูลใหม่')+'</b><small>ช่องที่มีความสัมพันธ์จะเลือกจากข้อมูลในระบบโดยอัตโนมัติ</small></span></div><div class="modal-form-grid">';
       cfg.fields.forEach(function(f){html+=renderAdminEditorField(page,f,row);});html+='</div>';
       Swal.fire({title:id?cfg.edit:cfg.add,html:html,width:900,showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึกข้อมูล',cancelButtonText:'ยกเลิก',focusConfirm:false,buttonsStyling:true,customClass:{popup:'enterprise-admin-modal'},allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){
+        if(page==='products'&&APP.productCampaignImageUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดภาพแถบแคมเปญเสร็จก่อนบันทึกสินค้า');return false;}
         if(page==='products'&&APP.productVideoUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดวิดีโอเสร็จก่อนบันทึกสินค้า');return false;}
         var data={id:id||''},invalid=false;
         cfg.fields.forEach(function(f){var key=f[0],el=document.getElementById('edit_'+key);if(!el)return;var value=el.value;
@@ -3878,18 +3882,21 @@
       preview.innerHTML=url?'<img src="'+imageUrl(url)+'" alt="ตัวอย่างรูปสินค้า" onerror="imageFallback(this)">':'<i class="fa-regular fa-image"></i><span>ยังไม่มีรูปภาพ</span>';
     }
     function sellerUploadImageForField(fieldId,folder){
+      if(fieldId==='spCampaignImage'&&APP.productCampaignImageUploadPending){toast('กำลังอัปโหลดภาพแคมเปญอยู่ กรุณารอให้เสร็จก่อน','info');return;}
       var input=document.createElement('input');input.type='file';input.accept='image/*';
       input.onchange=function(){var file=input.files&&input.files[0];if(!file)return;
         if(file.type.indexOf('image/')!==0){alertError('กรุณาเลือกไฟล์รูปภาพ');return;}
         if(file.size>5*1024*1024){alertError('รูปภาพต้องมีขนาดไม่เกิน 5 MB');return;}
+        if(fieldId==='spCampaignImage')APP.productCampaignImageUploadPending=true;
         var field=document.getElementById(fieldId),status=document.getElementById(fieldId+'UploadStatus');if(status)status.textContent='กำลังอ่านรูปภาพ...';
         var reader=new FileReader();reader.onload=function(){var localPreview=String(reader.result||'');if(status)status.textContent='กำลังอัปโหลดไปยัง Google Drive...';
           apiCall('uploadFile',[APP.customerToken,{accountType:'seller',folder:folder||'Products',visibility:'public',name:file.name,mimeType:file.type,data:localPreview}],function(r){
+            if(fieldId==='spCampaignImage')APP.productCampaignImageUploadPending=false;
             if(!r||!r.success){if(status)status.textContent='อัปโหลดไม่สำเร็จ';alertError(r&&r.message||'อัปโหลดรูปภาพไม่สำเร็จ');return;}
-            if(r.data&&(r.data.public||r.data.displayable)&&r.data.url){if(field)field.value=r.data.url;sellerUpdateImagePreview(fieldId,r.data.url);if(status)status.textContent='อัปโหลดสำเร็จ: '+file.name;toast('อัปโหลดรูปภาพสำเร็จ','success','ไฟล์ถูกบันทึกใน Google Drive และพร้อมใช้งาน');}
+            if(r.data&&(r.data.public||r.data.displayable)&&r.data.url){if(field)field.value=r.data.url;sellerUpdateImagePreview(fieldId,r.data.url);if(status)status.textContent='อัปโหลดสำเร็จ: '+file.name+' — กดบันทึกสินค้าเพื่อบันทึก URL ลง Google Sheets';toast('อัปโหลดรูปภาพสำเร็จ','success','กดบันทึกสินค้าเพื่อผูกภาพแคมเปญเข้ากับสินค้า');}
             else{if(status)status.textContent='บันทึกไฟล์แล้ว แต่ไม่สามารถแสดงรูปได้';toast('รูปภาพยังไม่พร้อมแสดง','warning',r.data&&r.data.warning||'ตรวจสอบสิทธิ์การจัดเก็บรูปภาพ');}
           },false);
-        };reader.onerror=function(){if(status)status.textContent='อ่านไฟล์ไม่สำเร็จ';alertError('ไม่สามารถอ่านไฟล์รูปภาพได้');};reader.readAsDataURL(file);
+        };reader.onerror=function(){if(fieldId==='spCampaignImage')APP.productCampaignImageUploadPending=false;if(status)status.textContent='อ่านไฟล์ไม่สำเร็จ';alertError('ไม่สามารถอ่านไฟล์รูปภาพได้');};reader.readAsDataURL(file);
       };input.click();
     }
     function sellerUploadImagesForList(fileInput,textareaId){
@@ -3921,6 +3928,7 @@
         '<div class="modal-field full"><label for="spImages">รูปภาพเพิ่มเติม (Gallery)</label><textarea id="spImages" rows="3" placeholder="URL รูปภาพ 1 รายการต่อบรรทัด">'+esc(imageLines.join('\n'))+'</textarea><div class="seller-gallery-actions"><label class="btn btn-outline btn-small" for="spGalleryFiles"><i class="fa-solid fa-images"></i> อัปโหลดหลายรูป</label><input id="spGalleryFiles" type="file" accept="image/*" multiple hidden onchange="sellerUploadImagesForList(this,\'spImages\')"><small class="modal-help">เลือกได้หลายรูป ระบบจะเพิ่ม URL ลงในรายการให้อัตโนมัติ</small></div></div>'+
         '<div class="modal-field full"><label for="spSizeChart">ตารางขนาดสินค้า (ไม่บังคับ)</label><textarea id="spSizeChart" rows="3" placeholder="ไซส์ | รอบอก | ความยาว\nS | 36 | 25\nM | 38 | 26">'+esc(p.sizeChart||'')+'</textarea><small class="modal-help">ใส่หัวตารางเป็นแถวแรก และคั่นแต่ละคอลัมน์ด้วยเครื่องหมาย | เพื่อให้ลูกค้ากดดูตารางขนาดได้</small></div><div class="modal-field full"><label for="spSummary">คำอธิบายย่อ</label><textarea id="spSummary" rows="2" maxlength="500" placeholder="สรุปจุดเด่นสินค้า">'+esc(p.summary||'')+'</textarea></div></div>'+richEditorMarkup('spDesc','รายละเอียดสินค้า',p.description||'','อธิบายคุณสมบัติ วิธีใช้ ขนาด วัสดุ และรายละเอียดที่ลูกค้าควรรู้')+'</div>';
       Swal.fire({title:id?'แก้ไขสินค้า':'เพิ่มสินค้าใหม่',width:900,html:html,showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึกสินค้า',cancelButtonText:'ยกเลิก',focusConfirm:false,customClass:{popup:'enterprise-admin-modal seller-product-modal'},allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){
+        if(APP.productCampaignImageUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดภาพแถบแคมเปญเสร็จก่อนบันทึกสินค้า');return false;}
         if(APP.productVideoUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดวิดีโอเสร็จก่อนบันทึกสินค้า');return false;}
         var name=document.getElementById('spName').value.trim(),price=Number(document.getElementById('spPrice').value),sale=Number(document.getElementById('spSale').value||0),stock=Number(document.getElementById('spStock').value||0);
         if(!name){Swal.showValidationMessage('กรุณาระบุชื่อสินค้า');return false;}if(!isFinite(price)||price<=0){Swal.showValidationMessage('กรุณาระบุราคาปกติให้มากกว่า 0');return false;}if(sale<0||sale>=price&&sale>0){Swal.showValidationMessage('ราคาขายต้องน้อยกว่าราคาปกติ');return false;}if(stock<0||Math.floor(stock)!==stock){Swal.showValidationMessage('จำนวนสต็อกต้องเป็นเลขจำนวนเต็มตั้งแต่ 0 ขึ้นไป');return false;}
