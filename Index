@@ -1815,7 +1815,7 @@
       applyAccessMode(APP.accessMode);
       // Load settings and restore the signed-in portal in parallel. Session
       // validation no longer waits for the settings table read to finish.
-      apiCall('getSettings',[],function(r){if(r.success){APP.settings=r.data||{};applySettings();var homeRoot=document.getElementById('appRoot');if(homeRoot&&homeRoot.querySelector('.home-marketplace')&&(APP.accessMode==='guest'||APP.accessMode==='customer')&&APP.currentView==='home')renderHome();}},false);
+      apiCall('getSettings',[],function(r){if(r.success){APP.settings=r.data||{};applySettings();refreshVisibleProductCardOffers();var homeRoot=document.getElementById('appRoot');if(homeRoot&&homeRoot.querySelector('.home-marketplace')&&(APP.accessMode==='guest'||APP.accessMode==='customer')&&APP.currentView==='home')renderHome();}},false);
       restoreAccessPortal();
       if(APP.qrLoginChallenge)setTimeout(function(){if(!APP.customerToken)openCustomerAuth('login');else showQrMobileApproval();},500);
       var reset=getQueryParam('reset');if(reset)setTimeout(function(){showResetPassword(reset);},700);
@@ -1930,7 +1930,7 @@
       apiCall('getPromotions',[{}],function(r){APP.promotions=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
       apiCall('getMarketplaceStores',[{page:1,pageSize:12}],function(r){APP.stores=r.success&&r.data?safeArray(r.data.items):[];if(criticalComplete)renderPublicHome();},false,'',true);
       apiCall('getMarketplaceFlashDeals',[],function(r){APP.flashDeals=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
-      apiCall('getMarketplaceVouchers',[],function(r){APP.vouchers=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
+      apiCall('getMarketplaceVouchers',[],function(r){APP.vouchers=r.success?safeArray(r.data):[];if(criticalComplete){renderPublicHome();refreshVisibleProductCardOffers();}},false,'',true);
       apiCall('getMarketplaceLiveRooms',[],function(r){APP.liveRooms=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
       apiCall('recordVisitor',[localStorage.getItem('visitor_key')||(function(){var k=makeKey();localStorage.setItem('visitor_key',k);return k;})(),navigator.userAgent],function(){},false,'',true);
       refreshCartCount();
@@ -2012,7 +2012,9 @@
       var actionLabel=p.hasVariants?'เลือกตัวเลือก':'ใส่ตะกร้า';
       var isOutOfStock=Number(p.stock)<=0;
       var sold=Number(p.soldCount||0);
-      return '<article class="product-card">'+
+      APP.productCardCache=APP.productCardCache||{};
+      APP.productCardCache[String(p.id)]=p;
+      return '<article class="product-card" data-product-id="'+esc(p.id)+'">'+
         '<div class="product-image" role="button" tabindex="0" aria-label="ดูสินค้า '+esc(p.name)+'" onclick="viewProduct(\''+esc(p.id)+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \')viewProduct(\''+esc(p.id)+'\')">'+
           identityBadge+flashBadge+discountBadge+
           '<img loading="lazy" src="'+imageUrl(p.coverImage)+'" alt="'+esc(p.name)+'" onerror="imageFallback(this)">'+
@@ -2032,6 +2034,32 @@
         '</div>'+
         '<button type="button" class="product-similar-button" onclick="event.stopPropagation();showSimilarProducts(\''+esc(p.id)+'\')"><i class="fa-solid fa-magnifying-glass"></i> ค้นหาสินค้าที่คล้ายกัน</button>'+
       '</article>';
+    }
+    function refreshVisibleProductCardOffers(){
+      var cards=document.querySelectorAll('#appRoot .product-card[data-product-id]');
+      for(var i=0;i<cards.length;i++){
+        var card=cards[i],id=String(card.getAttribute('data-product-id')||'');
+        var product=APP.productCardCache&&APP.productCardCache[id];
+        if(!product)continue;
+        var image=card.querySelector('.product-image');
+        if(image){
+          var oldShipping=image.querySelector('.product-shipping-ribbon');
+          var newShipping=productCardShippingMarkup(product);
+          if(oldShipping){
+            if(newShipping)oldShipping.outerHTML=newShipping;
+            else oldShipping.remove();
+          }else if(newShipping)image.insertAdjacentHTML('beforeend',newShipping);
+        }
+        var info=card.querySelector('.product-info'),name=info&&info.querySelector('.product-name');
+        if(info&&name){
+          var oldPromo=info.querySelector('.product-promo-box');
+          var newPromo=productCardCouponMarkup(product);
+          if(oldPromo){
+            if(newPromo)oldPromo.outerHTML=newPromo;
+            else oldPromo.remove();
+          }else if(newPromo)name.insertAdjacentHTML('afterend',newPromo);
+        }
+      }
     }
     function renderProductGrid(products){products=safeArray(products);if(!products.length)return '<div class="empty-state"><i class="fa-solid fa-box-open"></i><h3>ยังไม่มีสินค้าในขณะนี้</h3><p>กรุณากลับมาเยี่ยมชมอีกครั้ง</p></div>';return '<div class="product-grid">'+products.map(renderProductCard).join('')+'</div>';}
     function homeCategoryColumns(){
