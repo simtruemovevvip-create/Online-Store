@@ -2047,7 +2047,8 @@
         else toast(result&&result.message||'ไม่สามารถค้นหาสินค้าที่คล้ายกันได้','warning');
       },false);
     }
-    function renderProductCard(p){
+    function renderProductCard(p,catalogMode){
+      var isCatalogCard=catalogMode===true;
       var price=Number(p.salePrice)>0?Number(p.salePrice):Number(p.price),base=Number(p.price||0);
       var hasDiscount=base>price&&base>0,discount=hasDiscount?Math.round((base-price)*100/base):0;
       var old=hasDiscount?'<span class="old-price">'+money(base)+'</span>':'';
@@ -2056,29 +2057,35 @@
       var featuredText=String(p.featuredLabel===undefined?'ร้านแนะนำ':p.featuredLabel||'').trim();
       var featuredPrefix=isFeatured&&featuredText?'<span class="product-recommended-prefix">'+esc(featuredText)+'</span> ':'';
       var mallText=String(p.mallBadgeText||'Mall').trim()||'Mall';
-      var mallBadge=hasMall?'<span class="product-card-label product-card-label-mall">'+esc(mallText)+'</span>':'';
+      var catalogNameBadges=isCatalogCard?featuredPrefix+(hasMall?'<span class="catalog-mall-prefix">'+esc(mallText)+'</span> ':''):featuredPrefix;
+      var mallBadge=hasMall&&!isCatalogCard?'<span class="product-card-label product-card-label-mall">'+esc(mallText)+'</span>':'';
       var discountBadge=discount>0?'<span class="product-discount-badge">-'+discount+'%</span>':'';
       var campaign=productCardCampaignMarkup(p);
+      var catalogPromoTag=isCatalogCard?productCardCouponMarkup(p):'';
       var videoButton=String(p.videoUrl||'').trim()?'<button type="button" class="product-video-play" aria-label="เปิดวิดีโอ '+esc(p.name)+'" onclick="event.stopPropagation();openProductVideo(\''+esc(p.id)+'\')"><i class="fa-solid fa-play"></i></button>':'';
-      var sold=Number(p.soldCount||0),rating=Number(p.ratingAverage||0);
-      var province=String(p.originProvince||p.province||p.storeProvince||'').trim();
+      var sold=Number(p.soldCount||0),province=String(p.originProvince||p.province||p.storeProvince||'').trim();
       APP.productCardCache=APP.productCardCache||{};
       APP.productCardCache[String(p.id)]=p;
-      return '<article class="product-card" data-product-id="'+esc(p.id)+'">'+
+      return '<article class="product-card '+(isCatalogCard?'catalog-product-card':'')+'" data-product-id="'+esc(p.id)+'">'+
         '<div class="product-image" role="button" tabindex="0" aria-label="ดูสินค้า '+esc(p.name)+'" onclick="viewProduct(\''+esc(p.id)+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \')viewProduct(\''+esc(p.id)+'\')">'+
           mallBadge+discountBadge+
           '<img loading="lazy" src="'+imageUrl(p.coverImage)+'" alt="'+esc(p.name)+'" onerror="imageFallback(this)">'+
           campaign+videoButton+
         '</div>'+
         '<div class="product-info">'+
-          '<div class="product-name" title="'+esc(p.name)+'" onclick="viewProduct(\''+esc(p.id)+'\')">'+featuredPrefix+esc(p.name)+'</div>'+
+          '<div class="product-name" title="'+esc(p.name)+'" onclick="viewProduct(\''+esc(p.id)+'\')">'+catalogNameBadges+esc(p.name)+'</div>'+
           '<div class="product-price-row"><span class="product-price-current">'+money(price)+'</span>'+old+(discount>0?'<span class="product-price-discount">-'+discount+'%</span>':'')+'</div>'+
+          catalogPromoTag+
           '<div class="product-rating-sales-row">'+productRatingMarkup(p)+'<span class="product-sold">ขายแล้ว '+formatProductSales(sold)+' ชิ้น</span></div>'+
           (province?'<div class="product-origin-row"><i class="fa-solid fa-location-dot"></i> จังหวัด'+esc(province.replace(/^จังหวัด\s*/,'').trim())+'</div>':'')+
-
         '</div>'+
         '<button type="button" class="product-similar-button" onclick="event.stopPropagation();showSimilarProducts(\''+esc(p.id)+'\')">คล้ายกัน</button>'+
       '</article>';
+    }
+    function renderCatalogProductGrid(products){
+      products=safeArray(products);
+      if(!products.length)return '<div class="empty-state"><i class="fa-solid fa-box-open"></i><h3>ไม่พบสินค้าที่ตรงกับเงื่อนไข</h3><p>ลองเปลี่ยนคำค้นหา ตัวกรอง หรือช่วงราคา</p></div>';
+      return '<div class="product-grid catalog-product-grid">'+products.map(function(product){return renderProductCard(product,true);}).join('')+'</div>';
     }
     function refreshVisibleProductCardOffers(){
       var cards=document.querySelectorAll('#appRoot .product-card[data-product-id]');
@@ -2263,12 +2270,127 @@
       html+='</div>';document.getElementById('appRoot').innerHTML=html;initHomeHeroSwiper();initHomeCategoryCarousel();initHomeHeroSwiper();initHomeCategoryCarousel();
     }
     function goHome(){if(APP.accessMode==='seller'||APP.accessMode==='owner'){toast('กรุณาออกจากระบบ Portal ปัจจุบันก่อนเปลี่ยนประเภทบัญชี','warning');return;}APP.currentView='home';if(!APP.products.length&&!APP.categories.length){loadPublicData();}else renderHome();window.scrollTo({top:0,behavior:'smooth'});var nav=document.getElementById('mainNav');if(nav)nav.classList.remove('open');}
-    function showAllProducts(){APP.currentView='products';document.getElementById('appRoot').innerHTML='<div class="section-head"><div><h1 class="section-title">สินค้าทั้งหมด</h1><div class="section-sub" id="productCountLabel">กำลังโหลดสินค้า</div></div></div><div class="marketplace-catalog-shell"><aside class="marketplace-catalog-filters"><h3><i class="fa-solid fa-sliders"></i> ตัวกรองสินค้า</h3><div class="filter-row"><input id="catalogSearch" placeholder="ค้นหาสินค้า / SKU / Barcode / Brand" onkeydown="if(event.key===\'Enter\')applyCatalogFilter(1)"><select id="catalogCategory" onchange="applyCatalogFilter(1)"><option value="">ทุกหมวดหมู่</option>'+APP.categories.map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('')+'</select><input id="catalogMinPrice" type="number" min="0" placeholder="ราคาต่ำสุด" onchange="applyCatalogFilter(1)"><input id="catalogMaxPrice" type="number" min="0" placeholder="ราคาสูงสุด" onchange="applyCatalogFilter(1)"><select id="catalogAvailable" onchange="applyCatalogFilter(1)"><option value="">สินค้าทั้งหมด</option><option value="1">เฉพาะที่มีสินค้า</option></select></div></aside><div class="marketplace-catalog-results"><div class="marketplace-catalog-toolbar"><strong><i class="fa-solid fa-box-open"></i> เลือกซื้อสินค้า</strong><label>เรียงตาม <select id="catalogSort" onchange="applyCatalogFilter(1)"><option value="newest">สินค้าใหม่ล่าสุด</option><option value="best_seller">สินค้าขายดี</option><option value="price_asc">ราคาต่ำไปสูง</option><option value="price_desc">ราคาสูงไปต่ำ</option></select></label></div><div id="catalogResults">กำลังโหลดสินค้า...</div><div id="catalogPagination" class="pagination-row" style="display:flex;gap:10px;justify-content:center;align-items:center;margin:22px 0;"></div></div></div>';applyCatalogFilter(1);}
-    function applyCatalogFilter(page){if(page!==undefined)APP.productPage=Math.max(1,Number(page)||1);var opts={page:APP.productPage,pageSize:APP.productPageSize,search:document.getElementById('catalogSearch')?document.getElementById('catalogSearch').value:'',categoryId:document.getElementById('catalogCategory')?document.getElementById('catalogCategory').value:'',minPrice:document.getElementById('catalogMinPrice')?document.getElementById('catalogMinPrice').value:'',maxPrice:document.getElementById('catalogMaxPrice')?document.getElementById('catalogMaxPrice').value:'',available:document.getElementById('catalogAvailable')?document.getElementById('catalogAvailable').value==='1':false,sort:document.getElementById('catalogSort')?document.getElementById('catalogSort').value:'newest'};apiCall('getProducts',[opts],function(r){var items=r&&r.success&&r.data?safeArray(r.data.items):[];var host=document.getElementById('catalogResults');if(host)host.innerHTML=r&&r.success?renderProductGrid(items):marketplaceLoadErrorMarkup(r&&r.message,'applyCatalogFilter(1)');var total=r.success&&r.data?Number(r.data.total||0):0;APP.productTotal=total;var label=document.getElementById('productCountLabel');if(label)label.textContent='พบสินค้า '+total+' รายการ';var pages=Math.max(1,Math.ceil(total/APP.productPageSize)),pager=document.getElementById('catalogPagination');if(pager){pager.innerHTML=pages>1?'<button class="btn btn-outline btn-small" '+(APP.productPage<=1?'disabled':'')+' onclick="applyCatalogFilter('+(APP.productPage-1)+')">ก่อนหน้า</button><span>หน้า '+APP.productPage+' / '+pages+'</span><button class="btn btn-outline btn-small" '+(APP.productPage>=pages?'disabled':'')+' onclick="applyCatalogFilter('+(APP.productPage+1)+')">ถัดไป</button>':'';}});}
-    function searchProducts(){var q=document.getElementById('globalSearch').value||'';showAllProducts();setTimeout(function(){var el=document.getElementById('catalogSearch');if(el){el.value=q;applyCatalogFilter(1);}},30);}
-    function filterCategory(id){showAllProducts();setTimeout(function(){var el=document.getElementById('catalogCategory');if(el){el.value=id;applyCatalogFilter(1);}},30);}
-    function loadBestSellers(){showAllProducts();setTimeout(function(){var el=document.getElementById('catalogSort');if(el){el.value='best_seller';applyCatalogFilter(1);}},30);}
-    function loadNewArrivals(){showAllProducts();}
+    function showAllProducts(initialSearch){
+      APP.currentView='products';
+      APP.productPage=1;
+      var initialQuery=String(initialSearch||'').trim();
+      var categoryOptions='<option value="">ทุกหมวดหมู่</option>'+safeArray(APP.categories).map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
+      var pageTitle=initialQuery?'ผลการค้นหาสินค้า':'สินค้าทั้งหมด';
+      var pageIntro=initialQuery?'ค้นหาสินค้าที่ตรงกับคำว่า “'+esc(initialQuery)+'”':'เลือกดูสินค้าและใช้ตัวกรองเพื่อค้นหาสินค้าที่ต้องการ';
+      document.getElementById('appRoot').innerHTML=
+        '<section class="search-results-page" aria-label="หน้าผลการค้นหาสินค้า">'+
+          '<div class="search-results-heading">'+
+            '<div><h1 class="section-title" id="catalogPageTitle">'+pageTitle+'</h1><div class="section-sub" id="catalogPageIntro">'+pageIntro+'</div></div>'+
+            '<div class="search-results-count" id="productCountLabel">กำลังโหลดสินค้า...</div>'+
+          '</div>'+
+          '<div class="marketplace-catalog-shell">'+
+            '<aside class="marketplace-catalog-filters">'+
+              '<div class="catalog-filter-heading"><h3><i class="fa-solid fa-sliders"></i> ตัวกรองสินค้า</h3><button type="button" onclick="resetCatalogFilters()">ล้างทั้งหมด</button></div>'+
+              '<div class="catalog-filter-group"><label for="catalogSearch">คำค้นหา</label><input id="catalogSearch" type="search" value="'+esc(initialQuery)+'" placeholder="ชื่อสินค้า / SKU / Brand" onkeydown="if(event.key===\'Enter\')applyCatalogFilter(1)"></div>'+
+              '<div class="catalog-filter-group"><label for="catalogCategory">หมวดหมู่สินค้า</label><select id="catalogCategory" onchange="applyCatalogFilter(1)">'+categoryOptions+'</select></div>'+
+              '<div class="catalog-filter-group"><label>ช่วงราคา</label><div class="catalog-price-inputs"><input id="catalogMinPrice" type="number" min="0" placeholder="ต่ำสุด" aria-label="ราคาต่ำสุด" onchange="applyCatalogFilter(1)"><span>—</span><input id="catalogMaxPrice" type="number" min="0" placeholder="สูงสุด" aria-label="ราคาสูงสุด" onchange="applyCatalogFilter(1)"></div></div>'+
+              '<div class="catalog-filter-group"><label for="catalogAvailable">สถานะสินค้า</label><select id="catalogAvailable" onchange="applyCatalogFilter(1)"><option value="">สินค้าทั้งหมด</option><option value="1">เฉพาะสินค้าที่มีสต็อก</option></select></div>'+
+              '<button type="button" class="catalog-filter-apply" onclick="applyCatalogFilter(1)"><i class="fa-solid fa-filter"></i> ใช้ตัวกรอง</button>'+
+            '</aside>'+
+            '<main class="marketplace-catalog-results">'+
+              '<div class="marketplace-catalog-toolbar">'+
+                '<div class="catalog-sort-label">เรียงโดย:</div>'+
+                '<div class="catalog-sort-buttons" role="group" aria-label="เรียงลำดับสินค้า">'+
+                  '<button type="button" class="catalog-sort-button active" data-catalog-sort="relevance" onclick="setCatalogSort(&quot;relevance&quot;)">เกี่ยวข้อง</button>'+
+                  '<button type="button" class="catalog-sort-button" data-catalog-sort="newest" onclick="setCatalogSort(&quot;newest&quot;)">ล่าสุด</button>'+
+                  '<button type="button" class="catalog-sort-button" data-catalog-sort="best_seller" onclick="setCatalogSort(&quot;best_seller&quot;)">สินค้าขายดี</button>'+
+                '</div>'+
+                '<label class="catalog-price-sort-label" for="catalogPriceSort">ราคา <select id="catalogPriceSort" onchange="changeCatalogPriceSort()"><option value="">ค่าเริ่มต้น</option><option value="price_asc">ราคาต่ำไปสูง</option><option value="price_desc">ราคาสูงไปต่ำ</option></select></label>'+
+                '<input id="catalogSort" type="hidden" value="relevance">'+
+              '</div>'+
+              '<div class="catalog-results-meta" id="catalogResultsMeta">แสดงสินค้าที่ตรงกับเงื่อนไข</div>'+
+              '<div id="catalogResults" class="catalog-results-host">กำลังโหลดสินค้า...</div>'+
+              '<div id="catalogPagination" class="pagination-row"></div>'+
+            '</main>'+
+          '</div>'+
+        '</section>';
+      updateCatalogSortButtons();
+      applyCatalogFilter(1);
+    }
+    function updateCatalogSortButtons(){
+      var selected=document.getElementById('catalogSort'),price=document.getElementById('catalogPriceSort');
+      var active=price&&price.value?'':(selected?selected.value:'relevance');
+      var buttons=document.querySelectorAll('[data-catalog-sort]');
+      for(var i=0;i<buttons.length;i++){
+        var on=buttons[i].getAttribute('data-catalog-sort')===active;
+        buttons[i].classList.toggle('active',on);
+        buttons[i].setAttribute('aria-pressed',on?'true':'false');
+      }
+    }
+    function setCatalogSort(sort){
+      var selected=document.getElementById('catalogSort'),price=document.getElementById('catalogPriceSort');
+      if(selected)selected.value=String(sort||'relevance');
+      if(price)price.value='';
+      updateCatalogSortButtons();
+      applyCatalogFilter(1);
+    }
+    function changeCatalogPriceSort(){
+      updateCatalogSortButtons();
+      applyCatalogFilter(1);
+    }
+    function resetCatalogFilters(){
+      var search=document.getElementById('catalogSearch'),category=document.getElementById('catalogCategory');
+      var min=document.getElementById('catalogMinPrice'),max=document.getElementById('catalogMaxPrice');
+      var available=document.getElementById('catalogAvailable'),sort=document.getElementById('catalogSort'),price=document.getElementById('catalogPriceSort');
+      if(search)search.value='';
+      if(category)category.value='';
+      if(min)min.value='';
+      if(max)max.value='';
+      if(available)available.value='';
+      if(sort)sort.value='relevance';
+      if(price)price.value='';
+      var title=document.getElementById('catalogPageTitle'),intro=document.getElementById('catalogPageIntro');
+      if(title)title.textContent='สินค้าทั้งหมด';
+      if(intro)intro.textContent='เลือกดูสินค้าและใช้ตัวกรองเพื่อค้นหาสินค้าที่ต้องการ';
+      updateCatalogSortButtons();
+      applyCatalogFilter(1);
+    }
+    function applyCatalogFilter(page){
+      if(page!==undefined)APP.productPage=Math.max(1,Number(page)||1);
+      var search=document.getElementById('catalogSearch'),category=document.getElementById('catalogCategory');
+      var min=document.getElementById('catalogMinPrice'),max=document.getElementById('catalogMaxPrice');
+      var available=document.getElementById('catalogAvailable'),sort=document.getElementById('catalogSort'),priceSort=document.getElementById('catalogPriceSort');
+      var query=String(search&&search.value||'').trim();
+      var selectedSort=String(priceSort&&priceSort.value||sort&&sort.value||'relevance');
+      var opts={
+        page:APP.productPage,pageSize:APP.productPageSize,
+        search:query,categoryId:category?category.value:'',
+        minPrice:min?min.value:'',maxPrice:max?max.value:'',
+        available:!!(available&&available.value==='1'),sort:selectedSort
+      };
+      apiCall('getProducts',[opts],function(r){
+        var items=r&&r.success&&r.data?safeArray(r.data.items):[];
+        var host=document.getElementById('catalogResults');
+        if(host)host.innerHTML=r&&r.success?renderCatalogProductGrid(items):marketplaceLoadErrorMarkup(r&&r.message,'applyCatalogFilter(1)');
+        var total=r&&r.success&&r.data?Number(r.data.total||0):0;
+        APP.productTotal=total;
+        var label=document.getElementById('productCountLabel');
+        if(label)label.textContent='พบสินค้า '+total.toLocaleString('th-TH')+' รายการ';
+        var meta=document.getElementById('catalogResultsMeta');
+        if(meta)meta.textContent=query?'ผลการค้นหา “'+query+'” · '+total.toLocaleString('th-TH')+' รายการ':'แสดงสินค้า '+total.toLocaleString('th-TH')+' รายการ';
+        var pages=Math.max(1,Math.ceil(total/APP.productPageSize)),pager=document.getElementById('catalogPagination');
+        if(pager){
+          pager.innerHTML=pages>1?
+            '<button class="catalog-page-button" '+(APP.productPage<=1?'disabled':'')+' onclick="applyCatalogFilter('+(APP.productPage-1)+')">ก่อนหน้า</button><span>หน้า '+APP.productPage+' / '+pages+'</span><button class="catalog-page-button" '+(APP.productPage>=pages?'disabled':'')+' onclick="applyCatalogFilter('+(APP.productPage+1)+')">ถัดไป</button>':'';
+        }
+        updateCatalogSortButtons();
+      });
+    }
+    function searchProducts(){
+      var q=document.getElementById('globalSearch').value||'';
+      showAllProducts(q);
+    }
+    function filterCategory(id){
+      showAllProducts();
+      setTimeout(function(){var el=document.getElementById('catalogCategory');if(el){el.value=id;applyCatalogFilter(1);}},30);
+    }
+    function loadBestSellers(){showAllProducts();setTimeout(function(){setCatalogSort('best_seller');},30);}
+    function loadNewArrivals(){showAllProducts();setTimeout(function(){setCatalogSort('newest');},30);}
     function showPromotions(){APP.currentView='promotions';var html='<div class="section-head"><div><h1 class="section-title">โปรโมชั่นและข้อเสนอพิเศษ</h1><div class="section-sub">โปรดตรวจสอบวันใช้งานและเงื่อนไขของแต่ละโปรโมชั่น</div></div></div>';if(!APP.promotions.length)html+='<div class="empty-state"><i class="fa-solid fa-tags"></i><h3>ยังไม่มีโปรโมชั่น</h3><p>ติดตามข้อเสนอพิเศษจากร้านค้าได้เร็ว ๆ นี้</p></div>';else html+='<div class="product-grid">'+APP.promotions.map(function(p){return '<div class="panel"><div class="category-icon"><i class="fa-solid fa-ticket"></i></div><h3>'+esc(p.name)+'</h3><p class="muted">'+esc(p.type)+' '+esc(p.value)+'</p><small class="muted">'+esc(p.startDate||'ไม่ระบุวันเริ่ม')+' - '+esc(p.endDate||'ไม่ระบุวันสิ้นสุด')+'</small></div>';}).join('')+'</div>';document.getElementById('appRoot').innerHTML=html;}
     function showAbout(){var html='<div class="panel"><h1 class="section-title">เกี่ยวกับเรา</h1><div class="rich-content-display">'+sanitizeRichEditorHtml(APP.settings.storeDescription||'ร้านค้าออนไลน์ของเรา')+'</div><p class="muted">'+esc(APP.settings.address||'')+'</p></div>';document.getElementById('appRoot').innerHTML=html;}
     function showContact(){document.getElementById('appRoot').innerHTML='<div class="panel"><h1 class="section-title">ติดต่อเรา</h1><p><i class="fa-solid fa-phone"></i> '+esc(APP.settings.phone||'ไม่ระบุ')+'</p><p><i class="fa-solid fa-envelope"></i> '+esc(APP.settings.email||'ไม่ระบุ')+'</p><p><i class="fa-solid fa-location-dot"></i> '+esc(APP.settings.address||'ไม่ระบุ')+'</p>'+(APP.settings.googleMaps?'<a class="btn btn-primary" href="'+esc(APP.settings.googleMaps)+'" target="_blank">เปิด Google Maps</a>':'')+'</div>';}
@@ -5179,6 +5301,76 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     .product-video-viewer-close{display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;cursor:pointer}
     .product-video-viewer-player{display:block;width:100%;max-height:78vh;background:#000;object-fit:contain}
     @media(max-width:600px){.product-video-viewer{padding:8px}.product-video-viewer-panel{width:100%;border-radius:8px}.product-video-viewer-player{max-height:72vh}}
+  </style>
+
+  <style id="shopee-search-results-page">
+    #appRoot .search-results-page{width:100%;max-width:1200px;margin:0 auto;box-sizing:border-box}
+    #appRoot .search-results-page *{box-sizing:border-box}
+    #appRoot .search-results-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin:2px 0 16px}
+    #appRoot .search-results-heading .section-title{margin:0 0 4px}
+    #appRoot .search-results-count{color:var(--muted);font-size:12px;white-space:nowrap}
+    #appRoot .marketplace-catalog-shell{display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px;align-items:start;width:100%;max-width:1200px}
+    #appRoot .marketplace-catalog-filters{position:sticky;top:110px;width:200px;min-width:0;padding:14px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+    #appRoot .catalog-filter-heading{display:flex;align-items:center;justify-content:space-between;gap:6px;padding-bottom:11px;margin-bottom:12px;border-bottom:1px solid var(--border)}
+    #appRoot .catalog-filter-heading h3{margin:0;font-size:13px;font-weight:700;color:var(--ink)}
+    #appRoot .catalog-filter-heading button{padding:3px 0;border:0;background:transparent;color:#ee4d2d;font-size:10px;cursor:pointer;white-space:nowrap}
+    #appRoot .catalog-filter-group{display:flex;flex-direction:column;gap:7px;margin:0 0 14px;min-width:0}
+    #appRoot .catalog-filter-group>label{font-size:11px;font-weight:700;color:var(--ink)}
+    #appRoot .catalog-filter-group input,#appRoot .catalog-filter-group select{width:100%;min-width:0;height:35px;padding:7px 9px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--ink);font-size:11px;outline:0}
+    #appRoot .catalog-filter-group input:focus,#appRoot .catalog-filter-group select:focus{border-color:#ee4d2d;box-shadow:0 0 0 2px rgba(238,77,45,.08)}
+    #appRoot .catalog-price-inputs{display:grid;grid-template-columns:minmax(0,1fr) 10px minmax(0,1fr);align-items:center;gap:4px}
+    #appRoot .catalog-price-inputs span{text-align:center;color:var(--muted);font-size:10px}
+    #appRoot .catalog-filter-apply{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;height:35px;border:1px solid #ee4d2d;border-radius:5px;background:#fff7f4;color:#ee4d2d;font-size:11px;font-weight:700;cursor:pointer}
+    #appRoot .marketplace-catalog-results{width:100%;min-width:0}
+    #appRoot .marketplace-catalog-toolbar{display:flex;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap;min-height:54px;padding:9px 12px;margin:0 0 10px;border:0;border-radius:4px;background:#f5f5f5}
+    #appRoot .catalog-sort-label{color:#555;font-size:11px;white-space:nowrap}
+    #appRoot .catalog-sort-buttons{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    #appRoot .catalog-sort-button{min-height:32px;padding:6px 12px;border:1px solid #e2e2e2;border-radius:3px;background:#fff;color:#555;font-size:11px;cursor:pointer;white-space:nowrap}
+    #appRoot .catalog-sort-button:hover{border-color:#ee4d2d;color:#ee4d2d}
+    #appRoot .catalog-sort-button.active{border-color:#ee4d2d;background:#fff;color:#ee4d2d}
+    #appRoot .catalog-price-sort-label{display:flex;align-items:center;gap:6px;margin-left:auto;color:#555;font-size:11px;white-space:nowrap}
+    #appRoot .catalog-price-sort-label select{height:32px;max-width:145px;padding:5px 8px;border:1px solid #ddd;border-radius:3px;background:#fff;color:#555;font-size:11px}
+    #appRoot .catalog-results-meta{margin:0 0 10px;color:var(--muted);font-size:11px}
+    #appRoot .catalog-results-host{min-width:0}
+    #appRoot #catalogResults .catalog-product-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:stretch}
+    #appRoot #catalogResults .catalog-product-card{min-width:0;border-radius:4px!important;overflow:visible}
+    #appRoot #catalogResults .catalog-product-card .product-image{aspect-ratio:1/1;height:auto!important;overflow:hidden;border-radius:3px 3px 0 0}
+    #appRoot #catalogResults .catalog-product-card .product-name{display:-webkit-box;height:36px!important;min-height:36px;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;font-size:11px!important;line-height:1.55!important;margin:0 0 5px!important}
+    #appRoot #catalogResults .catalog-product-card .product-recommended-prefix,#appRoot #catalogResults .catalog-product-card .catalog-mall-prefix{display:inline-block;vertical-align:1px;margin-right:3px;padding:1px 4px;border-radius:2px;background:#fff0e8;color:#ee4d2d;font-size:9px;line-height:1.35;font-weight:800;white-space:nowrap}
+    #appRoot #catalogResults .catalog-product-card .catalog-mall-prefix{background:#d71920;color:#fff}
+    #appRoot #catalogResults .catalog-product-card .product-price-row{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px}
+    #appRoot #catalogResults .catalog-product-card .product-price-current{color:#ee4d2d;font-size:15px;font-weight:800;white-space:nowrap}
+    #appRoot #catalogResults .catalog-product-card .old-price{margin:0;color:#999;font-size:9px;text-decoration:line-through;white-space:nowrap}
+    #appRoot #catalogResults .catalog-product-card .product-price-discount{padding:1px 3px;border-radius:2px;background:#fff0e8;color:#ee4d2d;font-size:9px;font-weight:700}
+    #appRoot #catalogResults .catalog-product-card .product-promo-box{display:inline-flex;align-self:flex-start;max-width:100%;margin:2px 0 0;padding:3px 5px;border:1px solid #f2b7a7;border-radius:2px;background:#fff;color:#ee4d2d;font-size:9px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #appRoot #catalogResults .catalog-product-card .product-rating-sales-row{display:flex;align-items:center;gap:5px;min-width:0;margin-top:2px}
+    #appRoot #catalogResults .catalog-product-card .product-rating-badge{font-size:9px}
+    #appRoot #catalogResults .catalog-product-card .product-sold{margin-left:auto;font-size:9px;white-space:nowrap}
+    #appRoot #catalogResults .catalog-product-card .product-origin-row{margin-top:auto;padding-top:3px;color:var(--muted);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #appRoot .catalog-page-button{min-height:34px;padding:7px 13px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--ink);font-size:11px;cursor:pointer}
+    #appRoot .catalog-page-button:disabled{opacity:.45;cursor:not-allowed}
+    #appRoot #catalogPagination{display:flex;justify-content:center;align-items:center;gap:12px;margin:22px 0}
+    @media(max-width:1000px){
+      #appRoot .search-results-page{max-width:100%}
+      #appRoot .marketplace-catalog-shell{grid-template-columns:200px minmax(0,1fr)}
+      #appRoot #catalogResults .catalog-product-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+    }
+    @media(max-width:760px){
+      #appRoot .marketplace-catalog-shell{grid-template-columns:minmax(0,1fr);gap:12px}
+      #appRoot .marketplace-catalog-filters{position:static;width:100%}
+      #appRoot .marketplace-catalog-filters .catalog-filter-heading{margin-bottom:9px}
+      #appRoot .marketplace-catalog-filters .catalog-filter-group{margin-bottom:9px}
+      #appRoot .marketplace-catalog-toolbar{align-items:flex-start}
+      #appRoot .catalog-price-sort-label{margin-left:0}
+      #appRoot #catalogResults .catalog-product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    }
+    @media(max-width:520px){
+      #appRoot .search-results-heading{align-items:flex-start;flex-direction:column;gap:4px}
+      #appRoot .catalog-sort-button{padding:6px 8px}
+      #appRoot .catalog-price-sort-label select{max-width:120px}
+      #appRoot #catalogResults .catalog-product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      #appRoot #catalogResults .catalog-product-card .product-info{padding:8px!important}
+    }
   </style>
 </body>
 </html>
