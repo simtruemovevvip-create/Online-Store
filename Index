@@ -1489,7 +1489,7 @@
       </div>
     </div>
     <nav class="nav-bar" id="mainNav" aria-label="เมนูหลัก">
-      <a href="#" data-nav-key="home" onclick="goHome();return false" class="active">หน้าแรก</a><a href="#products" data-nav-key="products" onclick="showAllProducts();return false">สินค้าทั้งหมด</a><a href="#stores" data-nav-key="stores" onclick="showStores();return false">ร้านค้าทั้งหมด</a><a href="#flash" data-nav-key="flash" onclick="showFlashDeals();return false">Flash Sale</a><a href="#vouchers" data-nav-key="vouchers" onclick="showMarketplaceVouchers();return false">Voucher</a><a href="#categories" data-nav-key="categories" onclick="navigateToHomeSection('categories');return false">หมวดหมู่สินค้า</a><a href="#best" data-nav-key="best" onclick="loadBestSellers();return false">สินค้าขายดี</a><a href="#new" data-nav-key="new" onclick="loadNewArrivals();return false">สินค้าใหม่</a><a href="#promotions" data-nav-key="promotions" onclick="showPromotions();return false">โปรโมชั่น</a>
+      <a href="#" data-nav-key="home" onclick="goHome();return false" class="active">หน้าแรก</a><a href="#products" data-nav-key="products" onclick="showAllProducts();return false">สินค้าทั้งหมด</a><a href="#recommended" data-nav-key="recommended" onclick="showRecommendedProducts();return false">สินค้าแนะนำ</a><a href="#stores" data-nav-key="stores" onclick="showStores();return false">ร้านค้าทั้งหมด</a><a href="#flash" data-nav-key="flash" onclick="showFlashDeals();return false">Flash Sale</a><a href="#vouchers" data-nav-key="vouchers" onclick="showMarketplaceVouchers();return false">Voucher</a><a href="#categories" data-nav-key="categories" onclick="navigateToHomeSection('categories');return false">หมวดหมู่สินค้า</a><a href="#best" data-nav-key="best" onclick="loadBestSellers();return false">สินค้าขายดี</a><a href="#new" data-nav-key="new" onclick="loadNewArrivals();return false">สินค้าใหม่</a><a href="#promotions" data-nav-key="promotions" onclick="showPromotions();return false">โปรโมชั่น</a>
     </nav>
   </header>
 
@@ -2384,8 +2384,88 @@
       html+='<section id="products"><div class="section-head"><div><h2 class="section-title">สินค้าแนะนำ</h2><div class="section-sub">สินค้าที่เราเลือกมาให้คุณ</div></div><a class="text-link" href="#" onclick="showAllProducts();return false">ดูสินค้าทั้งหมด <i class="fa-solid fa-arrow-right"></i></a></div>'+renderProductGrid(featured.length?featured.slice(0,5):APP.products.slice(0,5))+'</section>';
       html+='<section id="best"><div class="section-head"><div><h2 class="section-title">สินค้าขายดี</h2><div class="section-sub">รายการยอดนิยมจากร้านค้า</div></div><a class="text-link" href="#" onclick="loadBestSellers();return false">ดูทั้งหมด</a></div>'+renderProductGrid(best.slice(0,5))+'</section>';
       html+='<section id="new"><div class="section-head"><div><h2 class="section-title">สินค้าใหม่ล่าสุด</h2><div class="section-sub">อัปเดตสินค้าใหม่ที่นี่</div></div><a class="text-link" href="#" onclick="loadNewArrivals();return false">ดูทั้งหมด</a></div>'+renderProductGrid(newest)+'</section>';
-      html+='<section id="about" class="panel" style="margin-top:30px"><h2 class="section-title">เกี่ยวกับ '+esc(APP.settings.storeName||'ร้านค้าของเรา')+'</h2><div class="rich-content-display">'+sanitizeRichEditorHtml(APP.settings.storeDescription||'เรามุ่งมั่นคัดสรรสินค้าและบริการที่ดีที่สุดให้กับลูกค้า')+'</div></section>';
-      html+='</div>';document.getElementById('appRoot').innerHTML=html;initHomeHeroSwiper();initHomeCategoryCarousel();initHomeDealSections();initHomeHeroSwiper();initHomeCategoryCarousel();
+      html+='<section id="dailyDiscoverSection" class="daily-discover-section" aria-label="สินค้าแนะนำประจำวัน">'+
+        '<div class="daily-discover-tab-header"><span>สินค้าแนะนำประจำวัน</span></div>'+
+        '<div id="homeDailyDiscoverGrid" class="daily-discover-grid-host"><div class="daily-discover-loading">กำลังโหลดสินค้าแนะนำ...</div></div>'+
+        '<div class="daily-discover-more-wrap"><button type="button" class="daily-discover-more-button" onclick="showRecommendedProducts()">ดูเพิ่มเติม</button></div>'+
+      '</section>';
+
+      html+='</div>';document.getElementById('appRoot').innerHTML=html;initHomeHeroSwiper();initHomeCategoryCarousel();initHomeDealSections();initHomeHeroSwiper();initHomeCategoryCarousel();loadHomeDailyDiscover();
+    }
+    function renderDailyDiscoverGrid(products){
+      products=safeArray(products);
+      if(!products.length)return '<div class="empty-state daily-discover-empty"><i class="fa-solid fa-box-open"></i><h3>ยังไม่มีสินค้าแนะนำ</h3><p>กลับมาเยี่ยมชมอีกครั้งเพื่อพบสินค้าใหม่ ๆ</p></div>';
+      return '<div class="product-grid daily-discover-grid">'+products.map(function(product){return renderProductCard(product);}).join('')+'</div>';
+    }
+    function renderRecommendedPagination(totalPages,currentPage){
+      totalPages=Math.max(1,Number(totalPages)||1);
+      currentPage=Math.max(1,Math.min(totalPages,Number(currentPage)||1));
+      if(totalPages<=1)return '';
+      var pages=[];
+      if(totalPages<=7){for(var i=1;i<=totalPages;i++)pages.push(i);}
+      else if(currentPage<=4){for(var a=1;a<=5;a++)pages.push(a);pages.push('…',totalPages);}
+      else if(currentPage>=totalPages-3){pages.push(1,'…');for(var b=totalPages-4;b<=totalPages;b++)pages.push(b);}
+      else{pages.push(1,'…',currentPage-1,currentPage,currentPage+1,'…',totalPages);}
+      var html='<nav class="daily-discover-pagination" aria-label="แบ่งหน้าสินค้าแนะนำ">';
+      html+='<button type="button" class="daily-page-button daily-page-arrow" aria-label="หน้าก่อนหน้า" '+(currentPage===1?'disabled':'onclick="loadRecommendedProducts('+(currentPage-1)+')"')+'><i class="fa-solid fa-chevron-left"></i></button>';
+      pages.forEach(function(page){
+        if(page==='…'){html+='<span class="daily-page-ellipsis" aria-hidden="true">…</span>';return;}
+        html+='<button type="button" class="daily-page-button'+(Number(page)===currentPage?' active':'')+'" '+(Number(page)===currentPage?'aria-current="page"':'onclick="loadRecommendedProducts('+Number(page)+')"')+'>'+Number(page)+'</button>';
+      });
+      html+='<button type="button" class="daily-page-button daily-page-arrow" aria-label="หน้าถัดไป" '+(currentPage===totalPages?'disabled':'onclick="loadRecommendedProducts('+(currentPage+1)+')"')+'><i class="fa-solid fa-chevron-right"></i></button></nav>';
+      return html;
+    }
+    function loadHomeDailyDiscover(){
+      var host=document.getElementById('homeDailyDiscoverGrid');
+      if(!host)return;
+      APP.homeDailyDiscoverRequestId=Number(APP.homeDailyDiscoverRequestId||0)+1;
+      var requestId=APP.homeDailyDiscoverRequestId;
+      apiCall('getProducts',[{page:1,pageSize:30,sort:'relevance'}],function(r){
+        if(APP.currentView!=='home'||requestId!==APP.homeDailyDiscoverRequestId)return;
+        var target=document.getElementById('homeDailyDiscoverGrid');
+        if(!target)return;
+        if(!r||!r.success){
+          target.innerHTML='<div class="daily-discover-error">โหลดสินค้าไม่สำเร็จ <button type="button" onclick="loadHomeDailyDiscover()">ลองอีกครั้ง</button></div>';
+          return;
+        }
+        target.innerHTML=renderDailyDiscoverGrid(safeArray(r.data&&r.data.items));
+      },false,'',true);
+    }
+    function showRecommendedProducts(page){
+      APP.currentView='recommended';
+      var currentPage=Math.max(1,Number(page)||1);
+      document.getElementById('appRoot').innerHTML=
+        '<section class="daily-discover-page" aria-label="สินค้าแนะนำ">'+
+          '<div class="daily-discover-page-heading"><div><h1 class="section-title">สินค้าแนะนำ</h1><p class="section-sub">ค้นพบสินค้าที่น่าสนใจและสินค้าแนะนำจากร้านค้าต่าง ๆ</p></div><span id="recommendedProductCount" class="daily-discover-count">กำลังโหลดสินค้า...</span></div>'+
+          '<div class="daily-discover-tab-header"><span>สินค้าแนะนำประจำวัน</span></div>'+
+          '<div id="recommendedProductsGrid" class="daily-discover-grid-host"><div class="daily-discover-loading">กำลังโหลดสินค้าแนะนำ...</div></div>'+
+          '<div id="recommendedProductsPagination"></div>'+
+        '</section>';
+      if(typeof window.setMainNavActive==='function')window.setMainNavActive('recommended');
+      window.scrollTo({top:0,behavior:'smooth'});
+      loadRecommendedProducts(currentPage);
+    }
+    function loadRecommendedProducts(page){
+      APP.recommendedPage=Math.max(1,Number(page)||1);
+      APP.recommendedRequestId=Number(APP.recommendedRequestId||0)+1;
+      var requestId=APP.recommendedRequestId;
+      var requestedPage=APP.recommendedPage;
+      apiCall('getProducts',[{page:requestedPage,pageSize:30,sort:'relevance'}],function(r){
+        if(APP.currentView!=='recommended'||requestId!==APP.recommendedRequestId)return;
+        var host=document.getElementById('recommendedProductsGrid');
+        if(!host)return;
+        if(!r||!r.success){
+          host.innerHTML=marketplaceLoadErrorMarkup(r&&r.message,'loadRecommendedProducts('+requestedPage+')');
+          return;
+        }
+        var data=r.data||{},items=safeArray(data.items),total=Math.max(0,Number(data.total||0));
+        host.innerHTML=renderDailyDiscoverGrid(items);
+        var count=document.getElementById('recommendedProductCount');
+        if(count)count.textContent='พบสินค้า '+total.toLocaleString('th-TH')+' รายการ';
+        var pager=document.getElementById('recommendedProductsPagination');
+        if(pager)pager.innerHTML=renderRecommendedPagination(Math.ceil(total/30),requestedPage);
+        if(requestedPage>1)document.querySelector('.daily-discover-tab-header')?.scrollIntoView({behavior:'smooth',block:'start'});
+      },false,'',true);
     }
     function goHome(){if(APP.accessMode==='seller'||APP.accessMode==='owner'){toast('กรุณาออกจากระบบ Portal ปัจจุบันก่อนเปลี่ยนประเภทบัญชี','warning');return;}APP.currentView='home';if(!APP.products.length&&!APP.categories.length){loadPublicData();}else renderHome();window.scrollTo({top:0,behavior:'smooth'});var nav=document.getElementById('mainNav');if(nav)nav.classList.remove('open');}
     function catalogFilterCheckboxGroup(id,title,items,visibleCount){
@@ -4043,7 +4123,28 @@
       },true,'กำลังอัปโหลดไฟล์...');};reader.onerror=function(){alertError('ไม่สามารถอ่านไฟล์ได้');};reader.readAsDataURL(file);input.value='';
     }
     function renderStoreCard(st){return '<article class="store-card" onclick="showStorePage(\''+esc(st.id)+'\')"><div class="store-cover">'+(st.banner?'<img src="'+imageUrl(st.banner)+'" onerror="imageFallback(this)" alt="">':'')+'</div><div class="store-body"><img class="store-avatar" src="'+imageUrl(st.logo)+'" onerror="imageFallback(this)" alt=""><h3 style="margin:6px 0">'+esc(st.shopName)+'</h3><div class="muted" style="font-size:12px">★ '+Number(st.rating||0).toFixed(1)+' · '+Number(st.followerCount||0).toLocaleString('th-TH')+' ผู้ติดตาม</div><small class="muted">'+Number(st.productCount||0)+' สินค้า</small></div></article>';}
-    function showStores(){APP.currentView='stores';apiCall('getMarketplaceStores',[{page:1,pageSize:60}],function(r){if(!r.success){alertError(r.message);document.getElementById('appRoot').innerHTML=marketplaceLoadErrorMarkup(r.message,'showStores()');return;}var rows=safeArray(r.data.items);document.getElementById('appRoot').innerHTML='<div class="section-head"><div><h1 class="section-title">ร้านค้าทั้งหมด</h1><div class="section-sub">เลือกดูร้านค้าและสินค้าจากผู้ขายบน Marketplace</div></div><input id="storeSearch" placeholder="ค้นหาชื่อร้านค้า" style="max-width:280px" onkeydown="if(event.key===\'Enter\')searchStores()"></div><div id="storeResults" class="store-grid">'+(rows.length?rows.map(renderStoreCard).join(''):'<div class="empty-state">ยังไม่มีร้านค้าที่เปิดใช้งาน</div>')+'</div>';});}
+    function showStores(){
+      APP.currentView='stores';
+      if(typeof window.setMainNavActive==='function')window.setMainNavActive('stores');
+      apiCall('getMarketplaceStores',[{page:1,pageSize:60}],function(r){
+        if(APP.currentView!=='stores')return;
+        if(!r||!r.success){
+          alertError(r&&r.message||'โหลดข้อมูลร้านค้าไม่สำเร็จ');
+          document.getElementById('appRoot').innerHTML=marketplaceLoadErrorMarkup(r&&r.message,'showStores()');
+          return;
+        }
+        var rows=safeArray(r.data&&r.data.items);
+        document.getElementById('appRoot').innerHTML=
+          '<section class="market-section store-discovery-page" aria-label="ร้านค้าทั้งหมด">'+
+            '<div class="market-section-head">'+
+              '<div><h1 class="section-title">ร้านค้าทั้งหมด</h1><small class="muted">ค้นพบร้านค้าและสินค้าจากผู้ขายหลากหลาย</small></div>'+
+              '<input id="storeSearch" type="search" placeholder="ค้นหาชื่อร้านค้า" aria-label="ค้นหาชื่อร้านค้า" style="max-width:280px;width:100%" onkeydown="if(event.key===\\'Enter\\')searchStores()">'+
+            '</div>'+
+            '<div id="storeResults" class="store-grid">'+(rows.length?rows.map(renderStoreCard).join(''):'<div class="empty-state">ยังไม่มีร้านค้าที่เปิดใช้งาน</div>')+'</div>'+
+          '</section>';
+        window.scrollTo({top:0,behavior:'smooth'});
+      });
+    }
     function searchStores(){var q=document.getElementById('storeSearch').value;apiCall('getMarketplaceStores',[{search:q,page:1,pageSize:60}],function(r){var h=document.getElementById('storeResults');if(!r||!r.success){if(h)h.innerHTML=marketplaceLoadErrorMarkup(r&&r.message,'searchStores()');return;}if(h)h.innerHTML=r.data&&r.data.items&&r.data.items.length?r.data.items.map(renderStoreCard).join(''):'<div class="empty-state">ไม่พบร้านค้า</div>';});}
     function returnToSellerCenter(){renderSellerShell();loadSellerPage(APP.sellerPage||'dashboard');}
     function returnFromStorePreview(){if(APP.currentView==='chatInbox'&&APP.customerChatActiveStoreId&&APP.customerToken){openChatInbox(APP.customerChatActiveStoreId);return;}returnToSellerCenter();}
@@ -5679,5 +5780,146 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
   @media(max-width:720px){#appRoot .home-marketplace .home-flash-sale-section{padding:12px}#appRoot .home-marketplace .home-flash-track{grid-auto-columns:calc((100% - 24px)/3)}#appRoot .home-marketplace .home-top-track{grid-auto-columns:calc((100% - 30px)/3)}#appRoot .home-marketplace .home-promo-banner-strip{grid-template-columns:repeat(2,minmax(0,1fr))}#appRoot .home-marketplace .home-promo-banner{height:100px}#appRoot .home-marketplace .home-promo-art-copy strong{font-size:15px}#appRoot .home-marketplace .home-top-category-name{font-size:13px}}
   @media(max-width:520px){#appRoot .home-marketplace .home-flash-header{align-items:flex-start}#appRoot .home-marketplace .home-flash-header-left{gap:6px}#appRoot .home-marketplace .home-flash-header h2{font-size:17px}#appRoot .home-marketplace .home-flash-countdown-label{display:none}#appRoot .home-marketplace .home-flash-track{grid-auto-columns:calc((100% - 12px)/2)}#appRoot .home-marketplace .home-top-track{grid-auto-columns:calc((100% - 15px)/2)}#appRoot .home-marketplace .home-promo-banner-strip{grid-template-columns:1fr}#appRoot .home-marketplace .home-promo-banner{height:100px}#appRoot .home-marketplace .home-top-products-header h2{font-size:15px}}
 </style>
+
+  <style id="daily-discover-shopee-v1">
+    #appRoot .daily-discover-section,
+    #appRoot .daily-discover-page {
+      width:100%;
+      max-width:1200px;
+      margin:24px auto 0;
+      box-sizing:border-box;
+    }
+    #appRoot .daily-discover-tab-header {
+      position:sticky;
+      top:110px;
+      z-index:25;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:100%;
+      min-height:60px;
+      margin:0;
+      padding:0 12px;
+      box-sizing:border-box;
+      background:#fff;
+      border:0;
+      border-bottom:4px solid #EE4D2D;
+      color:#EE4D2D;
+      text-align:center;
+      font-size:17px;
+      line-height:1.25;
+      font-weight:800;
+    }
+    #appRoot .daily-discover-grid-host {margin-top:10px;min-width:0}
+    #appRoot .daily-discover-grid {
+      display:grid;
+      width:100%;
+      max-width:1200px;
+      margin:0 auto;
+      grid-template-columns:repeat(6,minmax(0,1fr));
+      gap:10px;
+      box-sizing:border-box;
+    }
+    #appRoot .daily-discover-loading,
+    #appRoot .daily-discover-error {
+      min-height:110px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:20px;
+      color:var(--muted);
+      background:var(--surface,#fff);
+      border:1px solid var(--border);
+      border-radius:7px;
+      font-size:13px;
+      text-align:center;
+    }
+    #appRoot .daily-discover-error {flex-wrap:wrap}
+    #appRoot .daily-discover-error button {
+      border:0;
+      background:transparent;
+      color:#EE4D2D;
+      font-weight:700;
+    }
+    #appRoot .daily-discover-empty {grid-column:1/-1}
+    #appRoot .daily-discover-more-wrap {
+      display:flex;
+      justify-content:center;
+      margin:18px 0 4px;
+    }
+    #appRoot .daily-discover-more-button {
+      min-width:390px;
+      min-height:38px;
+      padding:8px 22px;
+      border:1px solid #EE4D2D;
+      border-radius:2px;
+      background:#fff;
+      color:#EE4D2D;
+      font-size:13px;
+      font-weight:600;
+      transition:background .15s ease,color .15s ease;
+    }
+    #appRoot .daily-discover-more-button:hover {background:#fff4f0}
+    #appRoot .daily-discover-page-heading {
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      max-width:1200px;
+      margin:0 auto 14px;
+    }
+    #appRoot .daily-discover-count {color:var(--muted);font-size:12px;white-space:nowrap}
+    #appRoot .daily-discover-pagination {
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      flex-wrap:wrap;
+      gap:7px;
+      margin:24px auto 8px;
+    }
+    #appRoot .daily-page-button {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:34px;
+      height:34px;
+      padding:0 9px;
+      border:1px solid var(--border);
+      border-radius:2px;
+      background:var(--surface,#fff);
+      color:var(--ink);
+      font-size:13px;
+      line-height:1;
+    }
+    #appRoot .daily-page-button:hover:not(:disabled),
+    #appRoot .daily-page-button.active {
+      border-color:#EE4D2D;
+      background:#EE4D2D;
+      color:#fff;
+    }
+    #appRoot .daily-page-button:disabled {opacity:.35;cursor:not-allowed}
+    #appRoot .daily-page-ellipsis {padding:0 3px;color:var(--muted)}
+    #appRoot .store-discovery-page {max-width:1200px;margin:0 auto}
+    #appRoot .store-discovery-page .market-section-head {align-items:center}
+    #appRoot .store-discovery-page .store-grid {grid-template-columns:repeat(4,minmax(0,1fr))}
+    @media(max-width:900px) {
+      #appRoot .daily-discover-grid {grid-template-columns:repeat(4,minmax(0,1fr))}
+    }
+    @media(max-width:720px) {
+      #appRoot .daily-discover-tab-header {top:135px;font-size:16px}
+      #appRoot .daily-discover-page-heading {align-items:flex-start;flex-direction:column;gap:5px}
+      #appRoot .daily-discover-more-button {min-width:min(100%,390px)}
+      #appRoot .store-discovery-page .market-section-head {align-items:flex-start;flex-direction:column}
+      #appRoot .store-discovery-page #storeSearch {max-width:none!important}
+    }
+    @media(max-width:600px) {
+      #appRoot .daily-discover-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      #appRoot .daily-discover-pagination {gap:4px}
+      #appRoot .daily-page-button {min-width:30px;height:32px;padding:0 7px}
+      #appRoot .store-discovery-page .store-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+  </style>
+
 </body>
 </html>
