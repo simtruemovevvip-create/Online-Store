@@ -1930,7 +1930,7 @@
       apiCall('getPromotions',[{}],function(r){APP.promotions=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
       apiCall('getMarketplaceStores',[{page:1,pageSize:12}],function(r){APP.stores=r.success&&r.data?safeArray(r.data.items):[];if(criticalComplete)renderPublicHome();},false,'',true);
       apiCall('getMarketplaceFlashDeals',[],function(r){APP.flashDeals=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
-      apiCall('getMarketplaceVouchers',[],function(r){APP.vouchers=r.success?safeArray(r.data):[];if(criticalComplete){renderPublicHome();refreshVisibleProductCardOffers();}},false,'',true);
+      apiCall('getMarketplaceVouchers',[],function(r){APP.vouchers=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();refreshVisibleProductCardOffers();},false,'',true);
       apiCall('getMarketplaceLiveRooms',[],function(r){APP.liveRooms=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
       apiCall('recordVisitor',[localStorage.getItem('visitor_key')||(function(){var k=makeKey();localStorage.setItem('visitor_key',k);return k;})(),navigator.userAgent],function(){},false,'',true);
       refreshCartCount();
