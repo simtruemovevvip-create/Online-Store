@@ -2270,6 +2270,65 @@
       html+='</div>';document.getElementById('appRoot').innerHTML=html;initHomeHeroSwiper();initHomeCategoryCarousel();initHomeHeroSwiper();initHomeCategoryCarousel();
     }
     function goHome(){if(APP.accessMode==='seller'||APP.accessMode==='owner'){toast('กรุณาออกจากระบบ Portal ปัจจุบันก่อนเปลี่ยนประเภทบัญชี','warning');return;}APP.currentView='home';if(!APP.products.length&&!APP.categories.length){loadPublicData();}else renderHome();window.scrollTo({top:0,behavior:'smooth'});var nav=document.getElementById('mainNav');if(nav)nav.classList.remove('open');}
+    function catalogFilterCheckboxGroup(id,title,items,visibleCount){
+      items=safeArray(items);visibleCount=Math.max(1,Number(visibleCount)||3);
+      var html='<section class="catalog-filter-section" data-catalog-group="'+esc(id)+'"><h4 class="catalog-filter-section-title">'+esc(title)+'</h4>';
+      if(!items.length){html+='<div class="catalog-filter-empty">ยังไม่มีข้อมูล</div>';}
+      else{html+='<div class="catalog-filter-options">'+items.map(function(item,index){
+        var extra=index>=visibleCount?' catalog-filter-extra':'';
+        return '<label class="catalog-check-row'+extra+'"><input type="checkbox" class="catalog-filter-choice" data-filter-group="'+esc(id)+'" value="'+esc(item.value)+'"><span>'+esc(item.label)+'</span></label>';
+      }).join('')+'</div>';}
+      if(items.length>visibleCount)html+='<button type="button" class="catalog-filter-more" aria-expanded="false" onclick="toggleCatalogFilterGroup(\''+esc(id)+'\',this)">เพิ่มเติม ⌄</button>';
+      return html+'</section>';
+    }
+    function catalogFilterCategoryItems(){
+      var categories=safeArray(APP.categories).filter(function(c){return c&&c.id&&c.name;});
+      if(categories.length)return categories.map(function(c){return {value:String(c.id),label:String(c.name)};});
+      return ['เฟอร์นิเจอร์ / อื่นๆ','อุปกรณ์รักษาความปลอดภัย','อุปกรณ์ปรับปรุงบ้าน / อื่นๆ','เครื่องมือไฟฟ้าและเครื่องมือช่าง'].map(function(name){return {value:'name:'+name,label:name};});
+    }
+    function catalogFilterBrandItems(){
+      var seen={},items=[];
+      safeArray(APP.products).forEach(function(p){var brand=String(p&&p.brand||'').trim();if(brand&&!seen[brand.toLowerCase()]){seen[brand.toLowerCase()]=true;items.push({value:brand,label:brand});}});
+      return items.sort(function(a,b){return a.label.localeCompare(b.label,'th');});
+    }
+    function catalogFilterSidebarMarkup(){
+      var promo=[{value:'free_shipping',label:'ส่งฟรี* ร้านโค้ดคุ้ม'},{value:'spaylater',label:'ผ่อน 0% SPayLater'},{value:'discount',label:'พร้อมส่วนลด'},{value:'wholesale',label:'ขายส่ง'}];
+      var origin=[{value:'ภายในประเทศ',label:'ภายในประเทศ'},{value:'ต่างประเทศ',label:'ต่างประเทศ'},{value:'ภาคใต้',label:'ภาคใต้'},{value:'กรุงเทพและปริมณฑล',label:'กรุงเทพและปริมณฑล'}];
+      var shipping=[{value:'express',label:'ส่งด่วน'},{value:'pickup',label:'รับพัสดุด้วยตนเอง'}];
+      var seller=[{value:'mall',label:'Shopee Mall'},{value:'recommended',label:'ร้านแนะนำ'},{value:'fulfilled',label:'Fulfilled by Shopee'}];
+      var condition=[{value:'new',label:'ใหม่'},{value:'used',label:'ของมือสอง'}];
+      var payment=[{value:'cod',label:'เก็บเงินปลายทาง'},{value:'card',label:'บัตรเครดิต'},{value:'installment',label:'การผ่อนชำระ'}];
+      var rating='<section class="catalog-filter-section catalog-rating-section"><h4 class="catalog-filter-section-title">คะแนน</h4><div class="catalog-rating-options">';
+      [5,4,3,2].forEach(function(n){rating+='<label class="catalog-rating-row"><input type="radio" name="catalogRating" value="'+n+'"><span class="catalog-rating-stars" aria-label="'+n+' ดาว">'+('★'.repeat(n))+'<span class="catalog-rating-empty">'+('★'.repeat(5-n))+'</span></span>'+(n===5?'': '<span class="catalog-rating-up">ขึ้นไป</span>')+'</label>';});
+      rating+='<div class="catalog-rating-extra"><label class="catalog-rating-row"><input type="radio" name="catalogRating" value="1"><span class="catalog-rating-stars">★<span class="catalog-rating-empty">★★★★</span></span><span class="catalog-rating-up">ขึ้นไป</span></label></div><button type="button" class="catalog-filter-more" aria-expanded="false" onclick="toggleCatalogRatingMore(this)">เพิ่มเติม ⌄</button></section>';
+      return '<aside class="marketplace-catalog-filters" aria-label="ตัวกรองสินค้า">'+
+        '<div class="catalog-filter-heading"><h3><i class="fa-solid fa-filter"></i> ค้นหาแบบละเอียด</h3></div>'+
+        catalogFilterCheckboxGroup('promo','บริการและโปรโมชั่น',promo,3)+
+        catalogFilterCheckboxGroup('category','ค้นหาตามหมวดหมู่',catalogFilterCategoryItems(),3)+
+        catalogFilterCheckboxGroup('origin','ส่งจาก',origin,3)+
+        catalogFilterCheckboxGroup('shipping','ตัวเลือกการจัดส่ง',shipping,2)+
+        catalogFilterCheckboxGroup('brand','ยี่ห้อ',catalogFilterBrandItems(),3)+
+        '<section class="catalog-filter-section catalog-price-section"><h4 class="catalog-filter-section-title">ช่วงราคา</h4><div class="catalog-price-inputs"><input id="catalogMinPrice" type="number" min="0" inputmode="numeric" placeholder="฿ ต่ำสุด" aria-label="ราคาต่ำสุด"><span>−</span><input id="catalogMaxPrice" type="number" min="0" inputmode="numeric" placeholder="฿ สูงสุด" aria-label="ราคาสูงสุด"></div><button type="button" class="catalog-filter-apply" onclick="applyCatalogFilter(1)">ตกลง</button></section>'+
+        rating+
+        catalogFilterCheckboxGroup('seller','ประเภทร้าน',seller,3)+
+        catalogFilterCheckboxGroup('condition','สภาพสินค้า',condition,2)+
+        catalogFilterCheckboxGroup('payment','ช่องทางการชำระเงิน',payment,3)+
+        '<button type="button" class="catalog-filter-reset" onclick="resetCatalogFilters()">ลบทั้งหมด</button>'+
+      '</aside>';
+    }
+    function toggleCatalogFilterGroup(id,button){
+      var group=document.querySelector('[data-catalog-group="'+String(id).replace(/"/g,'\\"')+'"]');if(!group)return;
+      var expanded=group.classList.toggle('expanded');
+      if(button){button.setAttribute('aria-expanded',expanded?'true':'false');button.textContent=expanded?'ย่อรายการ ⌃':'เพิ่มเติม ⌄';}
+    }
+    function toggleCatalogRatingMore(button){
+      var section=button&&button.closest('.catalog-rating-section');if(!section)return;
+      var expanded=section.classList.toggle('expanded');
+      button.setAttribute('aria-expanded',expanded?'true':'false');button.textContent=expanded?'ย่อรายการ ⌃':'เพิ่มเติม ⌄';
+    }
+    function catalogCheckedValues(group){
+      return Array.prototype.slice.call(document.querySelectorAll('.catalog-filter-choice[data-filter-group="'+group+'"]:checked')).map(function(el){return el.value;});
+    }
     function showAllProducts(initialSearch,initialSort){
       APP.currentView='products';
       APP.productPage=1;
@@ -2285,14 +2344,8 @@
             '<div class="search-results-count" id="productCountLabel">กำลังโหลดสินค้า...</div>'+
           '</div>'+
           '<div class="marketplace-catalog-shell">'+
-            '<aside class="marketplace-catalog-filters">'+
-              '<div class="catalog-filter-heading"><h3><i class="fa-solid fa-sliders"></i> ตัวกรองสินค้า</h3><button type="button" onclick="resetCatalogFilters()">ล้างทั้งหมด</button></div>'+
-              '<div class="catalog-filter-group"><label for="catalogSearch">คำค้นหา</label><input id="catalogSearch" type="search" value="'+esc(initialQuery)+'" placeholder="ชื่อสินค้า / SKU / Brand" onkeydown="if(event.key===\'Enter\')applyCatalogFilter(1)"></div>'+
-              '<div class="catalog-filter-group"><label for="catalogCategory">หมวดหมู่สินค้า</label><select id="catalogCategory" onchange="applyCatalogFilter(1)">'+categoryOptions+'</select></div>'+
-              '<div class="catalog-filter-group"><label>ช่วงราคา</label><div class="catalog-price-inputs"><input id="catalogMinPrice" type="number" min="0" placeholder="ต่ำสุด" aria-label="ราคาต่ำสุด" onchange="applyCatalogFilter(1)"><span>—</span><input id="catalogMaxPrice" type="number" min="0" placeholder="สูงสุด" aria-label="ราคาสูงสุด" onchange="applyCatalogFilter(1)"></div></div>'+
-              '<div class="catalog-filter-group"><label for="catalogAvailable">สถานะสินค้า</label><select id="catalogAvailable" onchange="applyCatalogFilter(1)"><option value="">สินค้าทั้งหมด</option><option value="1">เฉพาะสินค้าที่มีสต็อก</option></select></div>'+
-              '<button type="button" class="catalog-filter-apply" onclick="applyCatalogFilter(1)"><i class="fa-solid fa-filter"></i> ใช้ตัวกรอง</button>'+
-            '</aside>'+
+            catalogFilterSidebarMarkup()+
+
             '<main class="marketplace-catalog-results">'+
               '<div class="marketplace-catalog-toolbar">'+
                 '<div class="catalog-sort-label">เรียงโดย:</div>'+
