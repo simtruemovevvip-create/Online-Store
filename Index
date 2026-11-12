@@ -1950,7 +1950,7 @@
       var badge=p.flashDealId?'<span class="product-badge">FLASH</span>':(isFeatured?'<span class="product-badge featured">แนะนำ</span>':'');
       var discountBadge=discount>0?'<span class="product-discount-badge">-'+discount+'%</span>':'';
       var promo=productPromoLabel(p);
-      var action=p.hasVariants?'viewProduct(\\''+esc(p.id)+'\\')':'quickAdd(\\''+esc(p.id)+'\\')';
+      var action=p.hasVariants?'viewProduct(\''+esc(p.id)+'\')':'quickAdd(\''+esc(p.id)+'\')';
       var actionLabel=p.hasVariants?'เลือกตัวเลือก':'ใส่ตะกร้า';
       var isOutOfStock=Number(p.stock)<=0;
       var promoText=promo||(p.flashDealId?'Flash Sale':(discount>0?'ลดราคา':''));
@@ -1966,7 +1966,7 @@
           promoTag+
           '<div class="product-card-actions">'+
             '<button type="button" class="btn btn-primary btn-small" '+(isOutOfStock?'disabled':'')+' onclick="event.stopPropagation();'+action+'"><i class="fa-solid fa-cart-plus"></i> '+actionLabel+'</button>'+
-            '<button type="button" class="icon-btn" onclick="event.stopPropagation();quickFavorite(\\''+esc(p.id)+'\\')" title="รายการโปรด" aria-label="เพิ่ม '+esc(p.name)+' ในรายการโปรด"><i class="fa-regular fa-heart"></i></button>'+
+            '<button type="button" class="icon-btn" onclick="event.stopPropagation();quickFavorite(\''+esc(p.id)+'\')" title="รายการโปรด" aria-label="เพิ่ม '+esc(p.name)+' ในรายการโปรด"><i class="fa-regular fa-heart"></i></button>'+
           '</div>'+
           '<div class="product-meta-row">'+
             '<div class="product-price"><span class="product-price-current">'+money(price)+'</span>'+old+'</div>'+
