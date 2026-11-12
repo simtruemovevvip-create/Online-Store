@@ -3421,6 +3421,8 @@
       if(file.size>10*1024*1024){
         alertError('วิดีโอต้องมีขนาดไม่เกิน 10 MB');if(fileInput)fileInput.value='';return;
       }
+      if(APP.productVideoUploadPending){toast('กำลังอัปโหลดวิดีโออยู่ กรุณารอให้เสร็จก่อน','info');if(fileInput)fileInput.value='';return;}
+      APP.productVideoUploadPending=true;
       var status=document.getElementById(statusId),target=document.getElementById(inputId);
       if(status)status.textContent='กำลังอ่านไฟล์ '+file.name+' ...';
       var reader=new FileReader();
@@ -3429,6 +3431,7 @@
         var role=accountType==='seller'?'seller':'admin';
         var token=role==='seller'?APP.customerToken:APP.adminToken;
         apiCall('uploadFile',[token,{accountType:role,folder:'Products',purpose:'product-video',filename:file.name,name:file.name,mimeType:mime,data:String(reader.result||'')}],function(r){
+          APP.productVideoUploadPending=false;
           if(!r||!r.success||!r.data||!/^drive-private:\/\//i.test(String(r.data.url||''))){
             if(status)status.textContent='อัปโหลดไม่สำเร็จ: '+(r&&r.message||'กรุณาลองอีกครั้ง');
             if(!r||!r.message)alertError('อัปโหลดวิดีโอไม่สำเร็จ');
@@ -3439,7 +3442,7 @@
           toast('อัปโหลดวิดีโอสินค้าแล้ว','success');
         },true,'กำลังอัปโหลดวิดีโอสินค้า...');
       };
-      reader.onerror=function(){if(status)status.textContent='อ่านไฟล์ไม่สำเร็จ';alertError('ไม่สามารถอ่านไฟล์วิดีโอได้');};
+      reader.onerror=function(){APP.productVideoUploadPending=false;if(status)status.textContent='อ่านไฟล์ไม่สำเร็จ';alertError('ไม่สามารถอ่านไฟล์วิดีโอได้');};
       reader.readAsDataURL(file);
       if(fileInput)fileInput.value='';
     }
@@ -3480,6 +3483,7 @@
       var html='<div class="admin-editor-intro"><span class="admin-editor-icon"><i class="fa-solid fa-pen-to-square"></i></span><span><b>'+(id?'แก้ไขข้อมูล':'กรอกข้อมูลใหม่')+'</b><small>ช่องที่มีความสัมพันธ์จะเลือกจากข้อมูลในระบบโดยอัตโนมัติ</small></span></div><div class="modal-form-grid">';
       cfg.fields.forEach(function(f){html+=renderAdminEditorField(page,f,row);});html+='</div>';
       Swal.fire({title:id?cfg.edit:cfg.add,html:html,width:900,showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึกข้อมูล',cancelButtonText:'ยกเลิก',focusConfirm:false,buttonsStyling:true,customClass:{popup:'enterprise-admin-modal'},allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){
+        if(page==='products'&&APP.productVideoUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดวิดีโอเสร็จก่อนบันทึกสินค้า');return false;}
         var data={id:id||''},invalid=false;
         cfg.fields.forEach(function(f){var key=f[0],el=document.getElementById('edit_'+key);if(!el)return;var value=el.value;
           if(f[2]==='richtext')value=getRichEditorHtml('edit_'+key);
@@ -3915,6 +3919,7 @@
         '<div class="modal-field full"><label for="spImages">รูปภาพเพิ่มเติม (Gallery)</label><textarea id="spImages" rows="3" placeholder="URL รูปภาพ 1 รายการต่อบรรทัด">'+esc(imageLines.join('\n'))+'</textarea><div class="seller-gallery-actions"><label class="btn btn-outline btn-small" for="spGalleryFiles"><i class="fa-solid fa-images"></i> อัปโหลดหลายรูป</label><input id="spGalleryFiles" type="file" accept="image/*" multiple hidden onchange="sellerUploadImagesForList(this,\'spImages\')"><small class="modal-help">เลือกได้หลายรูป ระบบจะเพิ่ม URL ลงในรายการให้อัตโนมัติ</small></div></div>'+
         '<div class="modal-field full"><label for="spSizeChart">ตารางขนาดสินค้า (ไม่บังคับ)</label><textarea id="spSizeChart" rows="3" placeholder="ไซส์ | รอบอก | ความยาว\nS | 36 | 25\nM | 38 | 26">'+esc(p.sizeChart||'')+'</textarea><small class="modal-help">ใส่หัวตารางเป็นแถวแรก และคั่นแต่ละคอลัมน์ด้วยเครื่องหมาย | เพื่อให้ลูกค้ากดดูตารางขนาดได้</small></div><div class="modal-field full"><label for="spSummary">คำอธิบายย่อ</label><textarea id="spSummary" rows="2" maxlength="500" placeholder="สรุปจุดเด่นสินค้า">'+esc(p.summary||'')+'</textarea></div></div>'+richEditorMarkup('spDesc','รายละเอียดสินค้า',p.description||'','อธิบายคุณสมบัติ วิธีใช้ ขนาด วัสดุ และรายละเอียดที่ลูกค้าควรรู้')+'</div>';
       Swal.fire({title:id?'แก้ไขสินค้า':'เพิ่มสินค้าใหม่',width:900,html:html,showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึกสินค้า',cancelButtonText:'ยกเลิก',focusConfirm:false,customClass:{popup:'enterprise-admin-modal seller-product-modal'},allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){
+        if(APP.productVideoUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดวิดีโอเสร็จก่อนบันทึกสินค้า');return false;}
         var name=document.getElementById('spName').value.trim(),price=Number(document.getElementById('spPrice').value),sale=Number(document.getElementById('spSale').value||0),stock=Number(document.getElementById('spStock').value||0);
         if(!name){Swal.showValidationMessage('กรุณาระบุชื่อสินค้า');return false;}if(!isFinite(price)||price<=0){Swal.showValidationMessage('กรุณาระบุราคาปกติให้มากกว่า 0');return false;}if(sale<0||sale>=price&&sale>0){Swal.showValidationMessage('ราคาขายต้องน้อยกว่าราคาปกติ');return false;}if(stock<0||Math.floor(stock)!==stock){Swal.showValidationMessage('จำนวนสต็อกต้องเป็นเลขจำนวนเต็มตั้งแต่ 0 ขึ้นไป');return false;}
         var promoOn=document.getElementById('spQtyPromoEnabled').checked,promoQty=Math.floor(Number(document.getElementById('spQtyPromoQty').value||0)),promoDiscount=Number(document.getElementById('spQtyPromoDiscount').value||0),effectivePromoPrice=sale>0?sale:price;if(promoOn&&(promoQty<2||promoDiscount<=0||promoDiscount>=effectivePromoPrice*promoQty)){Swal.showValidationMessage('โปรโมชั่นต้องซื้ออย่างน้อย 2 ชิ้น และส่วนลดต้องมากกว่า 0 แต่น้อยกว่ามูลค่าสินค้าในชุด');return false;}
