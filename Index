@@ -2368,7 +2368,6 @@
     function renderHome(){
       APP.currentView='home';
       var categoryHtml=renderHomeCategoryCarousel();
-      var featured=APP.products.filter(function(p){return p.featured===true||p.featured==='true';});var best=APP.products.filter(function(p){return p.bestSeller===true||String(p.bestSeller).toLowerCase()==='true';});best=(best.length?best:APP.products.slice()).sort(function(a,b){return Number(b.soldCount||0)-Number(a.soldCount||0);});var newest=APP.products.slice(0,5);
       var html='<div class="home-marketplace">'+renderHomeHero();
       html+='<div class="market-shortcuts"><div class="market-shortcut" onclick="showStores()"><i class="fa-solid fa-store"></i><strong>ร้านค้า</strong><small>เลือกช้อปตามร้าน</small></div><div class="market-shortcut" onclick="showFlashDeals()"><i class="fa-solid fa-bolt"></i><strong>Flash Sale</strong><small>ดีลเวลาจำกัด</small></div><div class="market-shortcut" onclick="showMarketplaceVouchers()"><i class="fa-solid fa-ticket"></i><strong>Voucher</strong><small>เก็บโค้ดส่วนลด</small></div><div class="market-shortcut" onclick="openAccount()"><i class="fa-solid fa-box"></i><strong>คำสั่งซื้อ</strong><small>ติดตามพัสดุ</small></div><div class="market-shortcut" onclick="openChatInbox()"><i class="fa-solid fa-comments"></i><strong>แชต</strong><small>คุยกับร้านค้า</small></div><div class="market-shortcut" onclick="openSellerCenter()"><i class="fa-solid fa-shop"></i><strong>เปิดร้าน</strong><small>สมัครเป็นผู้ขาย</small></div></div>';
       html+='<section id="categories" class="home-category-section"><div class="home-category-header"><h2>หมวดหมู่</h2></div>'+categoryHtml+'</section>';
@@ -2377,13 +2376,9 @@
       html+=renderHomeTopProductsCarousel();
 
       if(APP.vouchers.length){html+='<section class="market-section"><div class="market-section-head"><div><h2><i class="fa-solid fa-ticket" style="color:var(--primary)"></i> Voucher สำหรับคุณ</h2><small class="muted">เก็บโค้ดส่วนลดจากร้านค้าก่อนชำระเงิน</small></div><button class="btn btn-outline btn-small" onclick="showMarketplaceVouchers()">ดูทั้งหมด</button></div><div class="voucher-grid">'+APP.vouchers.slice(0,3).map(function(v){return '<div class="market-ribbon"><div><span class="market-tag">'+esc(v.storeName)+'</span><h3 style="margin:5px 0">'+esc(v.title)+'</h3><b style="font-size:20px;color:var(--primary)">'+(v.discountType==='percent'?esc(v.discountValue)+'%':money(v.discountValue))+'</b><small class="muted" style="display:block">ขั้นต่ำ '+money(v.minimumOrder)+'</small></div><button class="btn btn-primary btn-small" onclick="collectVoucherAction(\''+esc(v.id)+'\')">เก็บโค้ด</button></div>';}).join('')+'</div></section>';}
-      if(APP.stores.length){html+='<section class="market-section" id="stores"><div class="market-section-head"><div><h2><i class="fa-solid fa-shop" style="color:var(--primary)"></i> ร้านค้าแนะนำ</h2><small class="muted">ค้นพบร้านค้าและสินค้าจากผู้ขายหลากหลาย</small></div><button class="btn btn-outline btn-small" onclick="showStores()">ดูร้านค้าทั้งหมด</button></div><div class="store-grid">'+APP.stores.slice(0,4).map(renderStoreCard).join('')+'</div></section>';}
       if(APP.liveRooms.length){html+='<section class="market-section"><div class="market-section-head"><div><h2><i class="fa-solid fa-video" style="color:var(--primary)"></i> Live & Video</h2><small class="muted">รายการถ่ายทอดสดจากร้านค้า</small></div><button class="btn btn-outline btn-small" onclick="showLiveRooms()">ดูทั้งหมด</button></div><div class="store-grid">'+APP.liveRooms.slice(0,4).map(function(v){return '<div class="store-card"><div class="store-cover">'+(v.thumbnail?'<img src="'+imageUrl(v.thumbnail)+'" onerror="imageFallback(this)" alt="">':'')+'</div><div class="store-body"><span class="market-tag">'+esc(v.status)+'</span><h3>'+esc(v.title)+'</h3><p class="muted">'+esc(v.shopName)+'</p><a class="btn btn-primary btn-small" target="_blank" rel="noopener" href="'+safeHref(v.streamUrl,'#')+'">เปิด Live</a></div></div>';}).join('')+'</div></section>';}
 
       if(APP.promotions.length){html+='<div class="promo-strip" id="promotions"><div><h3><i class="fa-solid fa-bolt"></i> '+esc(APP.promotions[0].name||'โปรโมชั่นพิเศษ')+'</h3><p>ข้อเสนอพิเศษสำหรับคุณ ตรวจสอบรายละเอียดสินค้าและเงื่อนไขก่อนสั่งซื้อ</p></div><button class="btn btn-light" onclick="showPromotions()">ดูโปรโมชั่น</button></div>';}
-      html+='<section id="products"><div class="section-head"><div><h2 class="section-title">สินค้าแนะนำ</h2><div class="section-sub">สินค้าที่เราเลือกมาให้คุณ</div></div><a class="text-link" href="#" onclick="showRecommendedProducts();return false">ดูสินค้าแนะนำทั้งหมด <i class="fa-solid fa-arrow-right"></i></a></div>'+renderProductGrid(featured.length?featured.slice(0,5):APP.products.slice(0,5))+'</section>';
-      html+='<section id="best"><div class="section-head"><div><h2 class="section-title">สินค้าขายดี</h2><div class="section-sub">รายการยอดนิยมจากร้านค้า</div></div><a class="text-link" href="#" onclick="loadBestSellers();return false">ดูทั้งหมด</a></div>'+renderProductGrid(best.slice(0,5))+'</section>';
-      html+='<section id="new"><div class="section-head"><div><h2 class="section-title">สินค้าใหม่ล่าสุด</h2><div class="section-sub">อัปเดตสินค้าใหม่ที่นี่</div></div><a class="text-link" href="#" onclick="loadNewArrivals();return false">ดูทั้งหมด</a></div>'+renderProductGrid(newest)+'</section>';
       html+='<section id="dailyDiscoverSection" class="daily-discover-section" aria-label="สินค้าแนะนำประจำวัน">'+
         '<div class="daily-discover-tab-header"><span>สินค้าแนะนำประจำวัน</span></div>'+
         '<div id="homeDailyDiscoverGrid" class="daily-discover-grid-host"><div class="daily-discover-loading">กำลังโหลดสินค้าแนะนำ...</div></div>'+
@@ -4138,14 +4133,34 @@
           '<section class="market-section store-discovery-page" aria-label="ร้านค้าทั้งหมด">'+
             '<div class="market-section-head">'+
               '<div><h1 class="section-title">ร้านค้าทั้งหมด</h1><small class="muted">ค้นพบร้านค้าและสินค้าจากผู้ขายหลากหลาย</small></div>'+
-              '<input id="storeSearch" type="search" placeholder="ค้นหาชื่อร้านค้า" aria-label="ค้นหาชื่อร้านค้า" style="max-width:280px;width:100%" onkeydown="if(event.key===\'Enter\')searchStores()">'+
+              '<div class="store-search-bar" role="search">'+
+                '<i class="fa-solid fa-magnifying-glass store-search-icon" aria-hidden="true"></i>'+
+                '<input id="storeSearch" type="search" placeholder="ค้นหาชื่อร้านค้า..." aria-label="ค้นหาชื่อร้านค้า" autocomplete="off" onkeydown="if(event.key===\'Enter\'){event.preventDefault();searchStores();}">'+
+                '<button type="button" class="store-search-clear" aria-label="ล้างคำค้นหา" title="ล้างคำค้นหา" onclick="clearStoreSearch()"><i class="fa-solid fa-xmark"></i></button>'+
+                '<button type="button" class="store-search-submit" onclick="searchStores()"><i class="fa-solid fa-magnifying-glass"></i><span>ค้นหา</span></button>'+
+              '</div>'+
             '</div>'+
             '<div id="storeResults" class="store-grid">'+(rows.length?rows.map(renderStoreCard).join(''):'<div class="empty-state">ยังไม่มีร้านค้าที่เปิดใช้งาน</div>')+'</div>'+
           '</section>';
         window.scrollTo({top:0,behavior:'smooth'});
       });
     }
-    function searchStores(){var q=document.getElementById('storeSearch').value;apiCall('getMarketplaceStores',[{search:q,page:1,pageSize:60}],function(r){var h=document.getElementById('storeResults');if(!r||!r.success){if(h)h.innerHTML=marketplaceLoadErrorMarkup(r&&r.message,'searchStores()');return;}if(h)h.innerHTML=r.data&&r.data.items&&r.data.items.length?r.data.items.map(renderStoreCard).join(''):'<div class="empty-state">ไม่พบร้านค้า</div>';});}
+    function clearStoreSearch(){var input=document.getElementById('storeSearch');if(!input)return;input.value='';searchStores();input.focus();}
+    function searchStores(){
+      var input=document.getElementById('storeSearch');
+      var query=String(input&&input.value||'').trim();
+      var host=document.getElementById('storeResults');
+      var button=document.querySelector('.store-search-submit');
+      if(button){button.disabled=true;button.classList.add('is-loading');}
+      apiCall('getMarketplaceStores',[{search:query,page:1,pageSize:60}],function(r){
+        if(APP.currentView!=='stores')return;
+        if(button){button.disabled=false;button.classList.remove('is-loading');}
+        if(!host)return;
+        if(!r||!r.success){host.innerHTML=marketplaceLoadErrorMarkup(r&&r.message,'searchStores()');return;}
+        var items=safeArray(r.data&&r.data.items);
+        host.innerHTML=items.length?items.map(renderStoreCard).join(''):'<div class="empty-state store-search-empty"><i class="fa-solid fa-store-slash"></i><h3>ไม่พบร้านค้าที่ค้นหา</h3><p>ลองตรวจสอบชื่อร้านค้าหรือเปลี่ยนคำค้นหา</p></div>';
+      },false,'',true);
+    }
     function returnToSellerCenter(){renderSellerShell();loadSellerPage(APP.sellerPage||'dashboard');}
     function returnFromStorePreview(){if(APP.currentView==='chatInbox'&&APP.customerChatActiveStoreId&&APP.customerToken){openChatInbox(APP.customerChatActiveStoreId);return;}returnToSellerCenter();}
     function showStorePage(storeId){apiCall('getMarketplaceStore',[storeId],function(r){if(!r.success){alertError(r.message);document.getElementById('appRoot').innerHTML=marketplaceLoadErrorMarkup(r.message,'showStorePage('+JSON.stringify(String(storeId))+')');return;}var st=r.data;APP.currentStore=st;document.getElementById('appRoot').innerHTML='<div class="seller-store-preview-actions"><button type="button" class="btn btn-outline" onclick="returnFromStorePreview()"><i class="fa-solid fa-arrow-left"></i> ย้อนกลับ</button></div><div class="panel" style="padding:0;overflow:hidden"><div style="height:150px;background:#fff0eb">'+(st.banner?'<img style="width:100%;height:100%;object-fit:cover" src="'+imageUrl(st.banner)+'" onerror="imageFallback(this)" alt="">':'')+'</div><div style="padding:18px"><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><img src="'+imageUrl(st.logo)+'" onerror="imageFallback(this)" style="width:76px;height:76px;border-radius:16px;object-fit:cover;background:var(--surface-2)" alt=""><div style="flex:1"><h1 style="margin:0">'+esc(st.shopName)+'</h1><div class="muted">★ '+Number(st.rating||0).toFixed(1)+' · '+Number(st.followers||0)+' ผู้ติดตาม · '+st.products.length+' สินค้า</div><div class="rich-content-display">'+sanitizeRichEditorHtml(st.description||'ร้านค้าบน Marketplace')+'</div></div><button class="btn btn-outline" onclick="toggleFollowStore(\''+esc(st.id)+'\')">ติดตามร้าน</button><button class="btn btn-primary" onclick="openChatWithStore(\''+esc(st.id)+'\',\'\')">แชต</button></div></div></div>'+(st.vouchers.length?'<div class="market-section"><h3>Voucher ของร้าน</h3>'+st.vouchers.map(function(v){return '<div class="market-ribbon"><div><b>'+esc(v.title||v.code)+'</b><div class="muted">โค้ด '+esc(v.code)+' · ขั้นต่ำ '+money(v.minimumOrder)+'</div></div><button class="btn btn-primary btn-small" onclick="collectVoucherAction(\''+esc(v.id)+'\')">เก็บโค้ด</button></div>';}).join('')+'</div>':'')+'<div class="section-head"><h2 class="section-title">สินค้าจากร้านนี้</h2></div>'+renderProductGrid(st.products);});}
@@ -5918,6 +5933,103 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
       #appRoot .daily-discover-pagination {gap:4px}
       #appRoot .daily-page-button {min-width:30px;height:32px;padding:0 7px}
       #appRoot .store-discovery-page .store-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+  </style>
+
+
+  <style id="store-discovery-search-polish-v1">
+    #appRoot .store-discovery-page .market-section-head {
+      align-items:center;
+      flex-wrap:wrap;
+      gap:16px;
+    }
+    #appRoot .store-discovery-page .store-search-bar {
+      position:relative;
+      display:flex;
+      align-items:center;
+      flex:0 1 430px;
+      width:min(100%,430px);
+      min-width:260px;
+      height:46px;
+      padding:4px;
+      border:1px solid #e5e7eb;
+      border-radius:9px;
+      background:#fff;
+      box-shadow:0 2px 8px rgba(15,23,42,.05);
+      box-sizing:border-box;
+      transition:border-color .18s ease,box-shadow .18s ease;
+    }
+    #appRoot .store-discovery-page .store-search-bar:focus-within {
+      border-color:#ee4d2d;
+      box-shadow:0 0 0 3px rgba(238,77,45,.10);
+    }
+    #appRoot .store-discovery-page .store-search-icon {
+      flex:0 0 auto;
+      margin-left:10px;
+      color:#9ca3af;
+      font-size:14px;
+      pointer-events:none;
+    }
+    #appRoot .store-discovery-page .store-search-bar input {
+      flex:1 1 auto;
+      width:0;
+      min-width:0;
+      height:100%;
+      padding:0 10px;
+      border:0!important;
+      outline:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+      color:#252525;
+      font-size:13px;
+    }
+    #appRoot .store-discovery-page .store-search-bar input::placeholder {color:#a1a1aa}
+    #appRoot .store-discovery-page .store-search-clear {
+      display:grid;
+      flex:0 0 30px;
+      place-items:center;
+      width:30px;
+      height:30px;
+      border:0;
+      border-radius:6px;
+      background:transparent;
+      color:#9ca3af;
+      cursor:pointer;
+    }
+    #appRoot .store-discovery-page .store-search-clear:hover {background:#f5f5f5;color:#555}
+    #appRoot .store-discovery-page .store-search-submit {
+      display:inline-flex;
+      flex:0 0 auto;
+      align-items:center;
+      justify-content:center;
+      gap:7px;
+      min-width:88px;
+      height:36px;
+      padding:0 13px;
+      border:0;
+      border-radius:6px;
+      background:#ee4d2d;
+      color:#fff;
+      font-size:12px;
+      font-weight:700;
+      cursor:pointer;
+      transition:background .15s ease,opacity .15s ease;
+    }
+    #appRoot .store-discovery-page .store-search-submit:hover {background:#d94325}
+    #appRoot .store-discovery-page .store-search-submit:disabled {opacity:.65;cursor:wait}
+    #appRoot .store-discovery-page .store-search-submit.is-loading i {animation:storeSearchSpin .8s linear infinite}
+    #appRoot .store-discovery-page .store-search-empty {
+      grid-column:1/-1;
+      padding:42px 16px;
+    }
+    #appRoot .store-discovery-page .store-search-empty>i {color:#b8b8b8;font-size:28px}
+    @keyframes storeSearchSpin {to{transform:rotate(360deg)}}
+    @media(max-width:720px) {
+      #appRoot .store-discovery-page .store-search-bar {flex:1 1 100%;width:100%;min-width:0}
+    }
+    @media(max-width:420px) {
+      #appRoot .store-discovery-page .store-search-submit {min-width:40px;width:40px;padding:0}
+      #appRoot .store-discovery-page .store-search-submit span {display:none}
     }
   </style>
 
