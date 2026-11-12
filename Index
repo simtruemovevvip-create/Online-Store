@@ -1488,8 +1488,8 @@
         <button class="header-main-action header-main-cart" onclick="openCart()"><i class="fa-solid fa-cart-shopping"></i><span>ตะกร้าสินค้า</span><b class="cart-count" id="headerCartCount">0</b></button>
       </div>
     </div>
-    <nav class="nav-bar" id="mainNav">
-      <a href="#" onclick="goHome();return false" class="active">หน้าแรก</a><a href="#products" onclick="showAllProducts();return false">สินค้าทั้งหมด</a><a href="#stores" onclick="showStores();return false">ร้านค้าทั้งหมด</a><a href="#flash" onclick="showFlashDeals();return false">Flash Sale</a><a href="#vouchers" onclick="showMarketplaceVouchers();return false">Voucher</a><a href="#categories" onclick="scrollToSection('categories');return false">หมวดหมู่สินค้า</a><a href="#best" onclick="loadBestSellers();return false">สินค้าขายดี</a><a href="#new" onclick="loadNewArrivals();return false">สินค้าใหม่</a><a href="#promotions" onclick="showPromotions();return false">โปรโมชั่น</a><a href="#chat" onclick="openChatInbox();return false">แชต</a><a href="#about" onclick="showAbout();return false">เกี่ยวกับร้าน</a><a href="#contact" onclick="showContact();return false">ติดต่อเรา</a>
+    <nav class="nav-bar" id="mainNav" aria-label="เมนูหลัก">
+      <a href="#" data-nav-key="home" onclick="goHome();return false" class="active">หน้าแรก</a><a href="#products" data-nav-key="products" onclick="showAllProducts();return false">สินค้าทั้งหมด</a><a href="#stores" data-nav-key="stores" onclick="showStores();return false">ร้านค้าทั้งหมด</a><a href="#flash" data-nav-key="flash" onclick="showFlashDeals();return false">Flash Sale</a><a href="#vouchers" data-nav-key="vouchers" onclick="showMarketplaceVouchers();return false">Voucher</a><a href="#categories" data-nav-key="categories" onclick="navigateToHomeSection('categories');return false">หมวดหมู่สินค้า</a><a href="#best" data-nav-key="best" onclick="loadBestSellers();return false">สินค้าขายดี</a><a href="#new" data-nav-key="new" onclick="loadNewArrivals();return false">สินค้าใหม่</a><a href="#promotions" data-nav-key="promotions" onclick="showPromotions();return false">โปรโมชั่น</a><a href="#chat" data-nav-key="chat" onclick="openChatInbox();return false">แชต</a><a href="#about" data-nav-key="about" onclick="showAbout();return false">เกี่ยวกับร้าน</a><a href="#contact" data-nav-key="contact" onclick="showContact();return false">ติดต่อเรา</a>
     </nav>
   </header>
 
@@ -4200,6 +4200,117 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
       }
     }
   </style>
+
+
+  <style id="storefront-nav-state-1200-v1">
+    /* Use the same centered 1200px content frame on every public storefront page. */
+    body:not(.portal-mode-seller):not(.portal-mode-owner) .header-top-inner,
+    body:not(.portal-mode-seller):not(.portal-mode-owner) .header-main,
+    body:not(.portal-mode-seller):not(.portal-mode-owner) .nav-bar,
+    body:not(.portal-mode-seller):not(.portal-mode-owner) #appRoot.container {
+      width:calc(100% - 32px);
+      max-width:1200px;
+      margin-left:auto;
+      margin-right:auto;
+      box-sizing:border-box;
+    }
+    body:not(.portal-mode-seller):not(.portal-mode-owner) #appRoot.container {
+      padding-left:0;
+      padding-right:0;
+    }
+
+    /* The currently selected navigation destination is always blue. */
+    #mainNav a {
+      flex:0 0 auto;
+      position:relative;
+      text-decoration:none;
+      transition:color .16s ease,opacity .16s ease;
+    }
+    #mainNav a.active,
+    #mainNav a[aria-current="page"] {
+      color:#2563eb!important;
+      font-weight:700!important;
+    }
+    #mainNav a.active:after {
+      content:"";
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:-5px;
+      height:2px;
+      border-radius:2px;
+      background:#2563eb;
+    }
+    @media(max-width:720px) {
+      body:not(.portal-mode-seller):not(.portal-mode-owner) .header-top-inner,
+      body:not(.portal-mode-seller):not(.portal-mode-owner) .header-main,
+      body:not(.portal-mode-seller):not(.portal-mode-owner) .nav-bar,
+      body:not(.portal-mode-seller):not(.portal-mode-owner) #appRoot.container {
+        width:calc(100% - 24px);
+      }
+      body:not(.portal-mode-seller):not(.portal-mode-owner) #appRoot.container {
+        padding:18px 0 40px;
+      }
+    }
+  </style>
+
+
+  <script id="storefront-nav-active-state-v1">
+    (function(){
+      function setMainNavActive(key){
+        var nav=document.getElementById('mainNav');
+        if(!nav)return;
+        var links=nav.querySelectorAll('a[data-nav-key]');
+        for(var i=0;i<links.length;i++){
+          var active=links[i].getAttribute('data-nav-key')===key;
+          links[i].classList.toggle('active',active);
+          if(active)links[i].setAttribute('aria-current','page');
+          else links[i].removeAttribute('aria-current');
+        }
+        nav.classList.remove('open');
+      }
+      window.setMainNavActive=setMainNavActive;
+
+      window.navigateToHomeSection=function(id){
+        if(!document.getElementById(id)||APP.currentView!=='home')goHome();
+        var attempts=0;
+        function scrollWhenReady(){
+          var target=document.getElementById(id);
+          if(target){
+            target.scrollIntoView({behavior:'smooth',block:'start'});
+            setMainNavActive(id==='categories'?'categories':id);
+            return;
+          }
+          if(attempts++<40)setTimeout(scrollWhenReady,100);
+        }
+        scrollWhenReady();
+      };
+
+      function wrapNavAction(name,key,shouldActivate){
+        var original=window[name];
+        if(typeof original!=='function')return;
+        window[name]=function(){
+          var result=original.apply(this,arguments);
+          if(!shouldActivate||shouldActivate())setMainNavActive(key);
+          return result;
+        };
+      }
+      wrapNavAction('goHome','home',function(){return APP.accessMode!=='seller'&&APP.accessMode!=='owner';});
+      wrapNavAction('showAllProducts','products');
+      wrapNavAction('showStores','stores');
+      wrapNavAction('showStorePage','stores');
+      wrapNavAction('showFlashDeals','flash');
+      wrapNavAction('showMarketplaceVouchers','vouchers');
+      wrapNavAction('loadBestSellers','best');
+      wrapNavAction('loadNewArrivals','new');
+      wrapNavAction('showPromotions','promotions');
+      wrapNavAction('showAbout','about');
+      wrapNavAction('showContact','contact');
+      wrapNavAction('viewProduct','products');
+      wrapNavAction('filterCategory','products');
+      wrapNavAction('openChatInbox','chat',function(){return !!APP.customerToken;});
+    })();
+  </script>
 
 </body>
 </html>
