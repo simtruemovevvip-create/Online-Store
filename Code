@@ -1592,12 +1592,40 @@ function quantityPromoForProduct_(product,unitPrice,quantity) {
 }
 function moneyForBackend_(value) { return '฿'+number_(value,0).toLocaleString('en-US',{maximumFractionDigits:2}); }
 
+function productSearchRelevance_(product,query){
+  var q=String(query||'').trim().toLowerCase();
+  var name=String(product&&product.name||'').toLowerCase();
+  var brand=String(product&&product.brand||'').toLowerCase();
+  var sku=String(product&&product.sku||'').toLowerCase();
+  var barcode=String(product&&product.barcode||'').toLowerCase();
+  var score=0;
+  if(q){
+    if(name===q)score+=10000;
+    else if(name.indexOf(q)===0)score+=8000;
+    else if(name.indexOf(q)>=0)score+=6000;
+    if(brand===q)score+=4500;
+    else if(brand.indexOf(q)===0)score+=3500;
+    else if(brand.indexOf(q)>=0)score+=2500;
+    if(sku===q)score+=5000;else if(sku.indexOf(q)>=0)score+=3000;
+    if(barcode===q)score+=5000;else if(barcode.indexOf(q)>=0)score+=3000;
+    var tags=String(product&&product.tags||'').toLowerCase();
+    if(tags.indexOf(q)>=0)score+=1500;
+  }else{
+    if(parseBool_(product&&product.featured))score+=120;
+    if(parseBool_(product&&product.bestSeller))score+=80;
+  }
+  var sold=Math.max(0,number_(product&&product.soldCount,0));
+  score+=Math.min(40,Math.log(sold+1)*5);
+  return score;
+}
+
 function getProducts(options) {
   try {
     ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
     options = options || {};
     var isAdmin = false;
     if (options.token) { try { requireAdmin_(options.token, 'products.view'); isAdmin = true; } catch (e) {} }
+    var searchQuery = text_(options.search, 120).toLowerCase();
     var inventoryForFilter = readTable_('Inventory', true);
     var rows = readTable_('Products', true).filter(function(p) {
       var invForProduct = inventoryForFilter.filter(function(x) { return x.productId === p.id && !x.variantId; })[0];
@@ -1610,20 +1638,21 @@ function getProducts(options) {
       if (options.featured && !parseBool_(p.featured)) return false;
       if (options.bestSeller && !parseBool_(p.bestSeller)) return false;
       if (options.available && computedStock <= 0) return false;
-      var q = text_(options.search, 120).toLowerCase();
-      if (q && [p.name,p.sku,p.barcode,p.brand].join(' ').toLowerCase().indexOf(q) < 0) return false;
+      var q = searchQuery;
+      if (q && [p.name,p.sku,p.barcode,p.brand,p.tags].join(' ').toLowerCase().indexOf(q) < 0) return false;
       var price = number_(p.salePrice, 0) > 0 ? number_(p.salePrice, 0) : number_(p.price, 0);
       if (options.minPrice !== undefined && options.minPrice !== '' && price < number_(options.minPrice, 0)) return false;
       if (options.maxPrice !== undefined && options.maxPrice !== '' && price > number_(options.maxPrice, 0)) return false;
       return true;
     });
     productPublicMetrics_(rows);
-    var sort = options.sort || 'newest';
+    var sort = options.sort || (searchQuery?'relevance':'newest');
     rows.sort(function(a,b) {
       if (sort === 'price_asc') return effectivePrice_(a) - effectivePrice_(b);
       if (sort === 'price_desc') return effectivePrice_(b) - effectivePrice_(a);
       if (sort === 'name') return String(a.name).localeCompare(String(b.name));
       if (sort === 'best_seller') return (number_(b.soldCount,0)-number_(a.soldCount,0)) || (Number(parseBool_(b.bestSeller))-Number(parseBool_(a.bestSeller))) || (new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime());
+      if (sort === 'relevance') return (productSearchRelevance_(b,searchQuery)-productSearchRelevance_(a,searchQuery)) || (new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime());
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
     var total = rows.length, page = Math.max(1, number_(options.page, 1)), pageSize = Math.min(100, Math.max(1, number_(options.pageSize, 24)));
