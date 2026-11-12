@@ -2285,10 +2285,14 @@
     function catalogFilterCategoryItems(){
       var categories=safeArray(APP.categories).filter(function(c){return c&&c.id&&c.name;});
       var preferred=['เฟอร์นิเจอร์ / อื่นๆ','อุปกรณ์รักษาความปลอดภัย','อุปกรณ์ปรับปรุงบ้าน / อื่นๆ','เครื่องมือไฟฟ้าและเครื่องมือช่าง'];
-      return preferred.map(function(name){
+      var used={};
+      var items=preferred.map(function(name){
         var match=categories.filter(function(c){return String(c.name).trim().toLowerCase()===name.toLowerCase();})[0];
+        if(match)used[String(match.id)]=true;
         return {value:match?String(match.id):'name:'+name,label:name};
       });
+      categories.forEach(function(c){if(!used[String(c.id)]&&!preferred.some(function(name){return name.toLowerCase()===String(c.name).trim().toLowerCase();})){used[String(c.id)]=true;items.push({value:String(c.id),label:String(c.name)});}});
+      return items;
     }
     function catalogFilterBrandItems(){
       var seen={},items=[];
