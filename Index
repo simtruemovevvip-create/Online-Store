@@ -4785,6 +4785,8 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
 
 
   <style id="shopee-product-card-layout-v2">
+    /* Extra vertical room lets the hover footer overlap the next row by only a few pixels. */
+    #appRoot .product-grid {column-gap:10px;row-gap:18px;}
     #appRoot .product-card {
       position:relative;
       z-index:0;
