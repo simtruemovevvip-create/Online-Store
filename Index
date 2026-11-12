@@ -2091,13 +2091,6 @@
           if(oldCampaign){if(newCampaign)oldCampaign.outerHTML=newCampaign;else oldCampaign.remove();}
           else if(newCampaign)image.insertAdjacentHTML('beforeend',newCampaign);
         }
-        var info=card.querySelector('.product-info'),name=info&&info.querySelector('.product-name');
-        if(info&&name){
-          var oldPromo=info.querySelector('.product-promo-box');
-          var newPromo=productCardCouponMarkup(product);
-          if(oldPromo){if(newPromo)oldPromo.outerHTML=newPromo;else oldPromo.remove();}
-          else if(newPromo)name.insertAdjacentHTML('afterend',newPromo);
-        }
       }
     }
     function renderProductGrid(products){products=safeArray(products);if(!products.length)return '<div class="empty-state"><i class="fa-solid fa-box-open"></i><h3>ยังไม่มีสินค้าในขณะนี้</h3><p>กรุณากลับมาเยี่ยมชมอีกครั้ง</p></div>';return '<div class="product-grid">'+products.map(renderProductCard).join('')+'</div>';}
