@@ -1615,6 +1615,7 @@
       switch(name){
         case 'getSettings': runner.getSettings(); break;
         case 'getDriveImageDataBatch': runner.getDriveImageDataBatch(args[0],args[1]); break;
+        case 'getProductVideoData': runner.getProductVideoData(args[0],args[1]); break;
         case 'getCategories': runner.getCategories(args[0]); break;
         case 'getProducts': runner.getProducts(args[0]); break;
         case 'getProductById': runner.getProductById(args[0],args[1]); break;
@@ -1979,9 +1980,11 @@
     }
     function productRatingMarkup(product){
       var rating=Number(product&&product.ratingAverage||0);
-      return rating>0
-        ?'<span class="product-rating-badge"><i class="fa-solid fa-star"></i> '+rating.toFixed(1)+'</span>'
-        :'<span class="product-rating-badge is-new">ใหม่</span>';
+      if(!isFinite(rating)||rating<=0)return '';
+      rating=Math.max(0,Math.min(5,rating));
+      var filled=Math.round(rating),stars='';
+      for(var i=1;i<=5;i++)stars+='<i class="fa-solid fa-star '+(i<=filled?'is-filled':'is-empty')+'"></i>';
+      return '<span class="product-rating-badge" aria-label="คะแนน '+rating.toFixed(1)+' จาก 5"><span class="product-rating-stars">'+stars+'</span><b class="product-rating-value">'+rating.toFixed(1)+'</b></span>';
     }
     function formatProductSales(value){
       var n=Math.max(0,Number(value||0));
@@ -1992,9 +1995,31 @@
     }
     function openProductVideo(productId){
       var product=APP.productCardCache&&APP.productCardCache[String(productId)],url=String(product&&product.videoUrl||'').trim();
-      if(!/^https:\/\//i.test(url)){toast('ยังไม่ได้กำหนด URL วิดีโอของสินค้า','info');return;}
+      if(!url){toast('สินค้านี้ยังไม่ได้เพิ่มวิดีโอ','info');return;}
+      if(/^drive-private:\/\//i.test(url)){
+        apiCall('getProductVideoData',[APP.customerToken||APP.adminToken||'',String(productId)],function(r){
+          if(!r||!r.success||!r.data||!r.data.base64){toast(r&&r.message||'ไม่สามารถเปิดวิดีโอสินค้าได้','warning');return;}
+          var mime=String(r.data.mimeType||'').toLowerCase();
+          if(['video/mp4','video/webm','video/quicktime'].indexOf(mime)<0){toast('ชนิดไฟล์วิดีโอไม่รองรับ','warning');return;}
+          var old=document.getElementById('productVideoViewer');if(old)old.remove();
+          var overlay=document.createElement('div');overlay.id='productVideoViewer';overlay.className='product-video-viewer';
+          overlay.innerHTML='<div class="product-video-viewer-panel" role="dialog" aria-modal="true" aria-label="วิดีโอสินค้า"><div class="product-video-viewer-head"><strong>'+esc(product.name||'วิดีโอสินค้า')+'</strong><button type="button" class="product-video-viewer-close" onclick="closeProductVideoModal()" aria-label="ปิดวิดีโอ"><i class="fa-solid fa-xmark"></i></button></div><video class="product-video-viewer-player" controls autoplay playsinline></video></div>';
+          var video=overlay.querySelector('video');
+          video.src='data:'+mime+';base64,'+r.data.base64;
+          overlay.addEventListener('click',function(event){if(event.target===overlay)closeProductVideoModal();});
+          document.body.appendChild(overlay);
+          var playPromise=video.play();if(playPromise&&playPromise.catch)playPromise.catch(function(){});
+        },true,'กำลังโหลดวิดีโอสินค้า...');
+        return;
+      }
+      if(!/^https:\/\//i.test(url)){toast('URL วิดีโอไม่ถูกต้อง','warning');return;}
       var opened=window.open(url,'_blank','noopener,noreferrer');
       if(!opened)toast('เบราว์เซอร์บล็อกหน้าวิดีโอ กรุณาอนุญาต Pop-up','warning');
+    }
+    function closeProductVideoModal(){
+      var overlay=document.getElementById('productVideoViewer');if(!overlay)return;
+      var video=overlay.querySelector('video');if(video){try{video.pause();video.removeAttribute('src');video.load();}catch(ignore){}}
+      overlay.remove();
     }
     function showSimilarProducts(productId){
       var id=String(productId||''),all=safeArray(APP.products).concat(safeArray(APP.flashDeals));
@@ -2026,13 +2051,11 @@
       var old=hasDiscount?'<span class="old-price">'+money(base)+'</span>':'';
       var hasMall=p.mallBadgeEnabled===true||String(p.mallBadgeEnabled||'').toLowerCase()==='true'||String(p.mallBadgeEnabled)==='1';
       var isFeatured=p.featured===true||String(p.featured||'').toLowerCase()==='true';
-      var mallBadge=hasMall?'<span class="product-card-label product-card-label-mall">Mall</span>':'';
+      var mallText=String(p.mallBadgeText||'Mall').trim()||'Mall';
+      var mallBadge=hasMall?'<span class="product-card-label product-card-label-mall">'+esc(mallText)+'</span>':'';
       var discountBadge=discount>0?'<span class="product-discount-badge">-'+discount+'%</span>':'';
-      var campaign=productCardCampaignMarkup(p),promoTag=productCardCouponMarkup(p);
+      var campaign=productCardCampaignMarkup(p);
       var videoButton=String(p.videoUrl||'').trim()?'<button type="button" class="product-video-play" aria-label="เปิดวิดีโอ '+esc(p.name)+'" onclick="event.stopPropagation();openProductVideo(\''+esc(p.id)+'\')"><i class="fa-solid fa-play"></i></button>':'';
-      var action=p.hasVariants?'viewProduct(\''+esc(p.id)+'\')':'quickAdd(\''+esc(p.id)+'\')';
-      var actionLabel=p.hasVariants?'เลือกตัวเลือก':'ใส่ตะกร้า';
-      var isOutOfStock=Number(p.stock)<=0;
       var sold=Number(p.soldCount||0),rating=Number(p.ratingAverage||0);
       var province=String(p.originProvince||p.province||p.storeProvince||'').trim();
       APP.productCardCache=APP.productCardCache||{};
@@ -2046,11 +2069,9 @@
         '<div class="product-info">'+
           '<div class="product-name" title="'+esc(p.name)+'" onclick="viewProduct(\''+esc(p.id)+'\')">'+(isFeatured?'<span class="product-recommended-prefix">ร้านแนะนำ</span> ':'')+esc(p.name)+'</div>'+
           '<div class="product-price-row"><span class="product-price-current">'+money(price)+'</span>'+old+(discount>0?'<span class="product-price-discount">-'+discount+'%</span>':'')+'</div>'+
-          promoTag+
           '<div class="product-rating-sales-row">'+productRatingMarkup(p)+'<span class="product-sold">ขายแล้ว '+formatProductSales(sold)+' ชิ้น</span></div>'+
           (province?'<div class="product-origin-row"><i class="fa-solid fa-location-dot"></i> จังหวัด'+esc(province.replace(/^จังหวัด\s*/,'').trim())+'</div>':'')+
           '<div class="product-card-actions">'+
-            '<button type="button" class="btn btn-primary btn-small" '+(isOutOfStock?'disabled':'')+' onclick="event.stopPropagation();'+action+'"><i class="fa-solid fa-cart-plus"></i> '+actionLabel+'</button>'+
             '<button type="button" class="icon-btn" onclick="event.stopPropagation();quickFavorite(\''+esc(p.id)+'\')" title="รายการโปรด" aria-label="เพิ่ม '+esc(p.name)+' ในรายการโปรด"><i class="fa-regular fa-heart"></i></button>'+
           '</div>'+
         '</div>'+
@@ -3338,7 +3359,7 @@
     function loadAdminModule(page){adminGridLoad(page,null,null,false);}
     
     var MODULE_CONFIG={
-      products:{title:'สินค้า',add:'เพิ่มสินค้า',edit:'แก้ไขสินค้า',save:'saveProduct',del:'deleteProduct',columns:[['name','ชื่อสินค้า'],['sku','SKU'],['price','ราคา'],['stock','สต็อก'],['status','สถานะ']],fields:[['name','ชื่อสินค้า','text'],['sku','SKU','text'],['barcode','Barcode','text'],['categoryId','หมวดหมู่สินค้า','text'],['brand','Brand','text'],['summary','คำอธิบายย่อ','text'],['description','รายละเอียดสินค้า','richtext'],['coverImage','รูปปกสินค้า','text'],['images','รูปภาพเพิ่มเติม (URL ละ 1 บรรทัด)','textarea'],['price','ราคาปกติ','number'],['salePrice','ราคาขาย','number'],['quantityPromoEnabled','เปิดโปรโมชั่นซื้อครบจำนวน','text'],['quantityPromoQty','จำนวนที่ต้องซื้อ (ชิ้น)','number'],['quantityPromoDiscount','ส่วนลดต่อชุด (บาท)','number'],['mallBadgeEnabled','แสดงป้าย Mall (อนุมัติโดยเจ้าของระบบ)','text'],['videoUrl','URL วิดีโอสินค้า','url'],['campaignLabel','แถบแคมเปญบนรูปสินค้า','text'],['promoTag','ป้ายโปรโมชั่นใต้ชื่อสินค้า','text'],['originProvince','จังหวัดต้นทาง','text'],['freeShippingMinimum','ยอดขั้นต่ำสำหรับส่งฟรี (บาท)','number'],['sizeChart','ตารางขนาดสินค้า (แถวแรกเป็นหัวตาราง คั่นด้วย |)','textarea'],['costPrice','ราคาทุน','number'],['stock','สต็อกเริ่มต้น (สินค้าใหม่)','number'],['unit','หน่วย','text'],['weight','น้ำหนัก','number'],['featured','สินค้าแนะนำ','text'],['bestSeller','สินค้าขายดี','text'],['status','สถานะการใช้งาน','text']]},
+      products:{title:'สินค้า',add:'เพิ่มสินค้า',edit:'แก้ไขสินค้า',save:'saveProduct',del:'deleteProduct',columns:[['name','ชื่อสินค้า'],['sku','SKU'],['price','ราคา'],['stock','สต็อก'],['status','สถานะ']],fields:[['name','ชื่อสินค้า','text'],['sku','SKU','text'],['barcode','Barcode','text'],['categoryId','หมวดหมู่สินค้า','text'],['brand','Brand','text'],['summary','คำอธิบายย่อ','text'],['description','รายละเอียดสินค้า','richtext'],['coverImage','รูปปกสินค้า','text'],['images','รูปภาพเพิ่มเติม (URL ละ 1 บรรทัด)','textarea'],['price','ราคาปกติ','number'],['salePrice','ราคาขาย','number'],['quantityPromoEnabled','เปิดโปรโมชั่นซื้อครบจำนวน','text'],['quantityPromoQty','จำนวนที่ต้องซื้อ (ชิ้น)','number'],['quantityPromoDiscount','ส่วนลดต่อชุด (บาท)','number'],['mallBadgeEnabled','แสดงป้าย Mall (อนุมัติโดยเจ้าของระบบ)','text'],['mallBadgeText','ข้อความป้าย Mall','text'],['videoUrl','วิดีโอสินค้า','text'],['campaignLabel','แถบแคมเปญบนรูปสินค้า','text'],['originProvince','จังหวัดต้นทาง','text'],['freeShippingMinimum','ยอดขั้นต่ำสำหรับส่งฟรี (บาท)','number'],['sizeChart','ตารางขนาดสินค้า (แถวแรกเป็นหัวตาราง คั่นด้วย |)','textarea'],['costPrice','ราคาทุน','number'],['stock','สต็อกเริ่มต้น (สินค้าใหม่)','number'],['unit','หน่วย','text'],['weight','น้ำหนัก','number'],['featured','สินค้าแนะนำ','text'],['bestSeller','สินค้าขายดี','text'],['status','สถานะการใช้งาน','text']]},
       categories:{title:'หมวดหมู่',add:'เพิ่มหมวดหมู่',edit:'แก้ไขหมวดหมู่',save:'saveCategory',del:'deleteCategory',columns:[['name','ชื่อ'],['slug','Slug'],['parentId','Parent ID'],['order','ลำดับ'],['status','สถานะ']],fields:[['name','ชื่อหมวดหมู่','text'],['slug','Slug','text'],['description','รายละเอียด','richtext'],['image','URL รูปภาพ','text'],['parentId','หมวดหมู่หลัก','text'],['order','ลำดับ','number'],['status','สถานะ','text']]},
       promotions:{title:'โปรโมชั่น',add:'เพิ่มโปรโมชั่น',edit:'แก้ไขโปรโมชั่น',save:'savePromotion',del:'deletePromotion',columns:[['name','ชื่อโปรโมชั่น'],['type','ประเภท'],['value','มูลค่า'],['startDate','เริ่ม'],['endDate','สิ้นสุด'],['status','สถานะ']],fields:[['name','ชื่อ','text'],['type','รูปแบบส่วนลด','text'],['value','มูลค่า','number'],['startDate','วันเริ่ม','date'],['endDate','วันสิ้นสุด','date'],['productIds','สินค้าที่ร่วมโปรโมชั่น','text'],['categoryIds','หมวดหมู่ที่ร่วมโปรโมชั่น','text'],['status','สถานะ','text']]},
       coupons:{title:'คูปอง',add:'เพิ่มคูปอง',edit:'แก้ไขคูปอง',save:'saveCoupon',del:'deleteCoupon',columns:[['code','Coupon Code'],['discountType','ประเภท'],['discountValue','ส่วนลด'],['usedCount','ใช้แล้ว'],['status','สถานะ']],fields:[['code','Coupon Code','text'],['discountType','ประเภท (percent/amount)','text'],['discountValue','มูลค่าส่วนลด','number'],['minimumOrder','ยอดขั้นต่ำ','number'],['maximumDiscount','ส่วนลดสูงสุด','number'],['usageLimit','จำกัดจำนวนใช้ (0=ไม่จำกัด)','number'],['usagePerCustomer','ต่อคน','number'],['sellerId','ร้านค้าที่ใช้คูปอง','text'],['startDate','วันเริ่ม','date'],['endDate','วันสิ้นสุด','date'],['status','สถานะ','text']]},
@@ -3398,8 +3419,45 @@
       };reader.onerror=function(){if(statusNode)statusNode.textContent='อ่านไฟล์ไม่สำเร็จ';alertError('ไม่สามารถอ่านไฟล์รูปภาพได้');};reader.readAsDataURL(file);fileInput.value='';
     }
 
+    function uploadProductVideoFile(fileInput,inputId,statusId,accountType){
+      var file=fileInput&&fileInput.files&&fileInput.files[0];if(!file)return;
+      var mime=String(file.type||'').toLowerCase();
+      if(['video/mp4','video/webm','video/quicktime'].indexOf(mime)<0){
+        alertError('รองรับวิดีโอ MP4, WebM และ MOV เท่านั้น');if(fileInput)fileInput.value='';return;
+      }
+      if(file.size>10*1024*1024){
+        alertError('วิดีโอต้องมีขนาดไม่เกิน 10 MB');if(fileInput)fileInput.value='';return;
+      }
+      var status=document.getElementById(statusId),target=document.getElementById(inputId);
+      if(status)status.textContent='กำลังอ่านไฟล์ '+file.name+' ...';
+      var reader=new FileReader();
+      reader.onload=function(){
+        if(status)status.textContent='กำลังอัปโหลดวิดีโอไปยัง Google Drive แบบส่วนตัว...';
+        var role=accountType==='seller'?'seller':'admin';
+        var token=role==='seller'?APP.customerToken:APP.adminToken;
+        apiCall('uploadFile',[token,{accountType:role,folder:'Products',purpose:'product-video',filename:file.name,name:file.name,mimeType:mime,data:String(reader.result||'')}],function(r){
+          if(!r||!r.success||!r.data||!/^drive-private:\/\//i.test(String(r.data.url||''))){
+            if(status)status.textContent='อัปโหลดไม่สำเร็จ: '+(r&&r.message||'กรุณาลองอีกครั้ง');
+            if(!r||!r.message)alertError('อัปโหลดวิดีโอไม่สำเร็จ');
+            return;
+          }
+          if(target)target.value=r.data.url;
+          if(status)status.textContent='อัปโหลดสำเร็จ: '+String(r.data.filename||file.name)+' (เก็บเป็นส่วนตัวใน Google Drive)';
+          toast('อัปโหลดวิดีโอสินค้าแล้ว','success');
+        },true,'กำลังอัปโหลดวิดีโอสินค้า...');
+      };
+      reader.onerror=function(){if(status)status.textContent='อ่านไฟล์ไม่สำเร็จ';alertError('ไม่สามารถอ่านไฟล์วิดีโอได้');};
+      reader.readAsDataURL(file);
+      if(fileInput)fileInput.value='';
+    }
+    function renderAdminProductVideoField(label,value){
+      var current=String(value||''),status=/^drive-private:\/\//i.test(current)?'มีวิดีโอที่อัปโหลดไว้แล้ว สามารถเลือกไฟล์ใหม่เพื่อแทนที่ได้':(current?'กำลังใช้ URL วิดีโอภายนอก':'ยังไม่ได้เพิ่มวิดีโอ');
+      return '<div class="modal-field full"><label for="edit_videoUrl">'+esc(label)+'</label><input id="edit_videoUrl" type="text" value="'+esc(current)+'" placeholder="https://... หรือเลือกอัปโหลดวิดีโอ"><div class="admin-image-actions"><label class="btn btn-outline btn-small" for="upload_videoUrl"><i class="fa-solid fa-cloud-arrow-up"></i> อัปโหลดวิดีโอ</label><input id="upload_videoUrl" type="file" accept="video/mp4,video/webm,video/quicktime" hidden onchange="uploadProductVideoFile(this,\'edit_videoUrl\',\'edit_videoUrl_status\',\'admin\')"></div><small id="edit_videoUrl_status" class="modal-help">'+esc(status)+' · รองรับ MP4, WebM, MOV ไม่เกิน 10 MB</small></div>';
+    }
+
     function renderAdminEditorField(page,f,row){var key=f[0],label=f[1],type=f[2]||'text',value=row[key];if(value===undefined||value===null)value='';if(key==='sku'&&!row.id&&!value)value=makeAdminCode(page==='products'?'SKU':'VAR');var imageFolders={coverImage:'Products',image:(page==='banners'?'Banners':'Categories'),profileImage:'Customers',favicon:'Website',logo:'Website',heroImage:'Banners',bankQrImage:'Website'};
       if(imageFolders[key])return renderAdminImageField(key,label,value,imageFolders[key]);
+      if(key==='videoUrl'&&page==='products')return renderAdminProductVideoField(label,value);
       if(key==='status'||['featured','bestSeller','allowGuestCheckout','quantityPromoEnabled','mallBadgeEnabled'].indexOf(key)>=0){var enabled=key==='status'?(String(value||'Active').toLowerCase()==='active'):adminEditorIsOn(value);var stateText=key==='status'?(enabled?'เปิดใช้งาน':'ปิดใช้งาน'):(enabled?'เปิด':'ปิด');return '<div class="modal-field"><label>'+esc(label)+'</label><label class="admin-switch-row" for="edit_'+key+'"><span class="admin-switch-copy"><b>'+esc(stateText)+'</b><small>'+(key==='status'?'กำหนดให้รายการนี้แสดงและใช้งานในระบบ':'เปิดหรือปิดคุณสมบัตินี้')+'</small></span><input id="edit_'+key+'" type="checkbox" class="admin-switch-input" '+(enabled?'checked':'')+' onchange="updateAdminSwitchLabel(this)"><span class="admin-switch-track"><i></i></span></label></div>';}
       var select=adminEditorOptions(key,row);if(select){var selected=select.selected||[];var optionHtml=(select.options||[]).map(function(o){return '<option value="'+esc(o[0])+'" '+(selected.indexOf(String(o[0]))>=0?'selected':'')+'>'+esc(o[1])+'</option>';}).join('');return '<div class="modal-field'+(select.multiple?' full':'')+'"><label for="edit_'+key+'">'+esc(label)+'</label><select id="edit_'+key+'" '+(select.multiple?'multiple size="5"':'')+'>'+optionHtml+'</select>'+(select.multiple?'<small class="modal-help">กด Ctrl (Windows) หรือ Command (Mac) เพื่อเลือกหลายรายการ</small>':'')+'</div>';}
       if(key==='sku'){return '<div class="modal-field"><label for="edit_'+key+'">'+esc(label)+'</label><div class="admin-code-field"><input id="edit_'+key+'" type="text" value="'+esc(value)+'" placeholder="สร้างอัตโนมัติ" maxlength="80"><button type="button" class="btn btn-outline btn-small" title="สร้างรหัสใหม่" onclick="document.getElementById(\'edit_'+key+'\').value=makeAdminCode(\''+(page==='products'?'SKU':'VAR')+'\')"><i class="fa-solid fa-wand-magic-sparkles"></i></button></div><small class="modal-help">สร้างรหัสอัตโนมัติได้ และสามารถแก้ไขเองได้หากต้องการ</small></div>';}
@@ -3855,8 +3913,8 @@
         '<div class="modal-field"><label for="spCategory">หมวดหมู่</label><select id="spCategory"><option value="">เลือกหมวดหมู่</option>'+categoryOptions+'</select></div><div class="modal-field"><label for="spBrand">แบรนด์</label><input id="spBrand" value="'+esc(p.brand||'')+'" placeholder="ชื่อแบรนด์"></div>'+
         '<div class="modal-field"><label for="spPrice">ราคาปกติ <b class="seller-required">*</b></label><input id="spPrice" type="number" min="0.01" step="0.01" value="'+esc(p.price||'')+'" placeholder="0.00"></div><div class="modal-field"><label for="spSale">ราคาขาย / ราคาโปรโมชั่น</label><input id="spSale" type="number" min="0" step="0.01" value="'+esc(p.salePrice||'')+'" placeholder="เว้นว่างหากไม่มีส่วนลด"></div>'+
         '<div class="modal-field full"><label class="admin-switch-row" for="spQtyPromoEnabled"><span class="admin-switch-copy"><b>เปิดโปรโมชั่นซื้อครบจำนวน</b><small>เช่น ซื้อ 3 ชิ้น ลด 50 บาท (ระบบคิดส่วนลดจริงในตะกร้า)</small></span><input id="spQtyPromoEnabled" type="checkbox" class="admin-switch-input" '+(String(p.quantityPromoEnabled)==='true'?'checked':'')+'><span class="admin-switch-track"><i></i></span></label></div><div class="modal-field"><label for="spQtyPromoQty">ซื้อขั้นต่ำ (ชิ้น)</label><input id="spQtyPromoQty" type="number" min="2" step="1" value="'+esc(p.quantityPromoQty||3)+'"></div><div class="modal-field"><label for="spQtyPromoDiscount">ลดราคา (บาท / ชุด)</label><input id="spQtyPromoDiscount" type="number" min="0.01" step="0.01" value="'+esc(p.quantityPromoDiscount||0)+'"></div>'+
-        '<div class="modal-field"><label for="spVideoUrl">วิดีโอสินค้า (URL)</label><input id="spVideoUrl" type="url" value="'+esc(p.videoUrl||'')+'" placeholder="https://..."><small class="modal-help">ใส่ URL วิดีโอ เช่น MP4 หรือหน้าวิดีโอ เพื่อแสดงปุ่ม Play บนรูปสินค้า</small></div><div class="modal-field"><label for="spOriginProvince">จังหวัดต้นทาง</label><input id="spOriginProvince" maxlength="100" value="'+esc(p.originProvince||'')+'" placeholder="เช่น นครปฐม"></div>'+
-        '<div class="modal-field"><label for="spCampaignLabel">แถบแคมเปญบนรูป</label><input id="spCampaignLabel" maxlength="60" value="'+esc(p.campaignLabel||'')+'" placeholder="เช่น 11.11 / ส่งฟรี / ส่วนลด"><small class="modal-help">ข้อความนี้จะแสดงเป็นแถบสีส้มทับขอบล่างของรูปภาพ</small></div><div class="modal-field"><label for="spPromoTag">ป้ายโปรโมชั่นใต้ชื่อสินค้า</label><input id="spPromoTag" maxlength="120" value="'+esc(p.promoTag||'')+'" placeholder="เช่น ช้อปปี้ถูกชัวร์ / VIP Price ลด 4%"></div>'+
+        '<div class="modal-field"><label for="spVideoUrl">วิดีโอสินค้า</label><input id="spVideoUrl" type="text" value="'+esc(p.videoUrl||'')+'" placeholder="https://... หรือเลือกอัปโหลดวิดีโอ"><label class="btn btn-outline btn-small" for="spVideoFile" style="margin-top:8px"><i class="fa-solid fa-cloud-arrow-up"></i> อัปโหลดวิดีโอ</label><input id="spVideoFile" type="file" accept="video/mp4,video/webm,video/quicktime" hidden onchange="uploadProductVideoFile(this,\'spVideoUrl\',\'spVideoUploadStatus\',\'seller\')"><small id="spVideoUploadStatus" class="modal-help">'+(/^drive-private:\/\//i.test(String(p.videoUrl||''))?'มีวิดีโอที่อัปโหลดไว้แล้ว':(p.videoUrl?'กำลังใช้ URL วิดีโอภายนอก':'ยังไม่ได้เพิ่มวิดีโอ'))+' · รองรับ MP4, WebM, MOV ไม่เกิน 10 MB</small></div><div class="modal-field"><label for="spOriginProvince">จังหวัดต้นทาง</label><input id="spOriginProvince" maxlength="100" value="'+esc(p.originProvince||'')+'" placeholder="เช่น นครปฐม"></div>'+
+        '<div class="modal-field"><label for="spCampaignLabel">แถบแคมเปญบนรูป</label><input id="spCampaignLabel" maxlength="60" value="'+esc(p.campaignLabel||'')+'" placeholder="เช่น 11.11 / ส่งฟรี / ส่วนลด"><small class="modal-help">ข้อความนี้จะแสดงเป็นแถบสีส้มทับขอบล่างของรูปภาพ</small></div>'+
         '<div class="modal-field full"><label for="spFreeShippingMinimum">ยอดขั้นต่ำสำหรับส่งฟรีของสินค้านี้ (บาท)</label><input id="spFreeShippingMinimum" type="number" min="0" step="0.01" value="'+esc(p.freeShippingMinimum||'')+'" placeholder="เว้นว่างเพื่อใช้ค่าตั้งค่าร้านค้า"><small class="modal-help">ระบบจะแสดงป้ายส่งฟรีเมื่อกำหนดยอดขั้นต่ำไว้เท่านั้น</small></div>'+
         '<div class="modal-field"><label for="spStock">จำนวนสต็อก</label><input id="spStock" type="number" min="0" step="1" value="'+esc(p.stock||0)+'"></div><div class="modal-field"><label for="spUnit">หน่วยสินค้า</label><input id="spUnit" value="'+esc(p.unit||'ชิ้น')+'" placeholder="ชิ้น / กล่อง / แพ็ก"></div>'+
         '<div class="modal-field"><label for="spWeight">น้ำหนัก (กก.)</label><input id="spWeight" type="number" min="0" step="0.01" value="'+esc(p.weight||0)+'"></div><div class="modal-field"><label for="spStatus">สถานะสินค้า</label><select id="spStatus"><option value="Active" '+((p.status||'Active')==='Active'?'selected':'')+'>เปิดขายทันที</option><option value="Inactive" '+(p.status==='Inactive'?'selected':'')+'>บันทึกเป็นปิดขาย</option></select></div>'+
@@ -3869,8 +3927,8 @@
         var promoOn=document.getElementById('spQtyPromoEnabled').checked,promoQty=Math.floor(Number(document.getElementById('spQtyPromoQty').value||0)),promoDiscount=Number(document.getElementById('spQtyPromoDiscount').value||0),effectivePromoPrice=sale>0?sale:price;if(promoOn&&(promoQty<2||promoDiscount<=0||promoDiscount>=effectivePromoPrice*promoQty)){Swal.showValidationMessage('โปรโมชั่นต้องซื้ออย่างน้อย 2 ชิ้น และส่วนลดต้องมากกว่า 0 แต่น้อยกว่ามูลค่าสินค้าในชุด');return false;}
         var images=String(document.getElementById('spImages').value||'').split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean);
         var videoUrl=String(document.getElementById('spVideoUrl').value||'').trim(),freeShippingMinimum=Number(document.getElementById('spFreeShippingMinimum').value||0);
-        if(videoUrl&&!/^https:\/\//i.test(videoUrl)){Swal.showValidationMessage('URL วิดีโอต้องขึ้นต้นด้วย https://');return false;}if(!isFinite(freeShippingMinimum)||freeShippingMinimum<0){Swal.showValidationMessage('ยอดขั้นต่ำส่งฟรีต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป');return false;}
-        var d={id:id||'',name:name,sku:document.getElementById('spSku').value.trim(),barcode:document.getElementById('spBarcode').value.trim(),categoryId:document.getElementById('spCategory').value,brand:document.getElementById('spBrand').value.trim(),summary:document.getElementById('spSummary').value,price:price,salePrice:sale,stock:stock,unit:document.getElementById('spUnit').value.trim()||'ชิ้น',weight:Number(document.getElementById('spWeight').value||0),quantityPromoEnabled:promoOn,quantityPromoQty:promoOn?promoQty:0,quantityPromoDiscount:promoOn?promoDiscount:0,videoUrl:videoUrl,campaignLabel:document.getElementById('spCampaignLabel').value.trim(),promoTag:document.getElementById('spPromoTag').value.trim(),originProvince:document.getElementById('spOriginProvince').value.trim(),freeShippingMinimum:freeShippingMinimum,sizeChart:document.getElementById('spSizeChart').value,coverImage:document.getElementById('spImage').value.trim(),images:images,status:document.getElementById('spStatus').value,description:getRichEditorHtml('spDesc')};
+        if(videoUrl&&!/^https:\/\//i.test(videoUrl)&&!/^drive-private:\/\/[A-Za-z0-9_-]{10,100}$/i.test(videoUrl)){Swal.showValidationMessage('URL วิดีโอต้องเป็น https:// หรือวิดีโอที่อัปโหลดผ่านระบบ');return false;}if(!isFinite(freeShippingMinimum)||freeShippingMinimum<0){Swal.showValidationMessage('ยอดขั้นต่ำส่งฟรีต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป');return false;}
+        var d={id:id||'',name:name,sku:document.getElementById('spSku').value.trim(),barcode:document.getElementById('spBarcode').value.trim(),categoryId:document.getElementById('spCategory').value,brand:document.getElementById('spBrand').value.trim(),summary:document.getElementById('spSummary').value,price:price,salePrice:sale,stock:stock,unit:document.getElementById('spUnit').value.trim()||'ชิ้น',weight:Number(document.getElementById('spWeight').value||0),quantityPromoEnabled:promoOn,quantityPromoQty:promoOn?promoQty:0,quantityPromoDiscount:promoOn?promoDiscount:0,videoUrl:videoUrl,campaignLabel:document.getElementById('spCampaignLabel').value.trim(),originProvince:document.getElementById('spOriginProvince').value.trim(),freeShippingMinimum:freeShippingMinimum,sizeChart:document.getElementById('spSizeChart').value,coverImage:document.getElementById('spImage').value.trim(),images:images,status:document.getElementById('spStatus').value,description:getRichEditorHtml('spDesc')};
         if(d.coverImage&&String(d.coverImage).toLowerCase().indexOf('https://')!==0){Swal.showValidationMessage('URL รูปปกสินค้าต้องขึ้นต้นด้วย https://');return false;}return runSellerModalMutation('sellerSaveProduct',[APP.customerToken,d],'products');
       }});
     }
@@ -5097,5 +5155,19 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     }
   </style>
 
+
+  <style id="product-card-rating-video-v3">
+    #appRoot .product-rating-badge{display:inline-flex;align-items:center;gap:4px;min-width:0;color:#f59e0b;font-size:9px;font-weight:700;white-space:nowrap}
+    #appRoot .product-rating-stars{display:inline-flex;align-items:center;gap:1px;color:#f59e0b}
+    #appRoot .product-rating-stars .is-empty{opacity:.22}
+    #appRoot .product-rating-value{color:var(--ink);font-size:9px;font-weight:700}
+    #appRoot .product-card-actions{justify-content:flex-end}
+    .product-video-viewer{position:fixed;inset:0;z-index:100500;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.78)}
+    .product-video-viewer-panel{width:min(900px,96vw);max-height:92vh;overflow:hidden;border-radius:12px;background:#111827;box-shadow:0 20px 70px rgba(0,0,0,.4)}
+    .product-video-viewer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;color:#fff;font-size:14px}
+    .product-video-viewer-close{display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;cursor:pointer}
+    .product-video-viewer-player{display:block;width:100%;max-height:78vh;background:#000;object-fit:contain}
+    @media(max-width:600px){.product-video-viewer{padding:8px}.product-video-viewer-panel{width:100%;border-radius:8px}.product-video-viewer-player{max-height:72vh}}
+  </style>
 </body>
 </html>
