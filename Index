@@ -1954,6 +1954,8 @@
       return coupons[0]||null;
     }
     function productCardCouponMarkup(product){
+      var customTag=String(product&&product.promoTag||'').trim();
+      if(customTag)return '<div class="product-promo-box" title="'+esc(customTag)+'"><i class="fa-solid fa-tags"></i> '+esc(customTag)+'</div>';
       var coupon=productCardActiveCoupon(product);
       if(coupon){
         var isPercent=String(coupon.discountType||'').toLowerCase()==='percent';
@@ -1965,11 +1967,34 @@
       if(!promo&&product&&product.flashDealId)promo='Flash Sale';
       return promo?'<div class="product-promo-box"><i class="fa-solid fa-tags"></i> '+esc(promo)+'</div>':'';
     }
-    function productCardShippingMarkup(product){
-      var settings=APP.settings||{};
-      var minimum=Number(product&&product.freeShippingMinimum||0)||Number(settings.freeShippingMinimum||0);
-      if(minimum<=0)return '';
-      return '<div class="product-shipping-ribbon"><i class="fa-solid fa-truck-fast"></i><span>ส่งฟรีขั้นต่ำ '+esc(money(minimum))+'</span></div>';
+    function productCardCampaignMarkup(product){
+      var label=String(product&&product.campaignLabel||'').trim();
+      if(!label){
+        var minimum=Number(product&&product.freeShippingMinimum||0)||Number((APP.settings||{}).freeShippingMinimum||0);
+        if(minimum>0)label='ส่งฟรีขั้นต่ำ '+money(minimum);
+        else if(product&&product.flashDealId)label='Flash Sale';
+        else if(Number(product&&product.salePrice)>0&&Number(product&&product.price)>Number(product&&product.salePrice))label='ส่วนลดพิเศษ';
+      }
+      return label?'<div class="product-campaign-ribbon"><i class="fa-solid fa-bolt"></i><span>'+esc(label)+'</span></div>':'';
+    }
+    function productRatingMarkup(product){
+      var rating=Number(product&&product.ratingAverage||0);
+      return rating>0
+        ?'<span class="product-rating-badge"><i class="fa-solid fa-star"></i> '+rating.toFixed(1)+'</span>'
+        :'<span class="product-rating-badge is-new">ใหม่</span>';
+    }
+    function formatProductSales(value){
+      var n=Math.max(0,Number(value||0));
+      if(n>=1000000)return (Math.floor(n/100000)/10).toLocaleString('th-TH',{maximumFractionDigits:1})+'แสน+';
+      if(n>=10000)return Math.floor(n/10000).toLocaleString('th-TH')+'หมื่น+';
+      if(n>=1000)return Math.floor(n/1000).toLocaleString('th-TH')+'พัน+';
+      return Math.floor(n).toLocaleString('th-TH');
+    }
+    function openProductVideo(productId){
+      var product=APP.productCardCache&&APP.productCardCache[String(productId)],url=String(product&&product.videoUrl||'').trim();
+      if(!/^https:\/\//i.test(url)){toast('ยังไม่ได้กำหนด URL วิดีโอของสินค้า','info');return;}
+      var opened=window.open(url,'_blank','noopener,noreferrer');
+      if(!opened)toast('เบราว์เซอร์บล็อกหน้าวิดีโอ กรุณาอนุญาต Pop-up','warning');
     }
     function showSimilarProducts(productId){
       var id=String(productId||''),all=safeArray(APP.products).concat(safeArray(APP.flashDeals));
@@ -1997,42 +2022,39 @@
     }
     function renderProductCard(p){
       var price=Number(p.salePrice)>0?Number(p.salePrice):Number(p.price),base=Number(p.price||0);
-      var old=Number(p.salePrice)>0?'<span class="old-price">'+money(base)+'</span>':'';
-      var discount=base>price&&base>0?Math.round((base-price)*100/base):0;
+      var hasDiscount=base>price&&base>0,discount=hasDiscount?Math.round((base-price)*100/base):0;
+      var old=hasDiscount?'<span class="old-price">'+money(base)+'</span>':'';
       var hasMall=p.mallBadgeEnabled===true||String(p.mallBadgeEnabled||'').toLowerCase()==='true'||String(p.mallBadgeEnabled)==='1';
       var isFeatured=p.featured===true||String(p.featured||'').toLowerCase()==='true';
-      var identityBadge=hasMall
-        ?'<span class="product-card-label product-card-label-mall">Mall</span>'
-        :(isFeatured?'<span class="product-card-label product-card-label-recommended">ร้านแนะนำ</span>':'');
-      var flashBadge=!hasMall&&!isFeatured&&p.flashDealId?'<span class="product-badge">FLASH</span>':'';
+      var mallBadge=hasMall?'<span class="product-card-label product-card-label-mall">Mall</span>':'';
       var discountBadge=discount>0?'<span class="product-discount-badge">-'+discount+'%</span>':'';
-      var shippingRibbon=productCardShippingMarkup(p);
-      var promoTag=productCardCouponMarkup(p);
+      var campaign=productCardCampaignMarkup(p),promoTag=productCardCouponMarkup(p);
+      var videoButton=String(p.videoUrl||'').trim()?'<button type="button" class="product-video-play" aria-label="เปิดวิดีโอ '+esc(p.name)+'" onclick="event.stopPropagation();openProductVideo(\''+esc(p.id)+'\')"><i class="fa-solid fa-play"></i></button>':'';
       var action=p.hasVariants?'viewProduct(\''+esc(p.id)+'\')':'quickAdd(\''+esc(p.id)+'\')';
       var actionLabel=p.hasVariants?'เลือกตัวเลือก':'ใส่ตะกร้า';
       var isOutOfStock=Number(p.stock)<=0;
-      var sold=Number(p.soldCount||0);
+      var sold=Number(p.soldCount||0),rating=Number(p.ratingAverage||0);
+      var province=String(p.originProvince||p.province||p.storeProvince||'').trim();
       APP.productCardCache=APP.productCardCache||{};
       APP.productCardCache[String(p.id)]=p;
       return '<article class="product-card" data-product-id="'+esc(p.id)+'">'+
         '<div class="product-image" role="button" tabindex="0" aria-label="ดูสินค้า '+esc(p.name)+'" onclick="viewProduct(\''+esc(p.id)+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \')viewProduct(\''+esc(p.id)+'\')">'+
-          identityBadge+flashBadge+discountBadge+
+          mallBadge+discountBadge+
           '<img loading="lazy" src="'+imageUrl(p.coverImage)+'" alt="'+esc(p.name)+'" onerror="imageFallback(this)">'+
-          shippingRibbon+
+          campaign+videoButton+
         '</div>'+
         '<div class="product-info">'+
-          '<div class="product-name" title="'+esc(p.name)+'" onclick="viewProduct(\''+esc(p.id)+'\')">'+esc(p.name)+'</div>'+
+          '<div class="product-name" title="'+esc(p.name)+'" onclick="viewProduct(\''+esc(p.id)+'\')">'+(isFeatured?'<span class="product-recommended-prefix">ร้านแนะนำ</span> ':'')+esc(p.name)+'</div>'+
+          '<div class="product-price-row"><span class="product-price-current">'+money(price)+'</span>'+old+(discount>0?'<span class="product-price-discount">-'+discount+'%</span>':'')+'</div>'+
           promoTag+
+          '<div class="product-rating-sales-row">'+productRatingMarkup(p)+'<span class="product-sold">ขายแล้ว '+formatProductSales(sold)+' ชิ้น</span></div>'+
+          (province?'<div class="product-origin-row"><i class="fa-solid fa-location-dot"></i> จังหวัด'+esc(province.replace(/^จังหวัด\s*/,'').trim())+'</div>':'')+
           '<div class="product-card-actions">'+
             '<button type="button" class="btn btn-primary btn-small" '+(isOutOfStock?'disabled':'')+' onclick="event.stopPropagation();'+action+'"><i class="fa-solid fa-cart-plus"></i> '+actionLabel+'</button>'+
             '<button type="button" class="icon-btn" onclick="event.stopPropagation();quickFavorite(\''+esc(p.id)+'\')" title="รายการโปรด" aria-label="เพิ่ม '+esc(p.name)+' ในรายการโปรด"><i class="fa-regular fa-heart"></i></button>'+
           '</div>'+
-          '<div class="product-meta-row">'+
-            '<div class="product-price"><span class="product-price-current">'+money(price)+'</span>'+old+'</div>'+
-            '<span class="product-sold">ขายแล้ว '+sold.toLocaleString('th-TH')+'</span>'+
-          '</div>'+
         '</div>'+
-        '<button type="button" class="product-similar-button" onclick="event.stopPropagation();showSimilarProducts(\''+esc(p.id)+'\')"><i class="fa-solid fa-magnifying-glass"></i> ค้นหาสินค้าที่คล้ายกัน</button>'+
+        '<button type="button" class="product-similar-button" onclick="event.stopPropagation();showSimilarProducts(\''+esc(p.id)+'\')">คล้ายกัน</button>'+
       '</article>';
     }
     function refreshVisibleProductCardOffers(){
@@ -2043,21 +2065,17 @@
         if(!product)continue;
         var image=card.querySelector('.product-image');
         if(image){
-          var oldShipping=image.querySelector('.product-shipping-ribbon');
-          var newShipping=productCardShippingMarkup(product);
-          if(oldShipping){
-            if(newShipping)oldShipping.outerHTML=newShipping;
-            else oldShipping.remove();
-          }else if(newShipping)image.insertAdjacentHTML('beforeend',newShipping);
+          var oldCampaign=image.querySelector('.product-campaign-ribbon');
+          var newCampaign=productCardCampaignMarkup(product);
+          if(oldCampaign){if(newCampaign)oldCampaign.outerHTML=newCampaign;else oldCampaign.remove();}
+          else if(newCampaign)image.insertAdjacentHTML('beforeend',newCampaign);
         }
         var info=card.querySelector('.product-info'),name=info&&info.querySelector('.product-name');
         if(info&&name){
           var oldPromo=info.querySelector('.product-promo-box');
           var newPromo=productCardCouponMarkup(product);
-          if(oldPromo){
-            if(newPromo)oldPromo.outerHTML=newPromo;
-            else oldPromo.remove();
-          }else if(newPromo)name.insertAdjacentHTML('afterend',newPromo);
+          if(oldPromo){if(newPromo)oldPromo.outerHTML=newPromo;else oldPromo.remove();}
+          else if(newPromo)name.insertAdjacentHTML('afterend',newPromo);
         }
       }
     }
@@ -3320,7 +3338,7 @@
     function loadAdminModule(page){adminGridLoad(page,null,null,false);}
     
     var MODULE_CONFIG={
-      products:{title:'สินค้า',add:'เพิ่มสินค้า',edit:'แก้ไขสินค้า',save:'saveProduct',del:'deleteProduct',columns:[['name','ชื่อสินค้า'],['sku','SKU'],['price','ราคา'],['stock','สต็อก'],['status','สถานะ']],fields:[['name','ชื่อสินค้า','text'],['sku','SKU','text'],['barcode','Barcode','text'],['categoryId','หมวดหมู่สินค้า','text'],['brand','Brand','text'],['summary','คำอธิบายย่อ','text'],['description','รายละเอียดสินค้า','richtext'],['coverImage','รูปปกสินค้า','text'],['images','รูปภาพเพิ่มเติม (URL ละ 1 บรรทัด)','textarea'],['price','ราคาปกติ','number'],['salePrice','ราคาขาย','number'],['quantityPromoEnabled','เปิดโปรโมชั่นซื้อครบจำนวน','text'],['quantityPromoQty','จำนวนที่ต้องซื้อ (ชิ้น)','number'],['quantityPromoDiscount','ส่วนลดต่อชุด (บาท)','number'],['mallBadgeEnabled','แสดงป้าย Mall (อนุมัติโดยเจ้าของระบบ)','text'],['sizeChart','ตารางขนาดสินค้า (แถวแรกเป็นหัวตาราง คั่นด้วย |)','textarea'],['costPrice','ราคาทุน','number'],['stock','สต็อกเริ่มต้น (สินค้าใหม่)','number'],['unit','หน่วย','text'],['weight','น้ำหนัก','number'],['featured','สินค้าแนะนำ','text'],['bestSeller','สินค้าขายดี','text'],['status','สถานะการใช้งาน','text']]},
+      products:{title:'สินค้า',add:'เพิ่มสินค้า',edit:'แก้ไขสินค้า',save:'saveProduct',del:'deleteProduct',columns:[['name','ชื่อสินค้า'],['sku','SKU'],['price','ราคา'],['stock','สต็อก'],['status','สถานะ']],fields:[['name','ชื่อสินค้า','text'],['sku','SKU','text'],['barcode','Barcode','text'],['categoryId','หมวดหมู่สินค้า','text'],['brand','Brand','text'],['summary','คำอธิบายย่อ','text'],['description','รายละเอียดสินค้า','richtext'],['coverImage','รูปปกสินค้า','text'],['images','รูปภาพเพิ่มเติม (URL ละ 1 บรรทัด)','textarea'],['price','ราคาปกติ','number'],['salePrice','ราคาขาย','number'],['quantityPromoEnabled','เปิดโปรโมชั่นซื้อครบจำนวน','text'],['quantityPromoQty','จำนวนที่ต้องซื้อ (ชิ้น)','number'],['quantityPromoDiscount','ส่วนลดต่อชุด (บาท)','number'],['mallBadgeEnabled','แสดงป้าย Mall (อนุมัติโดยเจ้าของระบบ)','text'],['videoUrl','URL วิดีโอสินค้า','url'],['campaignLabel','แถบแคมเปญบนรูปสินค้า','text'],['promoTag','ป้ายโปรโมชั่นใต้ชื่อสินค้า','text'],['originProvince','จังหวัดต้นทาง','text'],['freeShippingMinimum','ยอดขั้นต่ำสำหรับส่งฟรี (บาท)','number'],['sizeChart','ตารางขนาดสินค้า (แถวแรกเป็นหัวตาราง คั่นด้วย |)','textarea'],['costPrice','ราคาทุน','number'],['stock','สต็อกเริ่มต้น (สินค้าใหม่)','number'],['unit','หน่วย','text'],['weight','น้ำหนัก','number'],['featured','สินค้าแนะนำ','text'],['bestSeller','สินค้าขายดี','text'],['status','สถานะการใช้งาน','text']]},
       categories:{title:'หมวดหมู่',add:'เพิ่มหมวดหมู่',edit:'แก้ไขหมวดหมู่',save:'saveCategory',del:'deleteCategory',columns:[['name','ชื่อ'],['slug','Slug'],['parentId','Parent ID'],['order','ลำดับ'],['status','สถานะ']],fields:[['name','ชื่อหมวดหมู่','text'],['slug','Slug','text'],['description','รายละเอียด','richtext'],['image','URL รูปภาพ','text'],['parentId','หมวดหมู่หลัก','text'],['order','ลำดับ','number'],['status','สถานะ','text']]},
       promotions:{title:'โปรโมชั่น',add:'เพิ่มโปรโมชั่น',edit:'แก้ไขโปรโมชั่น',save:'savePromotion',del:'deletePromotion',columns:[['name','ชื่อโปรโมชั่น'],['type','ประเภท'],['value','มูลค่า'],['startDate','เริ่ม'],['endDate','สิ้นสุด'],['status','สถานะ']],fields:[['name','ชื่อ','text'],['type','รูปแบบส่วนลด','text'],['value','มูลค่า','number'],['startDate','วันเริ่ม','date'],['endDate','วันสิ้นสุด','date'],['productIds','สินค้าที่ร่วมโปรโมชั่น','text'],['categoryIds','หมวดหมู่ที่ร่วมโปรโมชั่น','text'],['status','สถานะ','text']]},
       coupons:{title:'คูปอง',add:'เพิ่มคูปอง',edit:'แก้ไขคูปอง',save:'saveCoupon',del:'deleteCoupon',columns:[['code','Coupon Code'],['discountType','ประเภท'],['discountValue','ส่วนลด'],['usedCount','ใช้แล้ว'],['status','สถานะ']],fields:[['code','Coupon Code','text'],['discountType','ประเภท (percent/amount)','text'],['discountValue','มูลค่าส่วนลด','number'],['minimumOrder','ยอดขั้นต่ำ','number'],['maximumDiscount','ส่วนลดสูงสุด','number'],['usageLimit','จำกัดจำนวนใช้ (0=ไม่จำกัด)','number'],['usagePerCustomer','ต่อคน','number'],['sellerId','ร้านค้าที่ใช้คูปอง','text'],['startDate','วันเริ่ม','date'],['endDate','วันสิ้นสุด','date'],['status','สถานะ','text']]},
@@ -3837,6 +3855,9 @@
         '<div class="modal-field"><label for="spCategory">หมวดหมู่</label><select id="spCategory"><option value="">เลือกหมวดหมู่</option>'+categoryOptions+'</select></div><div class="modal-field"><label for="spBrand">แบรนด์</label><input id="spBrand" value="'+esc(p.brand||'')+'" placeholder="ชื่อแบรนด์"></div>'+
         '<div class="modal-field"><label for="spPrice">ราคาปกติ <b class="seller-required">*</b></label><input id="spPrice" type="number" min="0.01" step="0.01" value="'+esc(p.price||'')+'" placeholder="0.00"></div><div class="modal-field"><label for="spSale">ราคาขาย / ราคาโปรโมชั่น</label><input id="spSale" type="number" min="0" step="0.01" value="'+esc(p.salePrice||'')+'" placeholder="เว้นว่างหากไม่มีส่วนลด"></div>'+
         '<div class="modal-field full"><label class="admin-switch-row" for="spQtyPromoEnabled"><span class="admin-switch-copy"><b>เปิดโปรโมชั่นซื้อครบจำนวน</b><small>เช่น ซื้อ 3 ชิ้น ลด 50 บาท (ระบบคิดส่วนลดจริงในตะกร้า)</small></span><input id="spQtyPromoEnabled" type="checkbox" class="admin-switch-input" '+(String(p.quantityPromoEnabled)==='true'?'checked':'')+'><span class="admin-switch-track"><i></i></span></label></div><div class="modal-field"><label for="spQtyPromoQty">ซื้อขั้นต่ำ (ชิ้น)</label><input id="spQtyPromoQty" type="number" min="2" step="1" value="'+esc(p.quantityPromoQty||3)+'"></div><div class="modal-field"><label for="spQtyPromoDiscount">ลดราคา (บาท / ชุด)</label><input id="spQtyPromoDiscount" type="number" min="0.01" step="0.01" value="'+esc(p.quantityPromoDiscount||0)+'"></div>'+
+        '<div class="modal-field"><label for="spVideoUrl">วิดีโอสินค้า (URL)</label><input id="spVideoUrl" type="url" value="'+esc(p.videoUrl||'')+'" placeholder="https://..."><small class="modal-help">ใส่ URL วิดีโอ เช่น MP4 หรือหน้าวิดีโอ เพื่อแสดงปุ่ม Play บนรูปสินค้า</small></div><div class="modal-field"><label for="spOriginProvince">จังหวัดต้นทาง</label><input id="spOriginProvince" maxlength="100" value="'+esc(p.originProvince||'')+'" placeholder="เช่น นครปฐม"></div>'+
+        '<div class="modal-field"><label for="spCampaignLabel">แถบแคมเปญบนรูป</label><input id="spCampaignLabel" maxlength="60" value="'+esc(p.campaignLabel||'')+'" placeholder="เช่น 11.11 / ส่งฟรี / ส่วนลด"><small class="modal-help">ข้อความนี้จะแสดงเป็นแถบสีส้มทับขอบล่างของรูปภาพ</small></div><div class="modal-field"><label for="spPromoTag">ป้ายโปรโมชั่นใต้ชื่อสินค้า</label><input id="spPromoTag" maxlength="120" value="'+esc(p.promoTag||'')+'" placeholder="เช่น ช้อปปี้ถูกชัวร์ / VIP Price ลด 4%"></div>'+
+        '<div class="modal-field full"><label for="spFreeShippingMinimum">ยอดขั้นต่ำสำหรับส่งฟรีของสินค้านี้ (บาท)</label><input id="spFreeShippingMinimum" type="number" min="0" step="0.01" value="'+esc(p.freeShippingMinimum||'')+'" placeholder="เว้นว่างเพื่อใช้ค่าตั้งค่าร้านค้า"><small class="modal-help">ระบบจะแสดงป้ายส่งฟรีเมื่อกำหนดยอดขั้นต่ำไว้เท่านั้น</small></div>'+
         '<div class="modal-field"><label for="spStock">จำนวนสต็อก</label><input id="spStock" type="number" min="0" step="1" value="'+esc(p.stock||0)+'"></div><div class="modal-field"><label for="spUnit">หน่วยสินค้า</label><input id="spUnit" value="'+esc(p.unit||'ชิ้น')+'" placeholder="ชิ้น / กล่อง / แพ็ก"></div>'+
         '<div class="modal-field"><label for="spWeight">น้ำหนัก (กก.)</label><input id="spWeight" type="number" min="0" step="0.01" value="'+esc(p.weight||0)+'"></div><div class="modal-field"><label for="spStatus">สถานะสินค้า</label><select id="spStatus"><option value="Active" '+((p.status||'Active')==='Active'?'selected':'')+'>เปิดขายทันที</option><option value="Inactive" '+(p.status==='Inactive'?'selected':'')+'>บันทึกเป็นปิดขาย</option></select></div>'+
         '<div class="modal-field full"><label for="spImage">รูปปกสินค้า</label><div class="seller-image-upload-box"><div class="seller-image-preview" id="spImagePreview">'+(p.coverImage?'<img src="'+imageUrl(p.coverImage)+'" alt="รูปปกสินค้า" onerror="imageFallback(this)">':'<i class="fa-regular fa-image"></i><span>ยังไม่มีรูปปก</span>')+'</div><div class="seller-image-upload-fields"><input id="spImage" type="url" value="'+esc(p.coverImage||'')+'" placeholder="URL รูปภาพ https://..." oninput="sellerUpdateImagePreview(\'spImage\',this.value)"><button type="button" class="btn btn-outline btn-small" onclick="sellerUploadImageForField(\'spImage\',\'Products\')"><i class="fa-solid fa-cloud-arrow-up"></i> เลือกรูปจากเครื่อง</button><small id="spImageUploadStatus" class="modal-help">รองรับ JPG, PNG, WebP ขนาดไม่เกิน 5 MB</small></div></div></div>'+
@@ -3847,7 +3868,9 @@
         if(!name){Swal.showValidationMessage('กรุณาระบุชื่อสินค้า');return false;}if(!isFinite(price)||price<=0){Swal.showValidationMessage('กรุณาระบุราคาปกติให้มากกว่า 0');return false;}if(sale<0||sale>=price&&sale>0){Swal.showValidationMessage('ราคาขายต้องน้อยกว่าราคาปกติ');return false;}if(stock<0||Math.floor(stock)!==stock){Swal.showValidationMessage('จำนวนสต็อกต้องเป็นเลขจำนวนเต็มตั้งแต่ 0 ขึ้นไป');return false;}
         var promoOn=document.getElementById('spQtyPromoEnabled').checked,promoQty=Math.floor(Number(document.getElementById('spQtyPromoQty').value||0)),promoDiscount=Number(document.getElementById('spQtyPromoDiscount').value||0),effectivePromoPrice=sale>0?sale:price;if(promoOn&&(promoQty<2||promoDiscount<=0||promoDiscount>=effectivePromoPrice*promoQty)){Swal.showValidationMessage('โปรโมชั่นต้องซื้ออย่างน้อย 2 ชิ้น และส่วนลดต้องมากกว่า 0 แต่น้อยกว่ามูลค่าสินค้าในชุด');return false;}
         var images=String(document.getElementById('spImages').value||'').split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean);
-        var d={id:id||'',name:name,sku:document.getElementById('spSku').value.trim(),barcode:document.getElementById('spBarcode').value.trim(),categoryId:document.getElementById('spCategory').value,brand:document.getElementById('spBrand').value.trim(),summary:document.getElementById('spSummary').value,price:price,salePrice:sale,stock:stock,unit:document.getElementById('spUnit').value.trim()||'ชิ้น',weight:Number(document.getElementById('spWeight').value||0),quantityPromoEnabled:promoOn,quantityPromoQty:promoOn?promoQty:0,quantityPromoDiscount:promoOn?promoDiscount:0,sizeChart:document.getElementById('spSizeChart').value,coverImage:document.getElementById('spImage').value.trim(),images:images,status:document.getElementById('spStatus').value,description:getRichEditorHtml('spDesc')};
+        var videoUrl=String(document.getElementById('spVideoUrl').value||'').trim(),freeShippingMinimum=Number(document.getElementById('spFreeShippingMinimum').value||0);
+        if(videoUrl&&!/^https:\/\//i.test(videoUrl)){Swal.showValidationMessage('URL วิดีโอต้องขึ้นต้นด้วย https://');return false;}if(!isFinite(freeShippingMinimum)||freeShippingMinimum<0){Swal.showValidationMessage('ยอดขั้นต่ำส่งฟรีต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป');return false;}
+        var d={id:id||'',name:name,sku:document.getElementById('spSku').value.trim(),barcode:document.getElementById('spBarcode').value.trim(),categoryId:document.getElementById('spCategory').value,brand:document.getElementById('spBrand').value.trim(),summary:document.getElementById('spSummary').value,price:price,salePrice:sale,stock:stock,unit:document.getElementById('spUnit').value.trim()||'ชิ้น',weight:Number(document.getElementById('spWeight').value||0),quantityPromoEnabled:promoOn,quantityPromoQty:promoOn?promoQty:0,quantityPromoDiscount:promoOn?promoDiscount:0,videoUrl:videoUrl,campaignLabel:document.getElementById('spCampaignLabel').value.trim(),promoTag:document.getElementById('spPromoTag').value.trim(),originProvince:document.getElementById('spOriginProvince').value.trim(),freeShippingMinimum:freeShippingMinimum,sizeChart:document.getElementById('spSizeChart').value,coverImage:document.getElementById('spImage').value.trim(),images:images,status:document.getElementById('spStatus').value,description:getRichEditorHtml('spDesc')};
         if(d.coverImage&&String(d.coverImage).toLowerCase().indexOf('https://')!==0){Swal.showValidationMessage('URL รูปปกสินค้าต้องขึ้นต้นด้วย https://');return false;}return runSellerModalMutation('sellerSaveProduct',[APP.customerToken,d],'products');
       }});
     }
@@ -4757,6 +4780,318 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
         opacity:1;
         pointer-events:auto;
       }
+    }
+  </style>
+
+
+  <style id="shopee-product-card-layout-v2">
+    #appRoot .product-card {
+      position:relative;
+      z-index:0;
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+      overflow:visible!important;
+      border:1px solid var(--border);
+      border-radius:6px!important;
+      background:var(--surface);
+      box-shadow:0 1px 4px rgba(15,23,42,.06);
+      transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+    }
+    #appRoot .product-card:hover,
+    #appRoot .product-card:focus-within {
+      z-index:20;
+      transform:translateY(-2px);
+      border-color:#EE4D2D!important;
+      box-shadow:0 5px 15px rgba(238,77,45,.13);
+    }
+    #appRoot .product-image {
+      position:relative;
+      width:100%;
+      height:auto!important;
+      aspect-ratio:1/1;
+      flex:0 0 auto;
+      overflow:hidden;
+      border-radius:5px 5px 0 0;
+      background:var(--surface-2);
+      cursor:pointer;
+    }
+    #appRoot .product-image>img {
+      display:block;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+    #appRoot .product-card-label-mall {
+      position:absolute;
+      z-index:5;
+      top:7px;
+      left:7px;
+      padding:3px 6px;
+      border-radius:2px;
+      background:#d71920;
+      color:#fff;
+      font-size:9px;
+      line-height:1.2;
+      font-weight:800;
+    }
+    #appRoot .product-discount-badge {
+      position:absolute;
+      z-index:5;
+      top:7px;
+      right:7px;
+      min-width:35px;
+      padding:4px 6px;
+      border-radius:2px;
+      background:#fff0bd;
+      color:#ee6b2d;
+      font-size:11px;
+      line-height:1.2;
+      font-weight:800;
+      text-align:center;
+    }
+    #appRoot .product-campaign-ribbon {
+      position:absolute;
+      z-index:4;
+      left:0;
+      right:0;
+      bottom:0;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:5px;
+      min-height:23px;
+      padding:4px 6px;
+      overflow:hidden;
+      background:linear-gradient(90deg,#f97316,#EE4D2D);
+      color:#fff;
+      font-size:9px;
+      line-height:1.2;
+      font-weight:800;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+      pointer-events:none;
+    }
+    #appRoot .product-video-play {
+      position:absolute;
+      z-index:6;
+      right:8px;
+      bottom:31px;
+      display:grid;
+      place-items:center;
+      width:31px;
+      height:31px;
+      padding:0 0 0 2px;
+      border:1px solid rgba(255,255,255,.55);
+      border-radius:50%;
+      background:rgba(0,0,0,.58);
+      color:#fff;
+      font-size:12px;
+      cursor:pointer;
+      box-shadow:0 1px 5px rgba(0,0,0,.2);
+    }
+    #appRoot .product-info {
+      display:flex;
+      flex:1 1 auto;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+      padding:8px!important;
+      border-radius:0 0 5px 5px;
+      background:var(--surface);
+    }
+    #appRoot .product-name {
+      display:-webkit-box;
+      height:34px!important;
+      min-height:34px;
+      margin:0!important;
+      overflow:hidden;
+      color:var(--ink);
+      font-size:11px!important;
+      line-height:1.5!important;
+      font-weight:500;
+      -webkit-box-orient:vertical;
+      -webkit-line-clamp:2;
+      line-clamp:2;
+      cursor:pointer;
+    }
+    #appRoot .product-recommended-prefix {
+      display:inline;
+      margin-right:3px;
+      padding:2px 4px;
+      border-radius:2px;
+      background:#fff0e8;
+      color:#ee6b2d;
+      font-size:9px;
+      line-height:1.2;
+      font-weight:800;
+      white-space:nowrap;
+    }
+    #appRoot .product-price-row {
+      display:flex;
+      align-items:baseline;
+      flex-wrap:wrap;
+      gap:4px;
+      min-width:0;
+      line-height:1.25;
+    }
+    #appRoot .product-price-current {
+      color:#EE4D2D;
+      font-size:15px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+    #appRoot .product-price-row .old-price {
+      margin:0;
+      color:#9ca3af;
+      font-size:9px;
+      font-weight:400;
+      text-decoration:line-through;
+      white-space:nowrap;
+    }
+    #appRoot .product-price-discount {
+      padding:2px 4px;
+      border-radius:2px;
+      background:#fff0e8;
+      color:#ee6b2d;
+      font-size:9px;
+      line-height:1.2;
+      font-weight:800;
+    }
+    #appRoot .product-promo-box {
+      display:inline-flex;
+      align-self:flex-start;
+      align-items:center;
+      max-width:100%;
+      gap:4px;
+      overflow:hidden;
+      padding:3px 5px!important;
+      margin:0!important;
+      border:1px solid #ee8a57;
+      border-radius:2px;
+      background:#fffaf5;
+      color:#d95b24;
+      font-size:9px!important;
+      line-height:1.3;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+    }
+    #appRoot .product-rating-sales-row {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:5px;
+      min-width:0;
+    }
+    #appRoot .product-rating-badge {
+      display:inline-flex;
+      align-items:center;
+      gap:3px;
+      padding:2px 5px;
+      border:1px solid #f5df9b;
+      border-radius:3px;
+      background:#fff9e7;
+      color:#8a6a19;
+      font-size:9px;
+      line-height:1.2;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    #appRoot .product-rating-badge i {color:#f2bd35;font-size:9px;}
+    #appRoot .product-rating-badge.is-new {color:#9ca3af;background:#f8fafc;border-color:#e5e7eb;}
+    #appRoot .product-sold {
+      flex:0 0 auto;
+      max-width:65%;
+      margin:0!important;
+      color:#9ca3af!important;
+      font-size:9px!important;
+      line-height:1.3;
+      text-align:right;
+      white-space:nowrap;
+    }
+    #appRoot .product-origin-row {
+      display:flex;
+      align-items:center;
+      gap:4px;
+      min-width:0;
+      color:#9ca3af;
+      font-size:9px;
+      line-height:1.3;
+    }
+    #appRoot .product-origin-row i {font-size:9px;}
+    #appRoot .product-card-actions {
+      display:flex;
+      align-items:center;
+      gap:5px;
+      margin-top:1px;
+    }
+    #appRoot .product-card-actions .btn {
+      flex:1 1 auto;
+      min-width:0;
+      justify-content:center;
+      padding:5px 6px;
+      border-radius:4px;
+      font-size:9px;
+      line-height:1.2;
+    }
+    #appRoot .product-card-actions .icon-btn {
+      display:grid;
+      place-items:center;
+      width:27px;
+      height:27px;
+      flex:0 0 27px;
+      border-radius:4px;
+      padding:0;
+    }
+    #appRoot .product-similar-button {
+      position:absolute;
+      z-index:25;
+      left:-1px;
+      right:-1px;
+      bottom:-22px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      height:24px;
+      padding:0 6px;
+      border:1px solid #EE4D2D;
+      border-radius:0 0 5px 5px;
+      background:#EE4D2D;
+      color:#fff;
+      font-size:10px;
+      line-height:1;
+      font-weight:800;
+      opacity:0;
+      transform:translateY(-4px);
+      pointer-events:none;
+      cursor:pointer;
+      transition:opacity .15s ease,transform .15s ease;
+    }
+    #appRoot .product-card:hover .product-similar-button,
+    #appRoot .product-card:focus-within .product-similar-button {
+      opacity:1;
+      transform:translateY(0);
+      pointer-events:auto;
+    }
+    @media(hover:none) {
+      #appRoot .product-similar-button {
+        position:static;
+        width:100%;
+        height:24px;
+        flex:0 0 24px;
+        opacity:1;
+        transform:none;
+        pointer-events:auto;
+        border-radius:0 0 5px 5px;
+      }
+    }
+    @media(max-width:600px) {
+      #appRoot .product-info {padding:7px!important;gap:5px;}
+      #appRoot .product-price-current {font-size:13px;}
+      #appRoot .product-rating-sales-row {gap:3px;}
+      #appRoot .product-sold {font-size:8px!important;}
+      #appRoot .product-origin-row {font-size:8px;}
+      #appRoot .product-card-actions .btn {font-size:8px;padding:5px 4px;}
     }
   </style>
 
