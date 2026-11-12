@@ -4106,5 +4106,34 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
 
     window.addEventListener('load',function(){initEnterpriseTableEnhancer();initApp();});
   </script>
+
+  <style id="page-layout-width-rules-v2">
+    /* Marketplace catalog and customer account: centered 1200px canvas. */
+    body:has(#catalogResults) #appRoot,
+    body:has(#customerPortalLayout) #appRoot {
+      box-sizing: border-box;
+      width: calc(100% - 32px);
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    /* Seller Center and Super Admin: use the full available viewport width. */
+    body.portal-mode-seller #appRoot,
+    body.portal-mode-owner #appRoot,
+    body.portal-mode-seller .seller-shell,
+    body.portal-mode-owner .admin-shell,
+    body.portal-mode-seller .seller-layout,
+    body.portal-mode-owner .admin-layout {
+      width: 100%;
+      max-width: none;
+    }
+    @media (max-width: 720px) {
+      body:has(#catalogResults) #appRoot,
+      body:has(#customerPortalLayout) #appRoot {
+        width: calc(100% - 24px);
+      }
+    }
+  </style>
+
 </body>
 </html>
