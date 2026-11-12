@@ -1949,7 +1949,6 @@
       var mallBadge=hasMall?'<span class="product-mall-card"><img src="https://deo.shopeemobile.com/shopee/shopee-pcmall-live-sg/productdetailspage/3ce084656b91b364.svg" alt="MALL"></span>':'';
       var badge=p.flashDealId?'<span class="product-badge">FLASH</span>':(isFeatured?'<span class="product-badge featured">แนะนำ</span>':'');
       var discountBadge=discount>0?'<span class="product-discount-badge">-'+discount+'%</span>':'';
-      var action=p.hasVariants?'viewProduct(\''+esc(p.id)+'\')':'quickAdd(\''+esc(p.id)+'\')';
       var promo=productPromoLabel(p);
       var promoText=promo||(p.flashDealId?'Flash Sale':(discount>0?'ลดราคา':''));
       var promoTag=promoText?'<div class="product-promo-box"><i class="fa-solid fa-tags"></i> '+esc(promoText)+'</div>':'';
@@ -4398,6 +4397,7 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
       height:100%;
       object-fit:cover;
     }
+    #appRoot .product-mall-card+.product-badge {left:7px!important;right:auto!important;top:29px!important;}
     #appRoot .product-discount-badge {
       position:absolute;
       z-index:4;
