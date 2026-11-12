@@ -4138,7 +4138,7 @@
           '<section class="market-section store-discovery-page" aria-label="ร้านค้าทั้งหมด">'+
             '<div class="market-section-head">'+
               '<div><h1 class="section-title">ร้านค้าทั้งหมด</h1><small class="muted">ค้นพบร้านค้าและสินค้าจากผู้ขายหลากหลาย</small></div>'+
-              '<input id="storeSearch" type="search" placeholder="ค้นหาชื่อร้านค้า" aria-label="ค้นหาชื่อร้านค้า" style="max-width:280px;width:100%" onkeydown="if(event.key===\\'Enter\\')searchStores()">'+
+              '<input id="storeSearch" type="search" placeholder="ค้นหาชื่อร้านค้า" aria-label="ค้นหาชื่อร้านค้า" style="max-width:280px;width:100%" onkeydown="if(event.key===\'Enter\')searchStores()">'+
             '</div>'+
             '<div id="storeResults" class="store-grid">'+(rows.length?rows.map(renderStoreCard).join(''):'<div class="empty-state">ยังไม่มีร้านค้าที่เปิดใช้งาน</div>')+'</div>'+
           '</section>';
