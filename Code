@@ -1552,33 +1552,48 @@ function getCategories(options) {
 }
 
 function productPublicMetrics_(products) {
-  var cacheKey='product_public_metrics_v1',cache=CacheService.getScriptCache(),metricMap=null;
+  var timezone=Session.getScriptTimeZone()||'Asia/Bangkok';
+  var now=new Date();
+  var currentDateKey=Utilities.formatDate(now,timezone,'yyyy-MM-dd');
+  var currentMonthKey=currentDateKey.substring(0,7);
+  var dayOfWeek=Math.max(1,number_(Utilities.formatDate(now,timezone,'u'),1));
+  var weekStartKey=Utilities.formatDate(new Date(now.getTime()-(dayOfWeek-1)*86400000),timezone,'yyyy-MM-dd');
+  var cacheKey='product_public_metrics_v2_'+currentMonthKey+'_'+weekStartKey,cache=CacheService.getScriptCache(),metricMap=null;
   try { var cached=cache.get(cacheKey); if(cached) metricMap=JSON.parse(cached); } catch(cacheReadError) { metricMap=null; }
   if(!metricMap||typeof metricMap!=='object') {
     metricMap={};
-    var validOrders={},orders=readTable_('Orders',true);
+    var validOrders={},monthlyOrders={},weeklyOrders={},orders=readTable_('Orders',true);
     orders.forEach(function(o){
-      var status=String(o.orderStatus||''),pay=String(o.paymentStatus||'');
-      if(status!=='Cancelled'&&status!=='Refunded'&&(pay==='Verified'||status==='Completed'))validOrders[String(o.id)]=true;
+      var status=String(o.orderStatus||''),pay=String(o.paymentStatus||''),orderId=String(o.id||'');
+      if(!orderId||status==='Cancelled'||status==='Refunded'||!(pay==='Verified'||status==='Completed'))return;
+      validOrders[orderId]=true;
+      var rawDate=o.createdAt||o.paidAt||'',dateKey='';
+      if(rawDate){var parsedDate=new Date(rawDate);if(!isNaN(parsedDate.getTime()))dateKey=Utilities.formatDate(parsedDate,timezone,'yyyy-MM-dd');}
+      if(dateKey&&dateKey.substring(0,7)===currentMonthKey)monthlyOrders[orderId]=true;
+      if(dateKey&&dateKey>=weekStartKey&&dateKey<=currentDateKey)weeklyOrders[orderId]=true;
     });
     readTable_('OrderItems',true).forEach(function(item){
-      var key=String(item.productId||'');
-      if(!key||!validOrders[String(item.orderId)])return;
-      if(!metricMap[key])metricMap[key]={soldCount:0,ratingTotal:0,reviewCount:0};
-      metricMap[key].soldCount+=Math.max(0,number_(item.quantity,0));
+      var key=String(item.productId||''),orderId=String(item.orderId||''),quantity=Math.max(0,number_(item.quantity,0));
+      if(!key||!validOrders[orderId])return;
+      if(!metricMap[key])metricMap[key]={soldCount:0,monthlySoldCount:0,weeklySoldCount:0,ratingTotal:0,reviewCount:0};
+      metricMap[key].soldCount+=quantity;
+      if(monthlyOrders[orderId])metricMap[key].monthlySoldCount+=quantity;
+      if(weeklyOrders[orderId])metricMap[key].weeklySoldCount+=quantity;
     });
     readTable_('Reviews',true).forEach(function(review){
       var key=String(review.productId||''),status=String(review.status||'Approved');
       if(!key||['Approved','Active','Published'].indexOf(status)<0)return;
       var rating=number_(review.rating,0);if(rating<=0||rating>5)return;
-      if(!metricMap[key])metricMap[key]={soldCount:0,ratingTotal:0,reviewCount:0};
+      if(!metricMap[key])metricMap[key]={soldCount:0,monthlySoldCount:0,weeklySoldCount:0,ratingTotal:0,reviewCount:0};
       metricMap[key].ratingTotal+=rating;metricMap[key].reviewCount++;
     });
     try { var serialized=JSON.stringify(metricMap); if(serialized.length<95000)cache.put(cacheKey,serialized,30); } catch(cacheWriteError) {}
   }
   safeArray_(products).forEach(function(p){
-    var m=metricMap[String(p.id)]||{soldCount:0,ratingTotal:0,reviewCount:0};
+    var m=metricMap[String(p.id)]||{soldCount:0,monthlySoldCount:0,weeklySoldCount:0,ratingTotal:0,reviewCount:0};
     p.soldCount=number_(m.soldCount,0);
+    p.monthlySoldCount=number_(m.monthlySoldCount,0);
+    p.weeklySoldCount=number_(m.weeklySoldCount,0);
     p.reviewCount=number_(m.reviewCount,0);
     p.ratingAverage=p.reviewCount?Math.round((number_(m.ratingTotal,0)/p.reviewCount)*10)/10:0;
   });
@@ -2919,6 +2934,8 @@ function getMarketplaceFlashDeals() {
       out.dealName=d.name;
       out.flashDealId=d.id;
       out.flashDealEnd=d.endAt;
+      out.flashDealQuota=number_(d.quota,0);
+      out.flashDealSold=number_(d.soldCount,0);
       out.storeName=st.shopName||'ร้านค้า';
       out.storeId=st.id||'';
       out.storeLogo=st.logo||'';
