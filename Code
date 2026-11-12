@@ -23,7 +23,7 @@ var SCHEMA_ = {
   EmailOtpChallenges: ['id','email','purpose','userId','codeHash','status','attempts','expiresAt','lastSentAt','registrationTicketHash','registrationTicketExpiresAt','verifiedAt','consumedAt','createdAt'],
   Sessions: ['id','tokenHash','userId','username','accountType','role','permissions','expiresAt','createdAt','revokedAt'],
   Categories: ['id','name','slug','description','image','parentId','order','status','createdAt','updatedAt'],
-  Products: ['id','sku','barcode','name','slug','categoryId','brand','summary','description','coverImage','images','price','salePrice','costPrice','stock','unit','weight','featured','bestSeller','sellerId','tags','status','createdAt','updatedAt','quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','promoTag','originProvince','freeShippingMinimum','sizeChart'],
+  Products: ['id','sku','barcode','name','slug','categoryId','brand','summary','description','coverImage','images','price','salePrice','costPrice','stock','unit','weight','featured','bestSeller','sellerId','tags','status','createdAt','updatedAt','quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart'],
   ProductVariants: ['id','productId','sku','variantName','attributes','price','salePrice','stock','status','createdAt','updatedAt'],
   Carts: ['id','customerId','sessionId','items','updatedAt'],
   Orders: ['id','orderNumber','customerId','customerName','phone','email','shippingAddress','subtotal','discount','shippingFee','tax','grandTotal','paymentMethod','paymentStatus','orderStatus','shippingStatus','trackingNumber','note','idempotencyKey','guestAccessToken','createdAt','updatedAt','paidAt','completedAt','grossSubtotal','quantityPromoDiscount'],
@@ -1594,7 +1594,7 @@ function moneyForBackend_(value) { return '฿'+number_(value,0).toLocaleString(
 
 function getProducts(options) {
   try {
-    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
     options = options || {};
     var isAdmin = false;
     if (options.token) { try { requireAdmin_(options.token, 'products.view'); isAdmin = true; } catch (e) {} }
@@ -1656,7 +1656,7 @@ function publicProduct_(p) {
 
 function getProductById(id, options) {
   try {
-    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
     options = options || {};
     var isAdmin = false;
     if (options.token) { try { requireAdmin_(options.token, 'products.view'); isAdmin = true; } catch (authError) {} }
@@ -1696,7 +1696,7 @@ function getProductVariants(productId, options) {
 /* --------------------------- PRODUCT / CATEGORY CRUD --------------------- */
 function saveProduct(token, data) {
   try {
-    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
     var user = requireAdmin_(token, 'products.manage');
     data = data || {};
     var now = now_(), id = text_(data.id, 100) || newId_('PRD');
@@ -1709,7 +1709,7 @@ function saveProduct(token, data) {
       categoryId:text_(data.categoryId,100), brand:text_(data.brand,120), summary:text_(data.summary,500), description:sanitizeHtml_(data.description || ''),
       coverImage:text_(data.coverImage,1000), images:JSON.stringify(data.images === undefined ? safeArray_(safeJson_(old ? old.images : '[]', [])) : safeArray_(data.images)), price:Math.max(0,number_(data.price,0)), salePrice:Math.max(0,number_(data.salePrice,0)),
       costPrice:Math.max(0,number_(data.costPrice,0)), stock:Math.max(0,number_(data.stock,0)), unit:text_(data.unit || 'ชิ้น',30), weight:Math.max(0,number_(data.weight,0)),
-      featured:parseBool_(data.featured), bestSeller:parseBool_(data.bestSeller), sellerId:text_(data.sellerId || (old ? old.sellerId : ''),100), tags:JSON.stringify(safeArray_(data.tags || safeJson_(old ? old.tags : '[]',[]))), status:text_(data.status || 'Active',30), quantityPromoEnabled:parseBool_(data.quantityPromoEnabled), quantityPromoQty:parseBool_(data.quantityPromoEnabled)?Math.max(2,Math.floor(number_(data.quantityPromoQty,2))):0, quantityPromoDiscount:parseBool_(data.quantityPromoEnabled)?Math.max(0,number_(data.quantityPromoDiscount,0)):0, mallBadgeEnabled:data.mallBadgeEnabled===undefined?(old?parseBool_(old.mallBadgeEnabled):false):parseBool_(data.mallBadgeEnabled), mallBadgeText:text_(data.mallBadgeText===undefined?(old?old.mallBadgeText:'Mall'):data.mallBadgeText,24)||'Mall', videoUrl:text_(data.videoUrl===undefined?(old?old.videoUrl:''):data.videoUrl,1000), campaignLabel:text_(data.campaignLabel===undefined?(old?old.campaignLabel:''):data.campaignLabel,60), promoTag:text_(data.promoTag===undefined?(old?old.promoTag:''):data.promoTag,120), originProvince:text_(data.originProvince===undefined?(old?old.originProvince:''):data.originProvince,100), freeShippingMinimum:Math.max(0,number_(data.freeShippingMinimum===undefined?(old?old.freeShippingMinimum:0):data.freeShippingMinimum,0)), sizeChart:text_(data.sizeChart===undefined?(old?old.sizeChart:''):data.sizeChart,8000), createdAt:old ? old.createdAt : now, updatedAt:now
+      featured:parseBool_(data.featured), bestSeller:parseBool_(data.bestSeller), sellerId:text_(data.sellerId || (old ? old.sellerId : ''),100), tags:JSON.stringify(safeArray_(data.tags || safeJson_(old ? old.tags : '[]',[]))), status:text_(data.status || 'Active',30), quantityPromoEnabled:parseBool_(data.quantityPromoEnabled), quantityPromoQty:parseBool_(data.quantityPromoEnabled)?Math.max(2,Math.floor(number_(data.quantityPromoQty,2))):0, quantityPromoDiscount:parseBool_(data.quantityPromoEnabled)?Math.max(0,number_(data.quantityPromoDiscount,0)):0, mallBadgeEnabled:data.mallBadgeEnabled===undefined?(old?parseBool_(old.mallBadgeEnabled):false):parseBool_(data.mallBadgeEnabled), mallBadgeText:text_(data.mallBadgeText===undefined?(old?old.mallBadgeText:'Mall'):data.mallBadgeText,24)||'Mall', videoUrl:text_(data.videoUrl===undefined?(old?old.videoUrl:''):data.videoUrl,1000), campaignLabel:text_(data.campaignLabel===undefined?(old?old.campaignLabel:''):data.campaignLabel,60), campaignImage:text_(data.campaignImage===undefined?(old?old.campaignImage:''):data.campaignImage,1000), promoTag:text_(data.promoTag===undefined?(old?old.promoTag:''):data.promoTag,120), originProvince:text_(data.originProvince===undefined?(old?old.originProvince:''):data.originProvince,100), freeShippingMinimum:Math.max(0,number_(data.freeShippingMinimum===undefined?(old?old.freeShippingMinimum:0):data.freeShippingMinimum,0)), sizeChart:text_(data.sizeChart===undefined?(old?old.sizeChart:''):data.sizeChart,8000), createdAt:old ? old.createdAt : now, updatedAt:now
     };
     product.videoUrl=validateProductVideoReference_(product.videoUrl,'');
 
@@ -1846,7 +1846,7 @@ function saveCart_(sessionId, customerId, items) {
   upsertById_('Carts',row); return row;
 }
 function cartDetails_(items) {
-  ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+  ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
   var products = readTable_('Products',true), variants = readTable_('ProductVariants',true), result = [], subtotal = 0, grossSubtotal = 0, quantityPromoDiscountTotal = 0;
   safeArray_(items).forEach(function(item) {
     var p = products.filter(function(x) { return x.id === item.productId && x.status === 'Active'; })[0];
@@ -1964,7 +1964,7 @@ function shippingFee_(methodId,subtotal,items) {
 
 function createOrder(data) {
   try {
-    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
     ensureTableColumns_('Orders',['grossSubtotal','quantityPromoDiscount']);
     ensureTableColumns_('OrderItems',['quantityPromoDiscount']);
     data=data||{};
@@ -2786,14 +2786,14 @@ function sellerDashboard(customerToken) {try{var x=requireSeller_(customerToken)
 function sellerGetProducts(customerToken,filters) {try{var x=requireSeller_(customerToken);filters=filters||{};var rows=readTable_('Products',false).filter(function(p){return p.sellerId===x.store.id;});if(filters.status)rows=rows.filter(function(p){return p.status===filters.status;});var q=text_(filters.search,100).toLowerCase();if(q)rows=rows.filter(function(p){return [p.name,p.sku].join(' ').toLowerCase().indexOf(q)>=0;});rows.sort(function(a,b){var d=new Date(b.createdAt||0)-new Date(a.createdAt||0);return d||String(b.id||'').localeCompare(String(a.id||''));});return ok_(rows);}catch(e){return fail_(safeError_(e));}}
 function sellerSaveProduct(customerToken,data) {
   try {
-    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
     var x=requireSeller_(customerToken);data=data||{};
     var id=text_(data.id,100)||newId_('PRD'),old=readTable_('Products',false).filter(function(p){return p.id===id;})[0];
     if(old&&old.sellerId!==x.store.id)throw new Error('ไม่มีสิทธิ์แก้ไขสินค้าร้านอื่น');
     var stock=Math.max(0,Math.floor(number_(data.stock,0))),now=now_(),sellerSku=text_(data.sku,80)||('SKU-'+Utilities.getUuid().replace(/-/g,'').substring(0,10).toUpperCase()),categoryId=text_(data.categoryId,100);
     if(categoryId&&!readTable_('Categories',false).some(function(c){return String(c.id)===categoryId&&c.status==='Active';}))throw new Error('ไม่พบหมวดหมู่ที่เปิดใช้งาน กรุณาเลือกหมวดหมู่ใหม่');
     var promoEnabled=parseBool_(data.quantityPromoEnabled),promoQty=promoEnabled?Math.max(2,Math.floor(number_(data.quantityPromoQty,2))):0,promoDiscount=promoEnabled?Math.max(0,number_(data.quantityPromoDiscount,0)):0;
-    var row={id:id,sku:sellerSku,barcode:text_(data.barcode,80),name:text_(data.name,200),slug:slug_(data.name),categoryId:categoryId,brand:text_(data.brand,120),summary:text_(data.summary,500),description:sanitizeHtml_(data.description),coverImage:text_(data.coverImage,1000),images:JSON.stringify(safeArray_(data.images)),price:Math.max(0,number_(data.price,0)),salePrice:Math.max(0,number_(data.salePrice,0)),costPrice:0,stock:stock,unit:text_(data.unit||'ชิ้น',30),weight:Math.max(0,number_(data.weight,0)),featured:false,bestSeller:false,sellerId:x.store.id,tags:JSON.stringify(safeArray_(data.tags)),status:text_(data.status||'Active',30),quantityPromoEnabled:promoEnabled,quantityPromoQty:promoQty,quantityPromoDiscount:promoDiscount,mallBadgeEnabled:old?parseBool_(old.mallBadgeEnabled):false,mallBadgeText:old?text_(old.mallBadgeText||'Mall',24):'Mall',videoUrl:text_(data.videoUrl===undefined?(old?old.videoUrl:''):data.videoUrl,1000),campaignLabel:text_(data.campaignLabel===undefined?(old?old.campaignLabel:''):data.campaignLabel,60),promoTag:text_(data.promoTag===undefined?(old?old.promoTag:''):data.promoTag,120),originProvince:text_(data.originProvince===undefined?(old?old.originProvince:''):data.originProvince,100),freeShippingMinimum:Math.max(0,number_(data.freeShippingMinimum===undefined?(old?old.freeShippingMinimum:0):data.freeShippingMinimum,0)),sizeChart:text_(data.sizeChart===undefined?(old?old.sizeChart:''):data.sizeChart,8000),createdAt:old?old.createdAt:now,updatedAt:now};
+    var row={id:id,sku:sellerSku,barcode:text_(data.barcode,80),name:text_(data.name,200),slug:slug_(data.name),categoryId:categoryId,brand:text_(data.brand,120),summary:text_(data.summary,500),description:sanitizeHtml_(data.description),coverImage:text_(data.coverImage,1000),images:JSON.stringify(safeArray_(data.images)),price:Math.max(0,number_(data.price,0)),salePrice:Math.max(0,number_(data.salePrice,0)),costPrice:0,stock:stock,unit:text_(data.unit||'ชิ้น',30),weight:Math.max(0,number_(data.weight,0)),featured:false,bestSeller:false,sellerId:x.store.id,tags:JSON.stringify(safeArray_(data.tags)),status:text_(data.status||'Active',30),quantityPromoEnabled:promoEnabled,quantityPromoQty:promoQty,quantityPromoDiscount:promoDiscount,mallBadgeEnabled:old?parseBool_(old.mallBadgeEnabled):false,mallBadgeText:old?text_(old.mallBadgeText||'Mall',24):'Mall',videoUrl:text_(data.videoUrl===undefined?(old?old.videoUrl:''):data.videoUrl,1000),campaignLabel:text_(data.campaignLabel===undefined?(old?old.campaignLabel:''):data.campaignLabel,60),campaignImage:text_(data.campaignImage===undefined?(old?old.campaignImage:''):data.campaignImage,1000),promoTag:text_(data.promoTag===undefined?(old?old.promoTag:''):data.promoTag,120),originProvince:text_(data.originProvince===undefined?(old?old.originProvince:''):data.originProvince,100),freeShippingMinimum:Math.max(0,number_(data.freeShippingMinimum===undefined?(old?old.freeShippingMinimum:0):data.freeShippingMinimum,0)),sizeChart:text_(data.sizeChart===undefined?(old?old.sizeChart:''):data.sizeChart,8000),createdAt:old?old.createdAt:now,updatedAt:now};
     row.videoUrl=validateProductVideoReference_(row.videoUrl,x.store.id);
     if(promoEnabled&&(promoQty<2||promoDiscount<=0||promoDiscount>=(number_(row.salePrice,0)>0?number_(row.salePrice,0):row.price)*promoQty))throw new Error('โปรโมชั่นจำนวนชิ้นต้องกำหนดจำนวนอย่างน้อย 2 ชิ้น และส่วนลดต้องต่ำกว่ามูลค่าสินค้าในชุด');
     if(!row.name||row.price<=0)throw new Error('กรุณากรอกชื่อสินค้าและราคาที่ถูกต้อง');
@@ -2821,7 +2821,7 @@ function getMyVouchers(customerToken) {try{var c=requireCustomer_(customerToken)
 function activeFlashDealForProduct_(productId) {try{var n=Date.now(),p=readTable_('Products',true).filter(function(x){return x.id===productId;})[0];if(!p)return null;if(p.sellerId&&!readTable_('Stores',true).some(function(st){return st.id===p.sellerId&&st.status==='Active';}))return null;var rows=readTable_('FlashDeals',true).filter(function(d){return d.productId===productId&&d.status==='Active'&&(!d.startAt||new Date(d.startAt).getTime()<=n)&&(!d.endAt||new Date(d.endAt).getTime()>=n)&&(!number_(d.quota,0)||number_(d.soldCount,0)<number_(d.quota,0));});rows.sort(function(a,b){return number_(a.dealPrice,0)-number_(b.dealPrice,0);});return rows[0]||null;}catch(e){return null;}}
 function getMarketplaceFlashDeals() {
   try {
-    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
     var now=Date.now();
     var rows=readTable_('FlashDeals',true).filter(function(d){
       return d.status==='Active'&&(!d.startAt||new Date(d.startAt).getTime()<=now)&&(!d.endAt||new Date(d.endAt).getTime()>=now)&&(!number_(d.quota,0)||number_(d.soldCount,0)<number_(d.quota,0));
