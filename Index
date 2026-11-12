@@ -4136,5 +4136,70 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     }
   </style>
 
+
+  <style id="homepage-shared-1200-grid-v1">
+    /* One centered 1200px frame for the storefront header and every homepage section. */
+    .header-top-inner,
+    .header-main,
+    .nav-bar {
+      width:calc(100% - 32px);
+      max-width:1200px;
+      margin-left:auto;
+      margin-right:auto;
+      box-sizing:border-box;
+    }
+
+    /* Remove the legacy inner gutters only on the homepage root so its contents
+       can share the exact same outer frame as the header and navigation. */
+    #appRoot:has(.home-marketplace) {
+      width:calc(100% - 32px);
+      max-width:1200px;
+      margin-left:auto;
+      margin-right:auto;
+      padding-left:0;
+      padding-right:0;
+      box-sizing:border-box;
+    }
+    #appRoot:has(.home-marketplace) .home-marketplace {
+      width:100%;
+      max-width:1200px;
+      margin-left:auto;
+      margin-right:auto;
+      box-sizing:border-box;
+    }
+
+    /* With a 1200px frame and a 6px column gap, 2fr / 1fr resolves to
+       approximately 796px for the main banner and 398px for the side banners. */
+    #appRoot:has(.home-marketplace) .home-hero-layout {
+      display:grid;
+      width:100%;
+      max-width:1200px;
+      grid-template-columns:minmax(0,2fr) minmax(0,1fr);
+      column-gap:6px;
+      row-gap:0;
+      margin-left:auto;
+      margin-right:auto;
+      box-sizing:border-box;
+    }
+    #appRoot:has(.home-marketplace) .home-hero-swiper,
+    #appRoot:has(.home-marketplace) .home-hero-side {
+      min-width:0;
+    }
+
+    @media(max-width:720px) {
+      .header-top-inner,
+      .header-main,
+      .nav-bar,
+      #appRoot:has(.home-marketplace) {
+        width:calc(100% - 24px);
+      }
+      #appRoot:has(.home-marketplace) .home-hero-layout {
+        grid-template-columns:minmax(0,1fr);
+        column-gap:0;
+        row-gap:5px;
+      }
+    }
+  </style>
+
 </body>
 </html>
