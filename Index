@@ -1941,14 +1941,35 @@
     function categoryName(id){var c=APP.categories.filter(function(x){return x.id===id;})[0];return c?c.name:'สินค้า';}
     function productPromoLabel(p){var enabled=p&&(p.quantityPromoEnabled===true||String(p.quantityPromoEnabled||'').toLowerCase()==='true'||String(p.quantityPromoEnabled)==='1');return enabled&&Number(p.quantityPromoQty)>=2&&Number(p.quantityPromoDiscount)>0?'ซื้อ '+Number(p.quantityPromoQty)+' ชิ้น ลด '+money(p.quantityPromoDiscount)+' / ชุด':'';}
     function renderProductCard(p){
-      var price=Number(p.salePrice)>0?Number(p.salePrice):Number(p.price),base=Number(p.price||0),old=Number(p.salePrice)>0?'<span class="old-price">'+money(base)+'</span>':'',discount=base>price&&base>0?Math.round((base-price)*100/base):0;
-      var badge=p.flashDealId?'<span class="product-badge">FLASH</span>':(discount>0?'<span class="product-badge">SALE</span>':(p.featured?'<span class="product-badge featured">แนะนำ</span>':'')),mallBadge=(p.mallBadgeEnabled===true||String(p.mallBadgeEnabled||'').toLowerCase()==='true'||String(p.mallBadgeEnabled)==='1')?'<span class="product-mall-card"><img src="https://deo.shopeemobile.com/shopee/shopee-pcmall-live-sg/productdetailspage/3ce084656b91b364.svg" alt="MALL"></span>':'';
-      var shop=p.storeName?'<div class="product-category"><i class="fa-solid fa-store"></i> '+esc(p.storeName)+'</div>':'';
-      var action=p.hasVariants?'viewProduct(\''+esc(p.id)+'\')':'quickAdd(\''+esc(p.id)+'\')',actionLabel=p.hasVariants?'เลือกตัวเลือก':'ใส่ตะกร้า',promo=productPromoLabel(p);
-      var rating=Number(p.ratingAverage||0),ratingHtml='<span class="product-rating"><i class="fa-solid fa-star"></i> '+(rating?rating.toFixed(1):'ใหม่')+'</span>'+(Number(p.reviewCount)>0?'<span>('+Number(p.reviewCount).toLocaleString('th-TH')+')</span>':'');
-      return '<article class="product-card"><div class="product-image" onclick="viewProduct(\''+esc(p.id)+'\')">'+mallBadge+badge+'<img loading="lazy" src="'+imageUrl(p.coverImage)+'" alt="'+esc(p.name)+'" onerror="imageFallback(this)"></div><div class="product-info">'+shop+'<div class="product-category">'+esc(categoryName(p.categoryId))+'</div><div class="product-name" onclick="viewProduct(\''+esc(p.id)+'\')">'+esc(p.name)+'</div><div class="product-price">'+money(price)+old+(discount>0?'<span class="product-discount">-'+discount+'%</span>':'')+'</div>'+(promo?'<div class="product-promo-box"><i class="fa-solid fa-tags"></i> '+esc(promo)+'</div>':'')+'<div class="product-mini-rating">'+ratingHtml+'</div><div class="product-sold">ขายแล้ว '+Number(p.soldCount||0).toLocaleString('th-TH')+' ชิ้น</div><div class="product-stock">'+(Number(p.stock)>0?'มีสินค้า':'สินค้าหมด')+'</div><div class="product-actions"><button class="btn btn-primary btn-small" '+(Number(p.stock)<=0?'disabled':'')+' onclick="'+action+'"><i class="fa-solid fa-cart-plus"></i> '+actionLabel+'</button><button class="icon-btn" onclick="quickFavorite(\''+esc(p.id)+'\')" title="รายการโปรด"><i class="fa-regular fa-heart"></i></button></div></div></article>';
+      var price=Number(p.salePrice)>0?Number(p.salePrice):Number(p.price),base=Number(p.price||0);
+      var old=Number(p.salePrice)>0?'<span class="old-price">'+money(base)+'</span>':'';
+      var discount=base>price&&base>0?Math.round((base-price)*100/base):0;
+      var hasMall=p.mallBadgeEnabled===true||String(p.mallBadgeEnabled||'').toLowerCase()==='true'||String(p.mallBadgeEnabled)==='1';
+      var isFeatured=p.featured===true||String(p.featured||'').toLowerCase()==='true';
+      var mallBadge=hasMall?'<span class="product-mall-card"><img src="https://deo.shopeemobile.com/shopee/shopee-pcmall-live-sg/productdetailspage/3ce084656b91b364.svg" alt="MALL"></span>':'';
+      var badge=p.flashDealId?'<span class="product-badge">FLASH</span>':(isFeatured?'<span class="product-badge featured">แนะนำ</span>':'');
+      var discountBadge=discount>0?'<span class="product-discount-badge">-'+discount+'%</span>':'';
+      var action=p.hasVariants?'viewProduct(\''+esc(p.id)+'\')':'quickAdd(\''+esc(p.id)+'\')';
+      var promo=productPromoLabel(p);
+      var promoText=promo||(p.flashDealId?'Flash Sale':(discount>0?'ลดราคา':''));
+      var promoTag=promoText?'<div class="product-promo-box"><i class="fa-solid fa-tags"></i> '+esc(promoText)+'</div>':'';
+      var sold=Number(p.soldCount||0);
+      return '<article class="product-card">'+
+        '<div class="product-image" role="button" tabindex="0" aria-label="ดูสินค้า '+esc(p.name)+'" onclick="viewProduct(\''+esc(p.id)+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \')viewProduct(\''+esc(p.id)+'\')">'+
+          mallBadge+badge+discountBadge+
+          '<img loading="lazy" src="'+imageUrl(p.coverImage)+'" alt="'+esc(p.name)+'" onerror="imageFallback(this)">'+
+        '</div>'+
+        '<div class="product-info">'+
+          '<div class="product-name" title="'+esc(p.name)+'" onclick="viewProduct(\''+esc(p.id)+'\')">'+esc(p.name)+'</div>'+
+          promoTag+
+          '<div class="product-meta-row">'+
+            '<div class="product-price"><span class="product-price-current">'+money(price)+'</span>'+old+'</div>'+
+            '<span class="product-sold">ขายแล้ว '+sold.toLocaleString('th-TH')+'</span>'+
+          '</div>'+
+        '</div>'+
+      '</article>';
     }
-    function renderProductGrid(products){products=safeArray(products);if(!products.length)return '<div class="empty-state"><i class="fa-solid fa-box-open"></i><h3>ยังไม่มีสินค้าในขณะนี้</h3><p>กรุณากลับมาเยี่ยมชมอีกครั้ง</p></div>';return '<div class="product-grid">'+products.map(renderProductCard).join('')+'</div>';}
+        function renderProductGrid(products){products=safeArray(products);if(!products.length)return '<div class="empty-state"><i class="fa-solid fa-box-open"></i><h3>ยังไม่มีสินค้าในขณะนี้</h3><p>กรุณากลับมาเยี่ยมชมอีกครั้ง</p></div>';return '<div class="product-grid">'+products.map(renderProductCard).join('')+'</div>';}
     function homeCategoryColumns(){
       var width=window.innerWidth||1280;
       return width<=520?5:(width<=900?8:10);
@@ -4311,6 +4332,180 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
       wrapNavAction('openChatInbox','chat',function(){return !!APP.customerToken;});
     })();
   </script>
+
+
+  <style id="shopee-product-grid-six-column-v1">
+    /* Shopee-style product cards inside a centered 1200px grid. */
+    #appRoot .product-grid {
+      display:grid;
+      width:100%;
+      max-width:1200px;
+      margin-left:auto;
+      margin-right:auto;
+      grid-template-columns:repeat(6,minmax(0,1fr));
+      gap:10px;
+      box-sizing:border-box;
+    }
+    /* Put catalog filters above the full-width listing so six cards can use the full 1200px. */
+    #appRoot .marketplace-catalog-shell {
+      display:block;
+      width:100%;
+      max-width:1200px;
+      margin-left:auto;
+      margin-right:auto;
+    }
+    #appRoot .marketplace-catalog-filters {
+      position:static;
+      margin:0 0 14px;
+    }
+    #appRoot .marketplace-catalog-filters .filter-row {
+      display:grid;
+      grid-template-columns:minmax(200px,2fr) repeat(4,minmax(0,1fr));
+      gap:9px;
+    }
+    #appRoot .marketplace-catalog-results {min-width:0;width:100%}
+
+    #appRoot .product-card {
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+      overflow:hidden;
+      border:1px solid var(--border);
+      border-radius:7px!important;
+      background:var(--surface);
+      box-shadow:none;
+      transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+    }
+    #appRoot .product-card:hover {
+      transform:translateY(-2px);
+      border-color:#ee4d2d;
+      box-shadow:0 5px 16px rgba(238,77,45,.12);
+    }
+    #appRoot .product-image {
+      position:relative;
+      display:block;
+      width:100%;
+      height:auto!important;
+      aspect-ratio:1/1;
+      flex:0 0 auto;
+      overflow:hidden;
+      background:var(--surface-2);
+      cursor:pointer;
+    }
+    #appRoot .product-image img {
+      display:block;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+    #appRoot .product-discount-badge {
+      position:absolute;
+      z-index:4;
+      top:7px;
+      right:7px;
+      padding:4px 6px;
+      border-radius:3px;
+      background:#ee4d2d;
+      color:#fff;
+      font-size:11px;
+      line-height:1.2;
+      font-weight:800;
+      pointer-events:none;
+    }
+    #appRoot .product-info {
+      display:flex;
+      flex:1 1 auto;
+      flex-direction:column;
+      min-width:0;
+      gap:5px;
+      padding:9px!important;
+    }
+    #appRoot .product-name {
+      display:-webkit-box;
+      min-height:0;
+      height:2.8em!important;
+      margin:0!important;
+      overflow:hidden;
+      color:var(--ink);
+      font-size:12px!important;
+      line-height:1.4!important;
+      font-weight:500;
+      -webkit-box-orient:vertical;
+      -webkit-line-clamp:2;
+      line-clamp:2;
+      cursor:pointer;
+    }
+    #appRoot .product-promo-box {
+      display:inline-flex;
+      align-self:flex-start;
+      align-items:center;
+      max-width:100%;
+      gap:4px;
+      overflow:hidden;
+      padding:3px 5px!important;
+      margin:0!important;
+      border:1px solid #ffd2c5;
+      border-radius:3px;
+      background:#fff7f4;
+      color:#d94324;
+      font-size:9px!important;
+      line-height:1.3;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+    }
+    #appRoot .product-meta-row {
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:5px;
+      min-width:0;
+      margin-top:auto;
+      padding-top:3px;
+    }
+    #appRoot .product-price {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:baseline;
+      min-width:0;
+      gap:4px;
+      color:#ee4d2d!important;
+      font-size:14px!important;
+      line-height:1.25;
+      font-weight:700;
+    }
+    #appRoot .product-price-current {overflow-wrap:anywhere}
+    #appRoot .product-price .old-price {
+      margin:0;
+      color:#9ca3af;
+      font-size:9px;
+      font-weight:400;
+    }
+    #appRoot .product-sold {
+      flex:0 0 auto;
+      max-width:48%;
+      margin:0!important;
+      color:#9ca3af!important;
+      font-size:9px!important;
+      line-height:1.3;
+      text-align:right;
+      white-space:nowrap;
+    }
+    @media(max-width:900px) {
+      #appRoot .product-grid {grid-template-columns:repeat(4,minmax(0,1fr));}
+      #appRoot .marketplace-catalog-filters .filter-row {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+      #appRoot .marketplace-catalog-filters .filter-row input:first-child {grid-column:1/-1;}
+    }
+    @media(max-width:600px) {
+      #appRoot .product-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+      #appRoot .product-info {padding:8px!important;gap:5px;}
+      #appRoot .product-name {font-size:11px!important;}
+      #appRoot .product-price {font-size:13px!important;}
+      #appRoot .product-sold {font-size:8px!important;}
+      #appRoot .marketplace-catalog-filters .filter-row {grid-template-columns:repeat(2,minmax(0,1fr));}
+    }
+  </style>
 
 </body>
 </html>
