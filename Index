@@ -2250,6 +2250,121 @@
       });
     }
 
+    var homeFlashCountdownTimer=null;
+    var homeDealResizeBound=false;
+    function homeSaleDiscount(product){
+      var regular=Math.max(0,Number(product&&product.price||0));
+      var sale=Math.max(0,Number(product&&product.salePrice||0));
+      return regular>sale&&regular>0?Math.round((regular-sale)*100/regular):0;
+    }
+    function homeFlashSaleCardMarkup(product){
+      var price=Number(product&&product.salePrice)>0?Number(product.salePrice):Number(product&&product.price||0);
+      var discount=homeSaleDiscount(product);
+      var mall=product&&(product.mallBadgeEnabled===true||String(product.mallBadgeEnabled||'').toLowerCase()==='true'||String(product.mallBadgeEnabled)==='1');
+      var campaign=String(product&&product.campaignLabel||product&&product.promoTag||'').trim();
+      if(!campaign)campaign=Number(product&&product.freeShippingMinimum||0)>0?'ส่งฟรี':'Flash Sale';
+      var quota=Math.max(0,Number(product&&product.flashDealQuota||0));
+      var sold=Math.max(0,Number(product&&product.flashDealSold||0));
+      var remaining=product&&product.remaining!==null&&product.remaining!==undefined?Math.max(0,Number(product.remaining)):Math.max(0,quota-sold);
+      var percent=quota>0?Math.max(0,Math.min(100,sold/quota*100)):0;
+      var statusLabel=quota>0&&remaining<=5?'เหลือ '+remaining+' ชิ้น':(sold>0?'ขายดี':'ดีลพิเศษ');
+      var image=String(product&&product.coverImage||'').trim();
+      return '<article class="home-flash-card" role="button" tabindex="0" onclick="viewProduct(\''+esc(product.id)+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \')viewProduct(\''+esc(product.id)+'\')">'+
+        '<div class="home-flash-card-image">'+(mall?'<span class="home-flash-mall">Mall</span>':'')+(discount>0?'<span class="home-flash-discount">ลด '+discount+'%</span>':'')+(image?'<img loading="lazy" src="'+imageUrl(image)+'" alt="'+esc(product.name)+'" onerror="imageFallback(this)">':'<span class="home-flash-image-fallback"><i class="fa-solid fa-bag-shopping"></i></span>')+'<span class="home-flash-campaign">'+esc(campaign)+'</span></div>'+
+        '<div class="home-flash-card-price">'+money(price)+'</div>'+
+        '<div class="home-flash-progress"><span class="home-flash-progress-fill" style="width:'+percent.toFixed(1)+'%"></span><span class="home-flash-progress-label"><i class="fa-solid fa-fire"></i> '+esc(statusLabel)+'</span></div>'+
+      '</article>';
+    }
+    function renderHomeFlashSaleSection(){
+      var deals=safeArray(APP.flashDeals).slice().sort(function(a,b){var ta=Date.parse(a.flashDealEnd||'')||Infinity,tb=Date.parse(b.flashDealEnd||'')||Infinity;return ta-tb;});
+      var cards=deals.length?deals.map(homeFlashSaleCardMarkup).join(''):'<div class="home-flash-empty">ยังไม่มี Flash Sale ที่กำลังเปิดอยู่</div>';
+      return '<section class="home-flash-sale-section" id="flash" aria-label="Flash Sale">'+
+        '<div class="home-flash-header"><div class="home-flash-header-left"><h2>FLASH SALE</h2><span class="home-flash-countdown-label">สิ้นสุดใน</span><div class="home-flash-clock" aria-label="เวลานับถอยหลัง"><span data-flash-hours>00</span><b>:</b><span data-flash-minutes>00</span><b>:</b><span data-flash-seconds>00</span></div></div><button type="button" class="home-deal-see-all" onclick="showFlashDeals()">ดูทั้งหมด <i class="fa-solid fa-chevron-right"></i></button></div>'+
+        '<div class="home-flash-carousel-shell"><button type="button" id="homeFlashPrev" class="home-deal-arrow is-prev" onclick="scrollHomeFlashSale(-1)" aria-label="เลื่อน Flash Sale ไปทางซ้าย" hidden><i class="fa-solid fa-chevron-left"></i></button><div class="home-flash-viewport" id="homeFlashViewport"><div class="home-flash-track" id="homeFlashTrack">'+cards+'</div></div><button type="button" id="homeFlashNext" class="home-deal-arrow is-next" onclick="scrollHomeFlashSale(1)" aria-label="เลื่อน Flash Sale ไปทางขว" hidden><i class="fa-solid fa-chevron-right"></i></button></div>'+
+      '</section>';
+    }
+    function updateHomeFlashCountdown(){
+      var nodes=document.querySelectorAll('.home-flash-clock');if(!nodes.length)return;
+      var ends=safeArray(APP.flashDeals).map(function(d){return Date.parse(d&&d.flashDealEnd||'');}).filter(function(t){return isFinite(t)&&t>Date.now();});
+      var target=ends.length?Math.min.apply(Math,ends):0;
+      var seconds=target?Math.max(0,Math.floor((target-Date.now())/1000)):0;
+      var hours=Math.floor(seconds/3600),minutes=Math.floor((seconds%3600)/60),secs=seconds%60;
+      function pad(n){return String(n).padStart(2,'0');}
+      nodes.forEach(function(node){var h=node.querySelector('[data-flash-hours]'),m=node.querySelector('[data-flash-minutes]'),s=node.querySelector('[data-flash-seconds]');if(h)h.textContent=pad(hours);if(m)m.textContent=pad(minutes);if(s)s.textContent=pad(secs);});
+    }
+    function scrollHomeFlashSale(direction){
+      var viewport=document.getElementById('homeFlashViewport');if(!viewport)return;
+      viewport.scrollBy({left:Math.max(220,Math.round(viewport.clientWidth*.82))*(Number(direction)||1),behavior:'smooth'});
+      window.setTimeout(syncHomeDealCarousels,380);
+    }
+    function homePromoBannerMarkup(banner,index){
+      var defaults=[
+        {title:'โปรแรงประจำสัปดาห์',description:'ดีลพิเศษ คัดมาให้คุณ',icon:'fa-bolt',url:'#flash'},
+        {title:'โค้ดส่วนลดสุดคุ้ม',description:'เก็บคูปองก่อนช้อป',icon:'fa-ticket',url:'#promotions'},
+        {title:'ช้อปครบ ส่งฟรี',description:'เลือกสินค้าที่ร่วมรายการ',icon:'fa-truck-fast',url:'#products'}
+      ];
+      var data=banner||defaults[index]||defaults[0];
+      var title=String(data.title||defaults[index].title),description=String(data.description||defaults[index].description);
+      var image=String(data.image||'').trim(),url=safeHref(data.url||defaults[index].url,'#products');
+      var icon=String(data.icon||defaults[index].icon);
+      var art=image?'<img src="'+imageUrl(image)+'" alt="'+esc(title)+'" loading="lazy" onerror="imageFallback(this)">':'<div class="home-promo-artwork"><div class="home-promo-art-copy"><small>ONLINE STORE</small><strong>'+esc(title)+'</strong><span>'+esc(description)+'</span></div><i class="fa-solid '+esc(icon)+' home-promo-art-icon"></i></div>';
+      return '<a class="home-promo-banner home-promo-banner-'+(index+1)+(image?' has-image':'')+'" href="'+url+'" aria-label="'+esc(title)+'">'+art+'<span class="home-promo-arrow"><i class="fa-solid fa-chevron-right"></i></span></a>';
+    }
+    function renderHomePromoBannerStrip(){
+      var candidates=safeArray(APP.banners).filter(function(b){return /promo|promotion|offer|tile|strip/i.test(homeBannerPosition(b));}).sort(function(a,b){return Number(a.order||0)-Number(b.order||0);});
+      var defaults=[{title:'โปรแรงประจำสัปดาห์',description:'ดีลพิเศษ คัดมาให้คุณ',icon:'fa-bolt',url:'#flash'},{title:'โค้ดส่วนลดสุดคุ้ม',description:'เก็บคูปองก่อนช้อป',icon:'fa-ticket',url:'#promotions'},{title:'ช้อปครบ ส่งฟรี',description:'เลือกสินค้าที่ร่วมรายการ',icon:'fa-truck-fast',url:'#products'}];
+      var items=[0,1,2].map(function(i){return candidates[i]||defaults[i];});
+      return '<section class="home-promo-banner-strip" aria-label="โปรโมชั่นพิเศษ">'+items.map(homePromoBannerMarkup).join('')+'</section>';
+    }
+    function homeCompactSales(value){
+      var n=Math.max(0,Number(value||0));
+      if(n>=1000000)return (Math.floor(n/100000)/10).toString().replace(/\.0$/,'')+'m+';
+      if(n>=1000)return Math.floor(n/1000)+'k+';
+      return Math.floor(n).toLocaleString('th-TH');
+    }
+    function homeTopCategoryData(){
+      return safeArray(APP.categories).map(function(category,index){
+        var products=safeArray(APP.products).filter(function(p){return String(p.categoryId||'')===String(category.id||'');});
+        var weekly=products.reduce(function(sum,p){return sum+Math.max(0,Number(p.weeklySoldCount||0));},0);
+        var monthly=products.reduce(function(sum,p){return sum+Math.max(0,Number(p.monthlySoldCount||0));},0);
+        products.sort(function(a,b){return Number(b.weeklySoldCount||0)-Number(a.weeklySoldCount||0)||Number(b.soldCount||0)-Number(a.soldCount||0);});
+        var bestProduct=products[0]||null;
+        return {category:category,index:index,weekly:weekly,monthly:monthly,image:String(category.image||bestProduct&&bestProduct.coverImage||'').trim()};
+      }).sort(function(a,b){return b.weekly-a.weekly||b.monthly-a.monthly||a.index-b.index;});
+    }
+    function homeTopCategoryCardMarkup(item,index){
+      var category=item.category||{},name=String(category.name||'หมวดหมู่สินค้า'),image=item.image;
+      var media=image?'<img src="'+imageUrl(image)+'" alt="'+esc(name)+'" loading="lazy" onerror="imageFallback(this)">':'<span class="home-top-category-fallback"><i class="fa-solid fa-layer-group"></i></span>';
+      return '<button type="button" class="home-top-category-card" onclick="filterCategory(\''+esc(category.id)+'\')"><span class="home-top-category-image">'+media+'<span class="home-top-ribbon">TOP</span><span class="home-top-sales-overlay">ยอดขายต่อเดือน '+homeCompactSales(item.monthly)+'</span></span><span class="home-top-category-name">'+esc(name)+'</span></button>';
+    }
+    function renderHomeTopProductsCarousel(){
+      var items=homeTopCategoryData();
+      var content=items.length?items.map(homeTopCategoryCardMarkup).join(''):'<div class="home-top-empty">ยังไม่มีหมวดหมู่สินค้า</div>';
+      return '<section class="home-top-products-section" id="homeTopProducts" aria-label="ขายดีประจำสัปดาห์"><div class="home-top-products-header"><h2>ขายดีประจำสัปดาห์</h2><button type="button" class="home-deal-see-all" onclick="loadBestSellers()">ดูทั้งหมด <i class="fa-solid fa-chevron-right"></i></button></div><div class="home-top-carousel-shell"><button type="button" id="homeTopPrev" class="home-deal-arrow is-prev" onclick="scrollHomeTopProducts(-1)" aria-label="เลื่อนสินค้าขายดีไปทางซ้าย" hidden><i class="fa-solid fa-chevron-left"></i></button><div class="home-top-viewport" id="homeTopViewport"><div class="home-top-track" id="homeTopTrack">'+content+'</div></div><button type="button" id="homeTopNext" class="home-deal-arrow is-next" onclick="scrollHomeTopProducts(1)" aria-label="เลื่อนสินค้าขายดีไปทางขวา" hidden><i class="fa-solid fa-chevron-right"></i></button></div></section>';
+    }
+    function scrollHomeTopProducts(direction){
+      var viewport=document.getElementById('homeTopViewport');if(!viewport)return;
+      viewport.scrollBy({left:Math.max(220,Math.round(viewport.clientWidth*.82))*(Number(direction)||1),behavior:'smooth'});
+      window.setTimeout(syncHomeDealCarousels,380);
+    }
+    function syncHomeDealCarousels(){
+      [['homeFlashViewport','homeFlashPrev','homeFlashNext'],['homeTopViewport','homeTopPrev','homeTopNext']].forEach(function(ids){
+        var viewport=document.getElementById(ids[0]),prev=document.getElementById(ids[1]),next=document.getElementById(ids[2]);
+        if(!viewport||!prev||!next)return;
+        var max=Math.max(0,viewport.scrollWidth-viewport.clientWidth),current=viewport.scrollLeft;
+        prev.hidden=max<=2||current<=2;next.hidden=max<=2||current>=max-2;
+      });
+    }
+    function initHomeDealSections(){
+      if(homeFlashCountdownTimer)clearInterval(homeFlashCountdownTimer);
+      updateHomeFlashCountdown();
+      homeFlashCountdownTimer=setInterval(updateHomeFlashCountdown,1000);
+      var flash=document.getElementById('homeFlashViewport'),top=document.getElementById('homeTopViewport');
+      if(flash)flash.addEventListener('scroll',syncHomeDealCarousels,{passive:true});
+      if(top)top.addEventListener('scroll',syncHomeDealCarousels,{passive:true});
+      window.requestAnimationFrame(syncHomeDealCarousels);
+      if(!homeDealResizeBound){window.addEventListener('resize',syncHomeDealCarousels);homeDealResizeBound=true;}
+    }
     function renderHome(){
       APP.currentView='home';
       var categoryHtml=renderHomeCategoryCarousel();
@@ -2257,7 +2372,10 @@
       var html='<div class="home-marketplace">'+renderHomeHero();
       html+='<div class="market-shortcuts"><div class="market-shortcut" onclick="showStores()"><i class="fa-solid fa-store"></i><strong>ร้านค้า</strong><small>เลือกช้อปตามร้าน</small></div><div class="market-shortcut" onclick="showFlashDeals()"><i class="fa-solid fa-bolt"></i><strong>Flash Sale</strong><small>ดีลเวลาจำกัด</small></div><div class="market-shortcut" onclick="showMarketplaceVouchers()"><i class="fa-solid fa-ticket"></i><strong>Voucher</strong><small>เก็บโค้ดส่วนลด</small></div><div class="market-shortcut" onclick="openAccount()"><i class="fa-solid fa-box"></i><strong>คำสั่งซื้อ</strong><small>ติดตามพัสดุ</small></div><div class="market-shortcut" onclick="openChatInbox()"><i class="fa-solid fa-comments"></i><strong>แชต</strong><small>คุยกับร้านค้า</small></div><div class="market-shortcut" onclick="openSellerCenter()"><i class="fa-solid fa-shop"></i><strong>เปิดร้าน</strong><small>สมัครเป็นผู้ขาย</small></div></div>';
       html+='<section id="categories" class="home-category-section"><div class="home-category-header"><h2>หมวดหมู่</h2></div>'+categoryHtml+'</section>';
-      if(APP.flashDeals.length){html+='<section class="market-section" id="flash"><div class="market-section-head"><div><h2><i class="fa-solid fa-bolt" style="color:var(--primary)"></i> Flash Sale</h2><small class="muted">ราคาพิเศษในช่วงเวลาที่กำหนด</small></div><button class="btn btn-outline btn-small" onclick="showFlashDeals()">ดูทั้งหมด</button></div><div class="product-grid">'+APP.flashDeals.slice(0,5).map(renderProductCard).join('')+'</div></section>';}
+      html+=renderHomeFlashSaleSection();
+      html+=renderHomePromoBannerStrip();
+      html+=renderHomeTopProductsCarousel();
+
       if(APP.vouchers.length){html+='<section class="market-section"><div class="market-section-head"><div><h2><i class="fa-solid fa-ticket" style="color:var(--primary)"></i> Voucher สำหรับคุณ</h2><small class="muted">เก็บโค้ดส่วนลดจากร้านค้าก่อนชำระเงิน</small></div><button class="btn btn-outline btn-small" onclick="showMarketplaceVouchers()">ดูทั้งหมด</button></div><div class="voucher-grid">'+APP.vouchers.slice(0,3).map(function(v){return '<div class="market-ribbon"><div><span class="market-tag">'+esc(v.storeName)+'</span><h3 style="margin:5px 0">'+esc(v.title)+'</h3><b style="font-size:20px;color:var(--primary)">'+(v.discountType==='percent'?esc(v.discountValue)+'%':money(v.discountValue))+'</b><small class="muted" style="display:block">ขั้นต่ำ '+money(v.minimumOrder)+'</small></div><button class="btn btn-primary btn-small" onclick="collectVoucherAction(\''+esc(v.id)+'\')">เก็บโค้ด</button></div>';}).join('')+'</div></section>';}
       if(APP.stores.length){html+='<section class="market-section" id="stores"><div class="market-section-head"><div><h2><i class="fa-solid fa-shop" style="color:var(--primary)"></i> ร้านค้าแนะนำ</h2><small class="muted">ค้นพบร้านค้าและสินค้าจากผู้ขายหลากหลาย</small></div><button class="btn btn-outline btn-small" onclick="showStores()">ดูร้านค้าทั้งหมด</button></div><div class="store-grid">'+APP.stores.slice(0,4).map(renderStoreCard).join('')+'</div></section>';}
       if(APP.liveRooms.length){html+='<section class="market-section"><div class="market-section-head"><div><h2><i class="fa-solid fa-video" style="color:var(--primary)"></i> Live & Video</h2><small class="muted">รายการถ่ายทอดสดจากร้านค้า</small></div><button class="btn btn-outline btn-small" onclick="showLiveRooms()">ดูทั้งหมด</button></div><div class="store-grid">'+APP.liveRooms.slice(0,4).map(function(v){return '<div class="store-card"><div class="store-cover">'+(v.thumbnail?'<img src="'+imageUrl(v.thumbnail)+'" onerror="imageFallback(this)" alt="">':'')+'</div><div class="store-body"><span class="market-tag">'+esc(v.status)+'</span><h3>'+esc(v.title)+'</h3><p class="muted">'+esc(v.shopName)+'</p><a class="btn btn-primary btn-small" target="_blank" rel="noopener" href="'+safeHref(v.streamUrl,'#')+'">เปิด Live</a></div></div>';}).join('')+'</div></section>';}
@@ -2267,7 +2385,7 @@
       html+='<section id="best"><div class="section-head"><div><h2 class="section-title">สินค้าขายดี</h2><div class="section-sub">รายการยอดนิยมจากร้านค้า</div></div><a class="text-link" href="#" onclick="loadBestSellers();return false">ดูทั้งหมด</a></div>'+renderProductGrid(best.slice(0,5))+'</section>';
       html+='<section id="new"><div class="section-head"><div><h2 class="section-title">สินค้าใหม่ล่าสุด</h2><div class="section-sub">อัปเดตสินค้าใหม่ที่นี่</div></div><a class="text-link" href="#" onclick="loadNewArrivals();return false">ดูทั้งหมด</a></div>'+renderProductGrid(newest)+'</section>';
       html+='<section id="about" class="panel" style="margin-top:30px"><h2 class="section-title">เกี่ยวกับ '+esc(APP.settings.storeName||'ร้านค้าของเรา')+'</h2><div class="rich-content-display">'+sanitizeRichEditorHtml(APP.settings.storeDescription||'เรามุ่งมั่นคัดสรรสินค้าและบริการที่ดีที่สุดให้กับลูกค้า')+'</div></section>';
-      html+='</div>';document.getElementById('appRoot').innerHTML=html;initHomeHeroSwiper();initHomeCategoryCarousel();initHomeHeroSwiper();initHomeCategoryCarousel();
+      html+='</div>';document.getElementById('appRoot').innerHTML=html;initHomeHeroSwiper();initHomeCategoryCarousel();initHomeDealSections();initHomeHeroSwiper();initHomeCategoryCarousel();
     }
     function goHome(){if(APP.accessMode==='seller'||APP.accessMode==='owner'){toast('กรุณาออกจากระบบ Portal ปัจจุบันก่อนเปลี่ยนประเภทบัญชี','warning');return;}APP.currentView='home';if(!APP.products.length&&!APP.categories.length){loadPublicData();}else renderHome();window.scrollTo({top:0,behavior:'smooth'});var nav=document.getElementById('mainNav');if(nav)nav.classList.remove('open');}
     function catalogFilterCheckboxGroup(id,title,items,visibleCount){
@@ -5498,5 +5616,68 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
       #appRoot #catalogResults .catalog-product-card .product-info{padding:8px!important}
     }
   </style>
+<style id="shopee-home-deal-sections">
+  #appRoot .home-marketplace .home-flash-sale-section,
+  #appRoot .home-marketplace .home-top-products-section{position:relative;width:100%;margin:15px 0 0;padding:16px;background:var(--surface,#fff);border:1px solid var(--border,#eee);border-radius:10px;box-sizing:border-box;overflow:hidden}
+  #appRoot .home-marketplace .home-flash-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 15px}
+  #appRoot .home-marketplace .home-flash-header-left{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
+  #appRoot .home-marketplace .home-flash-header h2{margin:0;color:#ee4d2d;font-size:20px;font-weight:800;letter-spacing:.4px;white-space:nowrap}
+  #appRoot .home-marketplace .home-flash-countdown-label{font-size:11px;color:var(--muted,#777)}
+  #appRoot .home-marketplace .home-flash-clock{display:flex;align-items:center;gap:4px;color:#fff;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+  #appRoot .home-marketplace .home-flash-clock span{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:3px;background:#222;color:#fff}
+  #appRoot .home-marketplace .home-flash-clock b{color:#222;font-size:13px}
+  #appRoot .home-marketplace .home-deal-see-all{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;padding:5px 0;border:0;background:transparent;color:#ee4d2d;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+  #appRoot .home-marketplace .home-deal-see-all:hover{color:#d94325}
+  #appRoot .home-marketplace .home-flash-carousel-shell,#appRoot .home-marketplace .home-top-carousel-shell{position:relative;min-width:0}
+  #appRoot .home-marketplace .home-flash-viewport,#appRoot .home-marketplace .home-top-viewport{width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;scroll-behavior:smooth;overscroll-behavior-x:contain}
+  #appRoot .home-marketplace .home-flash-viewport::-webkit-scrollbar,#appRoot .home-marketplace .home-top-viewport::-webkit-scrollbar{display:none}
+  #appRoot .home-marketplace .home-flash-track{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 60px)/6);gap:12px;align-items:stretch}
+  #appRoot .home-marketplace .home-flash-card{display:flex;flex-direction:column;min-width:0;cursor:pointer;scroll-snap-align:start}
+  #appRoot .home-marketplace .home-flash-card-image{position:relative;display:block;width:100%;aspect-ratio:1/1;overflow:hidden;background:#f4f4f4;border-radius:3px}
+  #appRoot .home-marketplace .home-flash-card-image>img{display:block;width:100%;height:100%;object-fit:cover}
+  #appRoot .home-marketplace .home-flash-image-fallback{display:grid;place-items:center;width:100%;height:100%;color:#c4c4c4;font-size:38px}
+  #appRoot .home-marketplace .home-flash-mall{position:absolute;z-index:2;top:0;left:0;padding:3px 7px;background:#d71920;color:#fff;font-size:10px;font-weight:800}
+  #appRoot .home-marketplace .home-flash-discount{position:absolute;z-index:2;top:0;right:0;padding:4px 6px;background:#ffdf54;color:#ee4d2d;font-size:11px;font-weight:800}
+  #appRoot .home-marketplace .home-flash-campaign{position:absolute;z-index:2;bottom:0;left:0;max-width:82%;overflow:hidden;padding:4px 7px;border-radius:0 3px 0 0;background:rgba(238,77,45,.94);color:#fff;font-size:9px;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+  #appRoot .home-marketplace .home-flash-card-price{margin:9px 0 7px;color:#ee4d2d;text-align:center;font-size:20px;font-weight:800;line-height:1.2;white-space:nowrap}
+  #appRoot .home-marketplace .home-flash-progress{position:relative;height:19px;margin-top:auto;overflow:hidden;border-radius:20px;background:#ffe1d8}
+  #appRoot .home-marketplace .home-flash-progress-fill{position:absolute;inset:0 auto 0 0;border-radius:20px;background:#ee4d2d;opacity:.8}
+  #appRoot .home-marketplace .home-flash-progress-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:4px;color:#8e2817;font-size:9px;font-weight:700;white-space:nowrap}
+  #appRoot .home-marketplace .home-flash-progress-label i{font-size:10px}
+  #appRoot .home-marketplace .home-flash-empty,#appRoot .home-marketplace .home-top-empty{grid-column:1/-1;padding:28px 12px;color:var(--muted,#888);text-align:center;font-size:13px}
+  #appRoot .home-marketplace .home-deal-arrow{position:absolute;z-index:5;top:50%;display:grid;place-items:center;width:36px;height:36px;transform:translateY(-50%);border:0;border-radius:50%;background:#fff;color:#555;box-shadow:0 2px 12px rgba(0,0,0,.16);cursor:pointer}
+  #appRoot .home-marketplace .home-deal-arrow:hover{color:#ee4d2d;box-shadow:0 3px 14px rgba(0,0,0,.2)}
+  #appRoot .home-marketplace .home-deal-arrow.is-prev{left:3px}
+  #appRoot .home-marketplace .home-deal-arrow.is-next{right:3px}
+  #appRoot .home-marketplace .home-deal-arrow[hidden]{display:none}
+  #appRoot .home-marketplace .home-promo-banner-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:15px 0 0}
+  #appRoot .home-marketplace .home-promo-banner{position:relative;display:block;width:100%;height:110px;overflow:hidden;border-radius:9px;background:#fff0e8;text-decoration:none;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+  #appRoot .home-marketplace .home-promo-banner>img{display:block;width:100%;height:100%;object-fit:cover}
+  #appRoot .home-marketplace .home-promo-artwork{position:relative;display:flex;align-items:center;justify-content:space-between;width:100%;height:100%;overflow:hidden;padding:14px 50px 14px 18px;color:#fff;background:linear-gradient(110deg,#ee4d2d 0%,#f68a4e 100%)}
+  #appRoot .home-marketplace .home-promo-banner-2 .home-promo-artwork{background:linear-gradient(110deg,#b72d66 0%,#ef6c94 100%)}
+  #appRoot .home-marketplace .home-promo-banner-3 .home-promo-artwork{background:linear-gradient(110deg,#147a83 0%,#52b9aa 100%)}
+  #appRoot .home-marketplace .home-promo-artwork:after{content:"";position:absolute;right:26px;top:-32px;width:150px;height:150px;border:1px solid rgba(255,255,255,.22);border-radius:50%;box-shadow:0 0 0 17px rgba(255,255,255,.08),0 0 0 35px rgba(255,255,255,.05)}
+  #appRoot .home-marketplace .home-promo-art-copy{position:relative;z-index:1;display:flex;flex-direction:column;max-width:80%}
+  #appRoot .home-marketplace .home-promo-art-copy small{font-size:8px;letter-spacing:1.5px;opacity:.85}
+  #appRoot .home-marketplace .home-promo-art-copy strong{font-size:18px;line-height:1.25;font-weight:800}
+  #appRoot .home-marketplace .home-promo-art-copy span{margin-top:3px;font-size:10px;opacity:.95}
+  #appRoot .home-marketplace .home-promo-art-icon{position:absolute;z-index:1;right:50px;top:50%;transform:translateY(-50%);font-size:45px;color:rgba(255,255,255,.3)}
+  #appRoot .home-marketplace .home-promo-arrow{position:absolute;z-index:2;right:12px;top:50%;display:grid;place-items:center;width:27px;height:27px;transform:translateY(-50%);border-radius:50%;background:#fff;color:#ee4d2d;font-size:10px;box-shadow:0 1px 5px rgba(0,0,0,.12)}
+  #appRoot .home-marketplace .home-top-products-section{margin-top:15px;padding:0 16px 16px}
+  #appRoot .home-marketplace .home-top-products-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0 12px;border-bottom:1px solid #eee}
+  #appRoot .home-marketplace .home-top-products-header h2{margin:0;color:#ee4d2d;font-size:17px;font-weight:700}
+  #appRoot .home-marketplace .home-top-track{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 75px)/6);gap:15px;padding-top:14px;align-items:start}
+  #appRoot .home-marketplace .home-top-category-card{display:block;min-width:0;padding:0;border:0;background:transparent;text-align:left;cursor:pointer}
+  #appRoot .home-marketplace .home-top-category-image{position:relative;display:block;width:100%;aspect-ratio:1/1;overflow:hidden;border-radius:3px;background:#f5f5f5}
+  #appRoot .home-marketplace .home-top-category-image>img{display:block;width:100%;height:100%;object-fit:cover}
+  #appRoot .home-marketplace .home-top-category-fallback{display:grid;place-items:center;width:100%;height:100%;color:#c4c4c4;font-size:42px}
+  #appRoot .home-marketplace .home-top-ribbon{position:absolute;top:0;left:0;display:flex;align-items:center;justify-content:center;width:32px;height:35px;padding-bottom:5px;background:#ee4d2d;color:#fff;font-size:10px;font-weight:800;clip-path:polygon(0 0,100% 0,100% 76%,50% 100%,0 76%)}
+  #appRoot .home-marketplace .home-top-sales-overlay{position:absolute;right:0;bottom:0;left:0;padding:6px 3px;background:rgba(0,0,0,.42);color:#fff;text-align:center;font-size:10px;line-height:1.25;white-space:nowrap}
+  #appRoot .home-marketplace .home-top-category-name{display:block;margin-top:9px;color:var(--ink,#333);font-size:15px;font-weight:500;line-height:1.45;white-space:normal;overflow-wrap:anywhere}
+  #appRoot .home-marketplace .home-top-category-card:hover .home-top-category-name{color:#ee4d2d}
+  @media(max-width:1000px){#appRoot .home-marketplace .home-flash-track{grid-auto-columns:calc((100% - 36px)/4)}#appRoot .home-marketplace .home-top-track{grid-auto-columns:calc((100% - 45px)/4)}}
+  @media(max-width:720px){#appRoot .home-marketplace .home-flash-sale-section{padding:12px}#appRoot .home-marketplace .home-flash-track{grid-auto-columns:calc((100% - 24px)/3)}#appRoot .home-marketplace .home-top-track{grid-auto-columns:calc((100% - 30px)/3)}#appRoot .home-marketplace .home-promo-banner-strip{grid-template-columns:repeat(2,minmax(0,1fr))}#appRoot .home-marketplace .home-promo-banner{height:100px}#appRoot .home-marketplace .home-promo-art-copy strong{font-size:15px}#appRoot .home-marketplace .home-top-category-name{font-size:13px}}
+  @media(max-width:520px){#appRoot .home-marketplace .home-flash-header{align-items:flex-start}#appRoot .home-marketplace .home-flash-header-left{gap:6px}#appRoot .home-marketplace .home-flash-header h2{font-size:17px}#appRoot .home-marketplace .home-flash-countdown-label{display:none}#appRoot .home-marketplace .home-flash-track{grid-auto-columns:calc((100% - 12px)/2)}#appRoot .home-marketplace .home-top-track{grid-auto-columns:calc((100% - 15px)/2)}#appRoot .home-marketplace .home-promo-banner-strip{grid-template-columns:1fr}#appRoot .home-marketplace .home-promo-banner{height:100px}#appRoot .home-marketplace .home-top-products-header h2{font-size:15px}}
+</style>
 </body>
 </html>
