@@ -4856,7 +4856,12 @@ body.dark .vm-matrix-table th{background:#202833}
         var product=mode==='admin'?safeArray(APP.adminData).filter(function(p){return String(p.id)===String(productId);})[0]||{}:safeArray(APP.sellerProducts).filter(function(p){return String(p.id)===String(productId);})[0]||{};
         var rows=safeArray(result.data).filter(function(v){return String(v.status||'Active')!=='Archived';});
         APP.variantMatrixProduct=product;APP.variantMatrixMode=mode;APP.variantMatrixProductId=productId;
-        APP.variantMatrixOriginalRows=rows.map(function(v){var copy={};Object.keys(v).forEach(function(k){copy[k]=v[k];});copy.attributes=variantMatrixNormalizeAttrs(v);return copy;});
+        APP.variantMatrixOriginalRows=rows.map(function(v){
+          var copy={};Object.keys(v).forEach(function(k){copy[k]=v[k];});
+          copy.attributes=variantMatrixNormalizeAttrs(v);
+          if(!Object.keys(copy.attributes).some(function(k){return k!=='imageUrl';})&&String(v.variantName||'').trim())copy.attributes['ตัวเลือก']=String(v.variantName).trim();
+          return copy;
+        });
         APP.variantMatrixRows=APP.variantMatrixOriginalRows.map(function(v){var copy={};Object.keys(v).forEach(function(k){copy[k]=v[k];});return copy;});
         APP.variantMatrixGroups=variantMatrixGroupsFromRows(rows);
         APP.variantMatrixBuiltSignature=rows.length?variantMatrixGroupsSignature(APP.variantMatrixGroups):'';
