@@ -1011,7 +1011,7 @@
 .shopee-variant-group{margin:10px 0}
 .shopee-variant-heading{display:flex;gap:6px;align-items:baseline;font-size:11px;margin-bottom:7px}
 .shopee-variant-heading span{color:var(--muted)}
-.shopee-variant-options{display:flex;gap:7px;flex-wrap:wrap}
+.shopee-variant-options{display:flex;gap:7px;flex-wrap:wrap}.shopee-variant-load-error{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:9px 11px;border:1px dashed #f0a18e;border-radius:6px;background:#fff8f5;color:#9a3412;font-size:11px}.shopee-variant-load-error button{border:0;background:transparent;color:#ee4d2d;font-weight:700;text-decoration:underline;padding:0}
 .shopee-variant-chip{min-width:58px;min-height:34px;padding:5px 10px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--ink);font-size:11px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .shopee-variant-chip:hover,.shopee-variant-chip.active{border-color:#ee4d2d;color:#ee4d2d;background:#fff8f5}
 .shopee-variant-chip:disabled{opacity:.35;cursor:not-allowed}
@@ -3250,12 +3250,13 @@ body.dark .vm-matrix-table th{background:#202833}
     function showAbout(){var html='<div class="panel"><h1 class="section-title">เกี่ยวกับเรา</h1><div class="rich-content-display">'+sanitizeRichEditorHtml(APP.settings.storeDescription||'ร้านค้าออนไลน์ของเรา')+'</div><p class="muted">'+esc(APP.settings.address||'')+'</p></div>';document.getElementById('appRoot').innerHTML=html;}
     function showContact(){document.getElementById('appRoot').innerHTML='<div class="panel"><h1 class="section-title">ติดต่อเรา</h1><p><i class="fa-solid fa-phone"></i> '+esc(APP.settings.phone||'ไม่ระบุ')+'</p><p><i class="fa-solid fa-envelope"></i> '+esc(APP.settings.email||'ไม่ระบุ')+'</p><p><i class="fa-solid fa-location-dot"></i> '+esc(APP.settings.address||'ไม่ระบุ')+'</p>'+(APP.settings.googleMaps?'<a class="btn btn-primary" href="'+esc(APP.settings.googleMaps)+'" target="_blank">เปิด Google Maps</a>':'')+'</div>';}
     function showPolicy(key){document.getElementById('appRoot').innerHTML='<div class="panel"><h1 class="section-title">ข้อมูลร้านค้า</h1><div class="rich-content-display">'+sanitizeRichEditorHtml(APP.settings[key]||'ร้านค้ายังไม่ได้กำหนดข้อมูลส่วนนี้')+'</div></div>';}
-    function viewProduct(id){apiCall('getProductById',[id,{}],function(r){if(!r.success){alertError(r.message);document.getElementById('appRoot').innerHTML=marketplaceLoadErrorMarkup(r.message,'viewProduct('+JSON.stringify(String(id))+')');return;}APP.currentProduct=r.data.product;APP.currentVariants=safeArray(r.data.variants);APP.selectedVariant='';APP.currentQuantity=1;renderProductDetail();},true,'กำลังโหลดรายละเอียดสินค้า...');}
+    
     function selectDetailImage(url,button){var main=document.getElementById('detailImage');if(!main)return;main.src=imageUrl(url);var thumbs=document.querySelectorAll('.detail-thumb');for(var i=0;i<thumbs.length;i++)thumbs[i].classList.remove('active');if(button)button.classList.add('active');}
     function loadRelatedProducts(product){var host=document.getElementById('relatedProducts');if(!host||!product)return;var cached=APP.products.filter(function(x){return String(x.categoryId)===String(product.categoryId)&&String(x.id)!==String(product.id);}).slice(0,5);if(cached.length)host.innerHTML=renderProductGrid(cached);apiCall('getProducts',[{categoryId:product.categoryId,page:1,pageSize:10,available:true,sort:'best_seller'}],function(r){var target=document.getElementById('relatedProducts');if(!target||!APP.currentProduct||String(APP.currentProduct.id)!==String(product.id))return;if(r&&r.success){var rows=safeArray(r.data&&r.data.items?r.data.items:r.data).filter(function(x){return String(x.id)!==String(product.id);}).slice(0,5);target.innerHTML=rows.length?renderProductGrid(rows):'<div class="muted">ยังไม่มีสินค้าอื่นในหมวดหมู่นี้</div>'; }else if(!cached.length)target.innerHTML='<div class="muted">ไม่สามารถโหลดสินค้าที่คล้ายกันได้</div>';},false);}
     function detailVariantAttributes(variant){
       var raw=variant&&variant.attributes,attrs={};
       if(typeof raw==='string'){try{raw=JSON.parse(raw||'{}');}catch(e){raw={};}}
+      if(!raw||typeof raw!=='object'||Array.isArray(raw))raw={};
       if(raw&&typeof raw==='object'&&!Array.isArray(raw)){
         Object.keys(raw).forEach(function(key){
           var value=raw[key];if(value===null||value===undefined||typeof value==='object')return;
@@ -3270,6 +3271,33 @@ body.dark .vm-matrix-table th{background:#202833}
       return attrs;
     }
     function detailVariantImage(variant){var raw=variant&&variant.attributes;if(typeof raw==='string'){try{raw=JSON.parse(raw||'{}');}catch(e){raw={};}}return raw&&typeof raw==='object'?(raw.imageUrl||raw.image_url||raw.image||''):(variant&&(variant.imageUrl||variant.image)||'');}
+    function normalizeCustomerProductVariants(rows){
+      return safeArray(rows).map(function(source){
+        if(!source||!source.id)return null;
+        var row={};Object.keys(source).forEach(function(key){row[key]=source[key];});
+        var attrs=row.attributes;
+        if(typeof attrs==='string'){try{attrs=JSON.parse(attrs||'{}');}catch(e){attrs={};}}
+        if(!attrs||typeof attrs!=='object'||Array.isArray(attrs))attrs={};
+        row.attributes=attrs;
+        var status=String(row.status===undefined||row.status===null||row.status===''?'Active':row.status).trim().toLowerCase();
+        row.status=status;
+        var available=row.available!==undefined&&row.available!==null?Number(row.available):Number(row.stock||0);
+        row.stock=Math.max(0,isFinite(available)?available:0);
+        return row;
+      }).filter(function(row){
+        return !!row&&['active','enabled','published','เปิดขาย','เปิดใช้งาน','ใช้งาน','1','true'].indexOf(String(row.status))>=0;
+      });
+    }
+    function retryLoadDetailVariants(){
+      var product=APP.currentProduct;if(!product)return;
+      apiCall('getProductVariants',[product.id,{}],function(result){
+        if(!APP.currentProduct||String(APP.currentProduct.id)!==String(product.id))return;
+        if(!result||!result.success){var hint=document.querySelector('.shopee-variant-load-error');if(hint)hint.firstChild.textContent=(result&&result.message)||'โหลดตัวเลือกสินค้าไม่สำเร็จ';return;}
+        APP.currentVariants=normalizeCustomerProductVariants(result.data);
+        if(!APP.currentVariants.length){toast('สินค้านี้ยังไม่มี SKU ที่เปิดขาย','info');}
+        renderProductDetail();
+      },true,'กำลังโหลดตัวเลือกสินค้า...');
+    }
     function detailVariantGroups(){
       var map={};safeArray(APP.currentVariants).forEach(function(v){var a=detailVariantAttributes(v);Object.keys(a).forEach(function(k){if(!map[k])map[k]=[];if(map[k].indexOf(a[k])<0)map[k].push(a[k]);});});
       var keys=Object.keys(map).sort(function(a,b){var rank={'สี':0,'ไซส์':1};return (rank[a]===undefined?2:rank[a])-(rank[b]===undefined?2:rank[b])||a.localeCompare(b);});
@@ -3277,8 +3305,13 @@ body.dark .vm-matrix-table th{background:#202833}
     }
     function detailColorHex(value){var s=String(value||'').toLowerCase();var map={'ดำ':'#222222','black':'#222222','ขาว':'#ffffff','white':'#ffffff','ชมพู':'#f4a6b8','pink':'#f4a6b8','แดง':'#dc2626','red':'#dc2626','น้ำเงิน':'#2563eb','blue':'#2563eb','ฟ้า':'#7dd3fc','เขียว':'#16a34a','green':'#16a34a','เหลือง':'#facc15','yellow':'#facc15','เทา':'#9ca3af','gray':'#9ca3af','grey':'#9ca3af','ครีม':'#f5deb3','beige':'#f5deb3','น้ำตาล':'#92400e','brown':'#92400e','แอปริคอท':'#f3b18a'};return map[s]||'#d1d5db';}
     function renderDetailVariantSelectors(){
-      var groups=detailVariantGroups();APP.detailVariantGroups=groups;APP.selectedVariantAttributes={};
-      if(!APP.currentVariants.length)return '';
+      var groups=detailVariantGroups();APP.detailVariantGroups=groups;APP.selectedVariantAttributes=APP.selectedVariantAttributes||{};
+      if(!APP.currentVariants.length){
+        if(APP.currentProduct&&APP.currentProduct.hasVariants){
+          return '<div class="shopee-detail-row fashion-detail-row"><div class="shopee-detail-label">ตัวเลือกสินค้า</div><div class="shopee-detail-value"><div class="shopee-variant-load-error">ไม่สามารถโหลดตัวเลือกสินค้าได้ในขณะนี้ <button type="button" onclick="retryLoadDetailVariants()">ลองโหลดอีกครั้ง</button></div></div></div>';
+        }
+        return '';
+      }
       if(!groups.length){return '<div class="shopee-detail-row"><div class="shopee-detail-label">ตัวเลือก</div><div class="shopee-detail-value"><div class="shopee-variant-options">'+APP.currentVariants.map(function(v){return '<button type="button" class="shopee-variant-chip" data-variant-id="'+esc(v.id)+'" onclick="selectProductVariant(this.dataset.variantId)">'+esc(v.variantName||v.sku)+' · '+money(Number(v.salePrice)>0?v.salePrice:v.price)+'</button>';}).join('')+'</div><div class="shopee-stock" id="detailVariantHint">กรุณาเลือกตัวเลือกสินค้า</div></div></div>';}
       return groups.map(function(g){var label=g.key==='ไซส์'?'ขนาด':g.key;return '<div class="shopee-detail-row"><div class="shopee-detail-label">'+esc(label)+'</div><div class="shopee-detail-value"><div class="shopee-variant-options '+(g.key==='สี'?'shopee-color-options':'shopee-size-options')+'" data-variant-group="'+esc(g.key)+'">'+g.values.map(function(value){
         var sample=safeArray(APP.currentVariants).filter(function(v){return String(detailVariantAttributes(v)[g.key]||'')===String(value);})[0]||{};
@@ -3346,7 +3379,23 @@ body.dark .vm-matrix-table th{background:#202833}
     function openProductImageModal(){var img=document.getElementById('detailImage');if(!img||!img.src)return;Swal.fire({title:'รูปสินค้า',html:'<div class="chat-image-modal-frame"><img src="'+esc(img.src)+'" alt="รูปสินค้า"></div>',width:'min(96vw,1100px)',showCloseButton:true,showConfirmButton:false,customClass:{popup:'chat-image-modal-popup'}});}
     function reportProductDialog(){var p=APP.currentProduct;if(!p)return;if(!APP.customerToken){Swal.fire({icon:'info',title:'กรุณาเข้าสู่ระบบก่อนรายงานสินค้า',confirmButtonText:'เข้าสู่ระบบ'}).then(function(r){if(r.isConfirmed)openCustomerAuth('login');});return;}Swal.fire({title:'รายงานสินค้า',input:'select',inputOptions:{'misleading':'ข้อมูลสินค้าไม่ตรงกับความจริง','counterfeit':'สงสัยว่าเป็นสินค้าปลอม','prohibited':'สินค้าต้องห้าม','copyright':'ละเมิดทรัพย์สินทางปัญญา','other':'อื่น ๆ'},inputPlaceholder:'เลือกเหตุผล',inputValidator:function(v){return v?'':'กรุณาเลือกเหตุผล';},inputAttributes:{'aria-label':'เหตุผลที่รายงาน'},showCancelButton:true,confirmButtonText:'ส่งรายงาน',cancelButtonText:'ยกเลิก'}).then(function(result){if(!result.isConfirmed)return;apiCall('reportProduct',[APP.customerToken,p.id,result.value,''],function(r){if(r.success)toast('ส่งรายงานสินค้าแล้ว','success');else alertError(r.message);},true,'กำลังส่งรายงาน...');});}
     function buyDetailNow(){var p=APP.currentProduct;if(!p)return;if(APP.currentVariants.length&&!APP.selectedVariant){alertError('กรุณาเลือกสีและไซส์ให้ครบก่อนซื้อ');return;}var variant=APP.selectedVariant||'',qty=APP.currentQuantity||1;apiCall('addToCart',[APP.sessionId,p.id,variant,qty,APP.customerToken],function(r){if(!r.success){alertError(r.message);return;}APP.cart=r.data||APP.cart;updateCartBadge();openCheckout();},true,'กำลังเตรียมคำสั่งซื้อ...');}
-    function viewProduct(id){apiCall('getProductById',[id,{}],function(r){if(!r.success){alertError(r.message);document.getElementById('appRoot').innerHTML=marketplaceLoadErrorMarkup(r.message,'viewProduct('+JSON.stringify(String(id))+')');return;}APP.currentProduct=r.data.product;APP.currentVariants=safeArray(r.data.variants);APP.selectedVariant='';APP.selectedVariantAttributes={};APP.currentQuantity=1;renderProductDetail();},true,'กำลังโหลดรายละเอียดสินค้า...');}
+    function viewProduct(id){
+      apiCall('getProductById',[id,{}],function(r){
+        if(!r.success){alertError(r.message);document.getElementById('appRoot').innerHTML=marketplaceLoadErrorMarkup(r.message,'viewProduct('+JSON.stringify(String(id))+')');return;}
+        APP.currentProduct=r.data.product;
+        APP.currentVariants=normalizeCustomerProductVariants(r.data.variants||(r.data.product&&r.data.product.variants)||[]);
+        APP.selectedVariant='';APP.selectedVariantAttributes={};APP.currentQuantity=1;
+        if(!APP.currentVariants.length&&APP.currentProduct&&APP.currentProduct.hasVariants){
+          apiCall('getProductVariants',[id,{}],function(vr){
+            if(!APP.currentProduct||String(APP.currentProduct.id)!==String(id))return;
+            if(vr&&vr.success)APP.currentVariants=normalizeCustomerProductVariants(vr.data);
+            renderProductDetail();
+          },false,'',true);
+          return;
+        }
+        renderProductDetail();
+      },true,'กำลังโหลดรายละเอียดสินค้า...');
+    }
     function selectDetailImage(url,button){var main=document.getElementById('detailImage');if(!main)return;main.src=imageUrl(url);var thumbs=document.querySelectorAll('.detail-thumb');for(var i=0;i<thumbs.length;i++)thumbs[i].classList.remove('active');if(button)button.classList.add('active');}
     function selectDetailImageFromButton(button){if(!button)return;selectDetailImage(button.getAttribute('data-image-url')||'',button);}
     function loadRelatedProducts(product){var host=document.getElementById('relatedProducts');if(!host||!product)return;var cached=APP.products.filter(function(x){return String(x.categoryId)===String(product.categoryId)&&String(x.id)!==String(product.id);}).slice(0,5);if(cached.length)host.innerHTML=renderProductGrid(cached);apiCall('getProducts',[{categoryId:product.categoryId,page:1,pageSize:10,available:true,sort:'best_seller'}],function(r){var target=document.getElementById('relatedProducts');if(!target||!APP.currentProduct||String(APP.currentProduct.id)!==String(product.id))return;if(r&&r.success){var rows=safeArray(r.data&&r.data.items?r.data.items:r.data).filter(function(x){return String(x.id)!==String(product.id);}).slice(0,5);target.innerHTML=rows.length?renderProductGrid(rows):'<div class="muted">ยังไม่มีสินค้าอื่นในหมวดหมู่นี้</div>'; }else if(!cached.length)target.innerHTML='<div class="muted">ไม่สามารถโหลดสินค้าที่คล้ายกันได้</div>';},false);}
