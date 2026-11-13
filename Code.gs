@@ -1794,6 +1794,7 @@ function productWithStock_(p, inventoryRows, isAdmin, lookup) {
   var deal=null;
   if(lookup.flashDealsByProduct){
     var now=Date.now(),deals=safeArray_(lookup.flashDealsByProduct[productId]);
+    if(p.sellerId&&lookup.storeById&&!lookup.storeById[String(p.sellerId)])deals=[];
     deals=deals.filter(function(d){return d.status==='Active'&&(!d.startAt||new Date(d.startAt).getTime()<=now)&&(!d.endAt||new Date(d.endAt).getTime()>=now)&&(!number_(d.quota,0)||number_(d.soldCount,0)<number_(d.quota,0));});
     deals.sort(function(a,b){return number_(a.dealPrice,0)-number_(b.dealPrice,0);});deal=deals[0]||null;
   }else deal=activeFlashDealForProduct_(p.id);
@@ -3021,8 +3022,9 @@ function getMarketplaceStore(storeId, summaryOnly) {
       var ratingTotal=storeReviews.reduce(function(sum,r){return sum+number_(r.rating,0);},0);
       info.rating=Math.round((ratingTotal/storeReviews.length)*10)/10;
     }
-    info.vouchers=readTable_('Coupons',true).filter(function(c){return c.sellerId===storeId&&c.status==='Active'&&(!c.startDate||new Date(c.startDate).getTime()<=Date.now())&&(!c.endDate||new Date(c.endDate).getTime()>=Date.now());}).map(function(c){return {id:c.id,code:c.code,title:c.title,discountType:c.discountType,discountValue:c.discountValue,minimumOrder:c.minimumOrder,endDate:c.endDate};});
     info.followers=readTable_('StoreFollows',true).filter(function(f){return f.storeId===storeId;}).length;
+    if(summaryOnly)return ok_(info);
+    info.vouchers=readTable_('Coupons',true).filter(function(c){return c.sellerId===storeId&&c.status==='Active'&&(!c.startDate||new Date(c.startDate).getTime()<=Date.now())&&(!c.endDate||new Date(c.endDate).getTime()>=Date.now());}).map(function(c){return {id:c.id,code:c.code,title:c.title,discountType:c.discountType,discountValue:c.discountValue,minimumOrder:c.minimumOrder,endDate:c.endDate};});
     return ok_(info);
   }catch(e){return fail_(safeError_(e));}
 }
