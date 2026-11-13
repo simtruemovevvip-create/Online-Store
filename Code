@@ -2882,11 +2882,56 @@ function notify_(recipientType,recipientId,title,message,type,link) {
 }
 function getMarketplaceStores(options) {
   try {
-    options=options||{};var q=text_(options.search,100).toLowerCase(),rows=readTable_('Stores',true).filter(function(x){return x.status==='Active'&&(!q||[x.shopName,x.description].join(' ').toLowerCase().indexOf(q)>=0);});
-    var follows=readTable_('StoreFollows',true),products=readTable_('Products',true),reviews=readTable_('Reviews',true);
-    rows=rows.map(function(st){var ids=products.filter(function(p){return p.sellerId===st.id&&p.status==='Active';}).map(function(p){return p.id;});var rr=reviews.filter(function(r){return ids.indexOf(r.productId)>=0&&r.status==='Published';});var rating=rr.length?rr.reduce(function(sum,r){return sum+number_(r.rating,0);},0)/rr.length:0;return {id:st.id,shopName:st.shopName,slug:st.slug,description:st.description,logo:st.logo,banner:st.banner,rating:Math.round(rating*10)/10,followerCount:follows.filter(function(f){return f.storeId===st.id;}).length,productCount:ids.length};});
-    rows.sort(function(a,b){return b.followerCount-a.followerCount;});var page=Math.max(1,number_(options.page,1)),size=Math.min(60,Math.max(1,number_(options.pageSize,24)));return ok_({items:rows.slice((page-1)*size,page*size),total:rows.length,page:page,pages:Math.ceil(rows.length/size)});
-  }catch(e){return fail_(safeError_(e));}
+    options = options || {};
+    var q = text_(options.search, 100).toLowerCase();
+    var rows = readTable_('Stores', true).filter(function(store) {
+      return store.status === 'Active' && (!q || [store.shopName, store.description].join(' ').toLowerCase().indexOf(q) >= 0);
+    });
+    var follows = readTable_('StoreFollows', true);
+    var products = readTable_('Products', true);
+    var reviews = readTable_('Reviews', true);
+    // Aggregate all public store metrics in one pass instead of filtering Products,
+    // Reviews and StoreFollows separately for every store.
+    var productSellerById = Object.create(null);
+    var storeMetrics = Object.create(null);
+    function metricsForStore_(storeId) {
+      var key = String(storeId || '');
+      if (!storeMetrics[key]) storeMetrics[key] = {followers:0, products:0, ratingTotal:0, reviewCount:0};
+      return storeMetrics[key];
+    }
+    products.forEach(function(product) {
+      if (product.status !== 'Active' || !product.sellerId) return;
+      var storeId = String(product.sellerId);
+      productSellerById[String(product.id)] = storeId;
+      metricsForStore_(storeId).products++;
+    });
+    follows.forEach(function(follow) {
+      metricsForStore_(follow.storeId).followers++;
+    });
+    reviews.forEach(function(review) {
+      if (review.status !== 'Published') return;
+      var storeId = productSellerById[String(review.productId)];
+      if (!storeId) return;
+      var metrics = metricsForStore_(storeId);
+      metrics.ratingTotal += number_(review.rating, 0);
+      metrics.reviewCount++;
+    });
+    rows = rows.map(function(store) {
+      var metrics = storeMetrics[String(store.id)] || {followers:0,products:0,ratingTotal:0,reviewCount:0};
+      var rating = metrics.reviewCount ? metrics.ratingTotal / metrics.reviewCount : 0;
+      return {
+        id:store.id,shopName:store.shopName,slug:store.slug,description:store.description,
+        logo:store.logo,banner:store.banner,rating:Math.round(rating * 10) / 10,
+        followerCount:metrics.followers,productCount:metrics.products
+      };
+    });
+    rows.sort(function(a,b) { return b.followerCount - a.followerCount; });
+    var page = Math.max(1, number_(options.page, 1));
+    var size = Math.min(60, Math.max(1, number_(options.pageSize, 24)));
+    return ok_({items:rows.slice((page - 1) * size, page * size),total:rows.length,page:page,pages:Math.ceil(rows.length / size)});
+  } catch (e) {
+    return fail_(safeError_(e));
+  }
 }
 function getMarketplaceStore(storeId) {
   try {var st=readTable_('Stores',false).filter(function(x){return x.id===storeId&&x.status==='Active';})[0];if(!st)throw new Error('ไม่พบร้านค้าหรือร้านค้ายังไม่เปิด');var info=publicStore_(st);var products=getProducts({storeId:storeId,page:1,pageSize:100});info.products=products.success?products.data.items:[];info.vouchers=readTable_('Coupons',true).filter(function(c){return c.sellerId===storeId&&c.status==='Active'&&(!c.startDate||new Date(c.startDate).getTime()<=Date.now())&&(!c.endDate||new Date(c.endDate).getTime()>=Date.now());}).map(function(c){return {id:c.id,code:c.code,title:c.title,discountType:c.discountType,discountValue:c.discountValue,minimumOrder:c.minimumOrder,endDate:c.endDate};});info.followers=readTable_('StoreFollows',true).filter(function(f){return f.storeId===storeId;}).length;return ok_(info);}catch(e){return fail_(safeError_(e));}
@@ -2899,7 +2944,25 @@ function applySeller(customerToken,data) {
   }catch(e){return fail_(safeError_(e));}
 }
 function getMyStore(customerToken) {try{var c=requireCustomer_(customerToken),st=findRecordByExactColumn_('Stores','ownerCustomerId',c.id);return ok_(st?publicStore_(st):null);}catch(e){return fail_(safeError_(e));}}
-function adminGetSellers(token,filters) {try{requireAdmin_(token,'sellers.manage');filters=filters||{};var rows=readTable_('Stores',false);if(filters.status)rows=rows.filter(function(x){return x.status===filters.status;});var customers=readTable_('Customers',false);return ok_(rows.map(function(x){var c=customers.filter(function(y){return y.id===x.ownerCustomerId;})[0]||{};var o=publicStore_(x);o.ownerName=(c.firstname||'')+' '+(c.lastname||'');o.ownerEmail=c.email||'';o.ownerPhone=c.phone||'';o.commissionRate=x.commissionRate;return o;}));}catch(e){return fail_(safeError_(e));}}
+function adminGetSellers(token,filters) {
+  try {
+    requireAdmin_(token,'sellers.manage');
+    filters=filters||{};
+    var rows=readTable_('Stores',true);
+    if(filters.status)rows=rows.filter(function(x){return x.status===filters.status;});
+    var customers=readTable_('Customers',true),customersById=Object.create(null);
+    customers.forEach(function(customer){customersById[String(customer.id)]=customer;});
+    return ok_(rows.map(function(store){
+      var customer=customersById[String(store.ownerCustomerId)]||{};
+      var result=publicStore_(store);
+      result.ownerName=(customer.firstname||'')+' '+(customer.lastname||'');
+      result.ownerEmail=customer.email||'';
+      result.ownerPhone=customer.phone||'';
+      result.commissionRate=store.commissionRate;
+      return result;
+    }));
+  } catch(e) { return fail_(safeError_(e)); }
+}
 function adminSetSellerStatus(token,storeId,status,commissionRate,note) {try{var u=requireAdmin_(token,'sellers.manage');if(['Active','Rejected','Suspended','Pending'].indexOf(status)<0)throw new Error('สถานะร้านค้าไม่ถูกต้อง');var st=readTable_('Stores',false).filter(function(x){return x.id===storeId;})[0];if(!st)throw new Error('ไม่พบร้านค้า');updateRecord_('Stores',storeId,{status:status,commissionRate:commissionRate===''?st.commissionRate:Math.max(0,Math.min(50,number_(commissionRate,number_(getSettingValue_('marketplaceCommissionRate'),5)))),approvedAt:status==='Active'?(st.approvedAt||now_()):st.approvedAt,updatedAt:now_()});notify_('customer',st.ownerCustomerId,'อัปเดตสถานะร้านค้า','ร้าน '+st.shopName+' เปลี่ยนสถานะเป็น '+status+' '+text_(note,200),'seller','');log_('Seller Status','Marketplace',storeId+' => '+status,u.username);return ok_(true,'อัปเดตสถานะร้านค้าแล้ว');}catch(e){return fail_(safeError_(e));}}
 function sellerGetStoreProfile(customerToken) {try{var x=requireSeller_(customerToken),s=x.store;return ok_({id:s.id,shopName:s.shopName,slug:s.slug,description:s.description,logo:s.logo,banner:s.banner,email:s.email,phone:s.phone,address:s.address,commissionRate:s.commissionRate,status:s.status,createdAt:s.createdAt});}catch(e){return fail_(safeError_(e));}}
 function sellerSaveStoreProfile(customerToken,data) {try{var x=requireSeller_(customerToken);data=data||{};var name=text_(data.shopName,120),slug=slug_(data.slug||name),logo=text_(data.logo,1000),banner=text_(data.banner,1000);if(!name)throw new Error('กรุณาระบุชื่อร้านค้า');if(readTable_('Stores',false).some(function(v){return v.id!==x.store.id&&v.slug===slug;}))throw new Error('URL ร้านค้านี้ถูกใช้แล้ว');if((logo&&!/^https:\/\//i.test(logo))||(banner&&!/^https:\/\//i.test(banner)))throw new Error('URL รูปภาพต้องขึ้นต้นด้วย https://');updateRecord_('Stores',x.store.id,{shopName:name,slug:slug,description:sanitizeHtml_(data.description||''),logo:logo,banner:banner,email:text_(data.email,160).toLowerCase(),phone:text_(data.phone,40),address:text_(data.address,500),updatedAt:now_()});log_('Seller Store Profile','Marketplace',name,x.customer.username);clearRuntimeCaches_();return ok_(sellerGetStoreProfile(customerToken).data,'บันทึกข้อมูลหน้าร้านแล้ว');}catch(e){return fail_(safeError_(e));}}
