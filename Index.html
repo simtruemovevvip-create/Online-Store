@@ -1908,7 +1908,7 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
         case 'deleteFile': runner.deleteFile(args[0],args[1]); break;
         case 'systemHealth': runner.systemHealth(args[0]); break;
         case 'getMarketplaceStores': runner.getMarketplaceStores(args[0]); break;
-        case 'getMarketplaceStore': runner.getMarketplaceStore(args[0]); break;
+        case 'getMarketplaceStore': runner.getMarketplaceStore(args[0],args[1]); break;
         case 'applySeller': runner.applySeller(args[0],args[1]); break;
         case 'getMyStore': runner.getMyStore(args[0]); break;
         case 'adminGetSellers': runner.adminGetSellers(args[0],args[1]); break;
@@ -3247,7 +3247,7 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
     function loadProductShopInfo(product){
       var host=document.getElementById('detailShopInfo');if(!host||!product)return;
       if(!product.storeId){host.innerHTML='<div class="fashion-shop-identity"><div class="fashion-shop-avatar"><i class="fa-solid fa-store"></i></div><div class="fashion-shop-name"><b>'+esc(product.storeName||'ร้านค้า')+'</b><small>ข้อมูลร้านค้าไม่พร้อมใช้งาน</small></div></div>';return;}
-      apiCall('getMarketplaceStore',[product.storeId],function(r){
+      apiCall('getMarketplaceStore',[product.storeId,true],function(r){
         var target=document.getElementById('detailShopInfo');if(!target||!APP.currentProduct||String(APP.currentProduct.id)!==String(product.id))return;
         if(r&&r.success)renderProductShopCard(r.data||{});else renderProductShopCard({id:product.storeId,shopName:product.storeName,logo:product.storeLogo});
       },false,'',true);
