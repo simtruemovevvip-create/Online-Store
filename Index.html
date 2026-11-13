@@ -4747,13 +4747,14 @@ body.dark .vm-matrix-table th{background:#202833}
       var body=document.getElementById('vmMatrixBody'),count=document.getElementById('vmMatrixCount');if(!body)return;
       var rows=safeArray(APP.variantMatrixRows);
       if(count)count.textContent='สร้างแล้ว '+rows.length+' SKU';
-      if(!rows.length){body.innerHTML='<tr><td colspan="7"><div class="vm-empty">กรอกกลุ่มตัวเลือก แล้วกด “สร้างชุดตัวเลือก”</div></td></tr>';return;}
+      if(!rows.length){body.innerHTML='<tr><td colspan="8"><div class="vm-empty">กรอกกลุ่มตัวเลือก แล้วกด “สร้างชุดตัวเลือก”</div></td></tr>';return;}
       body.innerHTML=rows.map(function(row,index){
         var attrs=Object.keys(row.attributes||{}).filter(function(k){return k!=='imageUrl';}).map(function(k){return esc(k)+': '+esc(row.attributes[k]);}).join(' / ');
         var availability='<small class="vm-stock-note">พร้อมขาย '+Number(row.available!==undefined?row.available:row.stock||0)+' · จอง '+Number(row.reserved||0)+'</small>';
         return '<tr data-vm-index="'+index+'">'+
           '<td class="vm-combination">'+attrs+availability+'</td>'+
           '<td><input type="text" data-vm-field="sku" maxlength="80" value="'+esc(row.sku||'')+'" aria-label="SKU"></td>'+
+          '<td><input type="url" data-vm-field="imageUrl" value="'+esc(row.imageUrl||row.attributes&&row.attributes.imageUrl||'')+'" placeholder="URL รูปตัวเลือก" aria-label="URL รูปตัวเลือก"></td>'+
           '<td><input type="number" data-vm-field="price" min="0.01" step="0.01" value="'+esc(row.price||'')+'" aria-label="ราคาปกติ"></td>'+
           '<td><input type="number" data-vm-field="salePrice" min="0" step="0.01" value="'+esc(row.salePrice||0)+'" aria-label="ราคาขาย"></td>'+
           '<td><input type="number" data-vm-field="stock" min="0" step="1" value="'+esc(row.stock===undefined?0:row.stock)+'" aria-label="สต็อก"></td>'+
@@ -4802,6 +4803,7 @@ body.dark .vm-matrix-table th{background:#202833}
           return {
             id:existing?existing.id:'',
             sku:existing&&existing.sku?existing.sku:makeAdminCode('VAR'),
+            imageUrl:oldAttrs.imageUrl||'',
             variantName:label,attributes:attrs,
             price:existing?Number(existing.price||0):(priceDefault>0?priceDefault:Number(APP.variantMatrixProduct&&APP.variantMatrixProduct.price||0)),
             salePrice:existing?Number(existing.salePrice||0):saleDefault,
@@ -4826,7 +4828,8 @@ body.dark .vm-matrix-table th{background:#202833}
         var payloadRows=rows.map(function(row,index){
           var attrs={};
           groupNames.forEach(function(name){if(row.attributes&&row.attributes[name]!==undefined)attrs[name]=String(row.attributes[name]);});
-          if(row.attributes&&row.attributes.imageUrl)attrs.imageUrl=row.attributes.imageUrl;
+          if(row.imageUrl)attrs.imageUrl=String(row.imageUrl).trim();
+          else if(row.attributes&&row.attributes.imageUrl)attrs.imageUrl=row.attributes.imageUrl;
           if(Object.keys(attrs).filter(function(k){return k!=='imageUrl';}).length!==groups.length)throw new Error('กลุ่มตัวเลือกมีการเปลี่ยนแปลง กรุณากด “สร้างชุดตัวเลือก” อีกครั้ง');
           var sku=String(row.sku||'').trim(),price=Number(row.price),sale=Number(row.salePrice||0),stock=Number(row.stock);
           if(!sku)throw new Error('กรุณาระบุ SKU ในแถวที่ '+(index+1));
@@ -4853,7 +4856,7 @@ body.dark .vm-matrix-table th{background:#202833}
         APP.variantMatrixRows=APP.variantMatrixOriginalRows.map(function(v){var copy={};Object.keys(v).forEach(function(k){copy[k]=v[k];});return copy;});
         APP.variantMatrixGroups=variantMatrixGroupsFromRows(rows);
         var name=product.name||'สินค้า '+productId,sku=product.sku||'';
-        var html='<div class="vm-intro"><span class="vm-intro-icon"><i class="fa-solid fa-layer-group"></i></span><div class="vm-intro-copy"><b>'+esc(name)+'</b><small>กำหนดกลุ่มตัวเลือก เช่น สี / ไซส์ / รุ่น แล้วสร้างชุด SKU อัตโนมัติ แต่ละชุดมี SKU ราคา ราคาลด และสต็อกแยกกัน<br>SKU ที่เคยถูกใช้ในคำสั่งซื้อหรือมีประวัติสต็อกจะถูกเก็บเป็น Archived เมื่อเอาออกจากชุดตัวเลือก</small></div></div>'+
+        var html='<div class="vm-intro"><span class="vm-intro-icon"><i class="fa-solid fa-layer-group"></i></span><div class="vm-intro-copy"><b>'+esc(name)+'</b><small>กำหนดกลุ่มตัวเลือก เช่น สี / ไซส์ / รุ่น แล้วสร้างชุด SKU อัตโนมัติ แต่ละชุดมี SKU ราคา ราคาลด และสต็อกแยกกัน<br>SKU ใหม่เริ่มสต็อก 0 เพื่อป้องกันการคัดลอกสต็อกสินค้าหลักซ้ำ ต้องกำหนดสต็อกให้แต่ละ SKU ก่อนเปิดขาย<br>SKU ที่เคยถูกใช้ในคำสั่งซื้อหรือมีประวัติสต็อกจะถูกเก็บเป็น Archived เมื่อเอาออกจากชุดตัวเลือก</small></div></div>'+
           '<div class="vm-section-title"><b>1. กลุ่มตัวเลือก</b><small>สูงสุด 3 กลุ่ม · 200 SKU ต่อสินค้า</small></div>'+
           '<div id="vmGroupList" class="vm-group-list">'+variantMatrixGroupsHtml()+'</div>'+
           '<div style="margin-top:8px;text-align:left"><button type="button" class="btn btn-outline btn-small" onclick="variantMatrixAddGroup()"><i class="fa-solid fa-plus"></i> เพิ่มกลุ่มตัวเลือก</button></div>'+
@@ -4865,7 +4868,7 @@ body.dark .vm-matrix-table th{background:#202833}
           '</div>'+
           '<div class="vm-generate-row"><button type="button" class="btn btn-primary btn-small" onclick="variantMatrixBuild()"><i class="fa-solid fa-wand-magic-sparkles"></i> สร้างชุดตัวเลือก</button><small id="vmMatrixCount">กำลังโหลด '+rows.length+' SKU</small></div>'+
           '<div class="vm-section-title"><b>3. จัดการ SKU แต่ละชุด</b><small>แก้ไขได้รายตัว และลบชุดที่ไม่ต้องการ</small></div>'+
-          '<div class="vm-matrix-wrap"><table class="vm-matrix-table"><thead><tr><th>ชุดตัวเลือก</th><th>SKU</th><th>ราคาปกติ</th><th>ราคาขาย</th><th>สต็อกทั้งหมด</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="vmMatrixBody"></tbody></table></div>'+
+          '<div class="vm-matrix-wrap"><table class="vm-matrix-table"><thead><tr><th>ชุดตัวเลือก</th><th>SKU</th><th>รูปตัวเลือก (URL)</th><th>ราคาปกติ</th><th>ราคาขาย</th><th>สต็อกทั้งหมด</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="vmMatrixBody"></tbody></table></div>'+
           '<div id="vmMatrixHint" class="vm-footer-note">แก้ไขราคาและสต็อกแยกตาม SKU ได้ สต็อกทั้งหมดต้องไม่น้อยกว่าจำนวนที่ถูกจองไว้ หากเปลี่ยนค่ากลุ่มตัวเลือกให้กดสร้างชุดตัวเลือกอีกครั้ง</div>';
         Swal.fire({
           title:'จัดการตัวเลือกสินค้า / SKU',
