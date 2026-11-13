@@ -1598,7 +1598,7 @@ function productPublicMetrics_(products) {
       if(!metricMap[key])metricMap[key]={soldCount:0,monthlySoldCount:0,weeklySoldCount:0,ratingTotal:0,reviewCount:0};
       metricMap[key].ratingTotal+=rating;metricMap[key].reviewCount++;
     });
-    try { var serialized=JSON.stringify(metricMap); if(serialized.length<95000)cache.put(cacheKey,serialized,30); } catch(cacheWriteError) {}
+    try { var serialized=JSON.stringify(metricMap); if(serialized.length<95000)cache.put(cacheKey,serialized,300); } catch(cacheWriteError) {}
   }
   safeArray_(products).forEach(function(p){
     var m=metricMap[String(p.id)]||{soldCount:0,monthlySoldCount:0,weeklySoldCount:0,ratingTotal:0,reviewCount:0};
@@ -1665,6 +1665,9 @@ function getProducts(options) {
     var variantsByProduct = Object.create(null);
     var categoryById = Object.create(null);
     var activeStoreById = Object.create(null);
+    var storeById = Object.create(null);
+    var flashDealsByProduct = Object.create(null);
+    var flashDealsForFilter = readTable_('FlashDeals', true);
     inventoryForFilter.forEach(function(item) {
       if (item.variantId) variantInventoryById[String(item.variantId)] = item;
       else baseInventoryByProduct[String(item.productId)] = item;
@@ -1677,8 +1680,14 @@ function getProducts(options) {
     });
     categoriesForFilter.forEach(function(category) { categoryById[String(category.id)] = category; });
     storesForFilter.forEach(function(store) {
-      if (store.status === 'Active') activeStoreById[String(store.id)] = true;
+      if (store.status === 'Active') { activeStoreById[String(store.id)] = true; storeById[String(store.id)] = store; }
     });
+    flashDealsForFilter.forEach(function(deal) {
+      var key=String(deal.productId||'');if(!key)return;
+      if(!flashDealsByProduct[key])flashDealsByProduct[key]=[];
+      flashDealsByProduct[key].push(deal);
+    });
+    var productLookup={baseInventoryByProduct:baseInventoryByProduct,variantInventoryById:variantInventoryById,variantsByProduct:variantsByProduct,storeById:storeById,flashDealsByProduct:flashDealsByProduct};
     var selectedCategoryIds = safeArray_(options.categoryIds).map(function(v){return String(v);});
     var selectedCategoryNames = safeArray_(options.categoryNames).map(function(v){return String(v).trim().toLowerCase();});
     var selectedBrands = safeArray_(options.brands).map(function(v){return String(v).trim().toLowerCase();});
@@ -1764,22 +1773,31 @@ function getProducts(options) {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
     var total = rows.length, page = Math.max(1, number_(options.page, 1)), pageSize = Math.min(100, Math.max(1, number_(options.pageSize, 24)));
-    var inventoryRows = readTable_('Inventory', true);
-    rows = rows.slice((page - 1) * pageSize, page * pageSize).map(function(p) { return productWithStock_(p, inventoryRows, isAdmin); });
+    rows = rows.slice((page - 1) * pageSize, page * pageSize).map(function(p) { return productWithStock_(p, inventoryForFilter, isAdmin, productLookup); });
     return ok_({ items: rows, total: total, page: page, pageSize: pageSize, pages: Math.ceil(total / pageSize) });
   } catch (e) { return fail_(safeError_(e)); }
 }
 
 function effectivePrice_(p) { return number_(p.salePrice, 0) > 0 ? number_(p.salePrice, 0) : number_(p.price, 0); }
-function productWithStock_(p, inventoryRows, isAdmin) {
+function productWithStock_(p, inventoryRows, isAdmin, lookup) {
+  lookup=lookup||{};
   var out = isAdmin ? JSON.parse(JSON.stringify(p)) : publicProduct_(p);
-  var inv = safeArray_(inventoryRows).filter(function(x) { return x.productId === p.id && !x.variantId; })[0];
-  var child=readTable_('ProductVariants',true).filter(function(v){return v.productId===p.id&&v.status==='Active';});
+  var productId=String(p.id),inv=lookup.baseInventoryByProduct?lookup.baseInventoryByProduct[productId]:safeArray_(inventoryRows).filter(function(x){return String(x.productId)===productId&&!x.variantId;})[0];
+  var child=lookup.variantsByProduct?(lookup.variantsByProduct[productId]||[]):readTable_('ProductVariants',true).filter(function(v){return String(v.productId)===productId&&v.status==='Active';});
   out.hasVariants=child.length>0;
-  if(child.length)out.stock=child.reduce(function(sum,v){var vi=safeArray_(inventoryRows).filter(function(z){return z.productId===p.id&&z.variantId===v.id;})[0];return sum+(vi?Math.max(0,number_(vi.quantity,0)-number_(vi.reserved,0)):number_(v.stock,0));},0);
-  else if (inv) out.stock = Math.max(0, number_(inv.quantity, 0) - number_(inv.reserved, 0)); 
-  if (p.sellerId) { var store = readTable_('Stores',true).filter(function(x){return x.id===p.sellerId && x.status==='Active';})[0]; if (store) { out.storeName=store.shopName; out.storeId=store.id; out.storeLogo=store.logo||''; out.storeAddress=store.address||''; } }
-  var deal = activeFlashDealForProduct_(p.id); if (deal) { out.salePrice=number_(deal.dealPrice,0); out.flashDealId=deal.id; out.flashDealEnd=deal.endAt; }
+  if(child.length)out.stock=child.reduce(function(sum,v){var vi=lookup.variantInventoryById?lookup.variantInventoryById[String(v.id)]:safeArray_(inventoryRows).filter(function(z){return String(z.productId)===productId&&String(z.variantId)===String(v.id);})[0];return sum+(vi?Math.max(0,number_(vi.quantity,0)-number_(vi.reserved,0)):number_(v.stock,0));},0);
+  else if(inv)out.stock=Math.max(0,number_(inv.quantity,0)-number_(inv.reserved,0));
+  if(p.sellerId){
+    var store=lookup.storeById?lookup.storeById[String(p.sellerId)]:readTable_('Stores',true).filter(function(x){return x.id===p.sellerId&&x.status==='Active';})[0];
+    if(store){out.storeName=store.shopName;out.storeId=store.id;out.storeLogo=store.logo||'';out.storeAddress=store.address||'';}
+  }
+  var deal=null;
+  if(lookup.flashDealsByProduct){
+    var now=Date.now(),deals=safeArray_(lookup.flashDealsByProduct[productId]);
+    deals=deals.filter(function(d){return d.status==='Active'&&(!d.startAt||new Date(d.startAt).getTime()<=now)&&(!d.endAt||new Date(d.endAt).getTime()>=now)&&(!number_(d.quota,0)||number_(d.soldCount,0)<number_(d.quota,0));});
+    deals.sort(function(a,b){return number_(a.dealPrice,0)-number_(b.dealPrice,0);});deal=deals[0]||null;
+  }else deal=activeFlashDealForProduct_(p.id);
+  if(deal){out.salePrice=number_(deal.dealPrice,0);out.flashDealId=deal.id;out.flashDealEnd=deal.endAt;}
   return out;
 }
 function publicProduct_(p) {
@@ -1799,10 +1817,16 @@ function getProductById(id, options) {
     if (options.token) { try { requireAdmin_(options.token, 'products.view'); isAdmin = true; } catch (authError) {} }
     var product = readTable_('Products', true).filter(function(p) { return String(p.id) === String(id); })[0];
     if (!product || (product.status !== 'Active' && !isAdmin)) throw new Error('ไม่พบสินค้า');
-    if(!isAdmin&&product.sellerId&&!readTable_('Stores',true).some(function(st){return st.id===product.sellerId&&st.status==='Active';})) throw new Error('ไม่พบสินค้า');
+    var storeRows=readTable_('Stores',true),activeStore=storeRows.filter(function(st){return st.id===product.sellerId&&st.status==='Active';})[0];
+    if(!isAdmin&&product.sellerId&&!activeStore)throw new Error('ไม่พบสินค้า');
     var variants = readTable_('ProductVariants', true).filter(function(v) { return String(v.productId) === String(id) && (v.status === 'Active' || isAdmin); });
-    var inventoryRows = readTable_('Inventory', true);
-    var productOut=productWithStock_(product, inventoryRows, isAdmin);productPublicMetrics_([productOut]);
+    var inventoryRows = readTable_('Inventory', true),variantInventoryById=Object.create(null),baseInventoryByProduct=Object.create(null),variantsByProduct=Object.create(null),storeById=Object.create(null),flashDealsByProduct=Object.create(null);
+    inventoryRows.forEach(function(inv){if(inv.variantId)variantInventoryById[String(inv.variantId)]=inv;else baseInventoryByProduct[String(inv.productId)]=inv;});
+    variantsByProduct[String(id)]=variants.filter(function(v){return v.status==='Active';});
+    if(activeStore)storeById[String(activeStore.id)]=activeStore;
+    readTable_('FlashDeals',true).forEach(function(deal){if(String(deal.productId)!==String(id))return;if(!flashDealsByProduct[String(id)])flashDealsByProduct[String(id)]=[];flashDealsByProduct[String(id)].push(deal);});
+    var lookup={baseInventoryByProduct:baseInventoryByProduct,variantInventoryById:variantInventoryById,variantsByProduct:variantsByProduct,storeById:storeById,flashDealsByProduct:flashDealsByProduct};
+    var productOut=productWithStock_(product,inventoryRows,isAdmin,lookup);productPublicMetrics_([productOut]);
     return ok_({ product: productOut, variants: variants.map(function(v) { var out = isAdmin ? v : publicVariant_(v); var inv = inventoryRows.filter(function(x) { return x.productId === product.id && x.variantId === v.id; })[0]; if (inv) out.stock = Math.max(0, number_(inv.quantity, 0) - number_(inv.reserved, 0)); return out; }) });
   } catch (e) { return fail_(safeError_(e)); }
 }
@@ -2974,15 +2998,19 @@ function getMarketplaceStores(options) {
     return fail_(safeError_(e));
   }
 }
-function getMarketplaceStore(storeId) {
+function getMarketplaceStore(storeId, summaryOnly) {
   try {
     var st=readTable_('Stores',false).filter(function(x){return x.id===storeId&&x.status==='Active';})[0];
     if(!st)throw new Error('ไม่พบร้านค้าหรือร้านค้ายังไม่เปิด');
     var info=publicStore_(st);
-    var products=getProducts({storeId:storeId,page:1,pageSize:100});
-    info.products=products.success?products.data.items:[];
-    info.productCount=products.success?number_(products.data.total,info.products.length):info.products.length;
     var storeProductIds=readTable_('Products',true).filter(function(p){return p.sellerId===storeId&&p.status==='Active';}).map(function(p){return String(p.id);});
+    info.productCount=storeProductIds.length;
+    if(summaryOnly)info.products=[];
+    else{
+      var products=getProducts({storeId:storeId,page:1,pageSize:100});
+      info.products=products.success?products.data.items:[];
+      info.productCount=products.success?number_(products.data.total,info.productCount):info.productCount;
+    }
     var storeProductMap=Object.create(null);
     storeProductIds.forEach(function(id){storeProductMap[id]=true;});
     var storeReviews=readTable_('Reviews',true).filter(function(r){
