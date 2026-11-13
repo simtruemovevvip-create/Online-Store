@@ -1580,7 +1580,7 @@ function productWithStock_(p, inventoryRows, isAdmin) {
   out.hasVariants=child.length>0;
   if(child.length)out.stock=child.reduce(function(sum,v){var vi=safeArray_(inventoryRows).filter(function(z){return z.productId===p.id&&z.variantId===v.id;})[0];return sum+(vi?Math.max(0,number_(vi.quantity,0)-number_(vi.reserved,0)):number_(v.stock,0));},0);
   else if (inv) out.stock = Math.max(0, number_(inv.quantity, 0) - number_(inv.reserved, 0)); 
-  if (p.sellerId) { var store = readTable_('Stores',true).filter(function(x){return x.id===p.sellerId && x.status==='Active';})[0]; if (store) { out.storeName=store.shopName; out.storeId=store.id; out.storeLogo=store.logo||''; out.storeAddress=store.address||''; } }
+  if (p.sellerId) { var store = readTable_('Stores',true).filter(function(x){return String(x.id)===String(p.sellerId) && x.status==='Active';})[0]; if (store) { out.storeName=store.shopName||''; out.storeId=store.id; out.storeSlug=store.slug||''; out.storeLogo=store.logo||''; out.storeBanner=store.banner||''; out.storeDescription=store.description||''; out.storeEmail=store.email||''; out.storePhone=store.phone||''; out.storeAddress=store.address||''; out.storeRating=number_(store.rating,0); out.storeFollowerCount=number_(store.followerCount,0); out.storeCreatedAt=store.createdAt||''; } }
   var deal = activeFlashDealForProduct_(p.id); if (deal) { out.salePrice=number_(deal.dealPrice,0); out.flashDealId=deal.id; out.flashDealEnd=deal.endAt; }
   return out;
 }
