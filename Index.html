@@ -625,52 +625,38 @@
 .seller-mobile-backdrop{display:none}
 .seller-console.is-collapsed .seller-brand-copy,.seller-console.is-collapsed .seller-store-copy,.seller-console.is-collapsed .seller-store-chevron,.seller-console.is-collapsed .seller-nav-label,.seller-console.is-collapsed .seller-nav-item span,.seller-console.is-collapsed .seller-nav-item em,.seller-console.is-collapsed .seller-signout-btn span{display:none}.seller-console.is-collapsed .seller-brand-row{justify-content:center;padding-left:0;padding-right:0}.seller-console.is-collapsed .seller-collapse-btn{display:grid}.seller-console.is-collapsed .seller-collapse-btn i{display:block;transform:rotate(180deg)}.seller-console.is-collapsed .seller-store-card{justify-content:center;padding:9px 4px}.seller-console.is-collapsed .seller-nav-item,.seller-console.is-collapsed .seller-signout-btn{justify-content:center;padding:10px 4px}.seller-console.is-collapsed .seller-nav-item>i,.seller-console.is-collapsed .seller-signout-btn>i{font-size:15px}.seller-console.is-collapsed .seller-topbar-left{min-width:auto}
 @media(max-width:1180px){.seller-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-dashboard-grid{grid-template-columns:1fr}.seller-topbar-user>div:last-child{display:none}}
-@media(max-width:980px){.seller-console,.seller-console.is-collapsed{display:block;height:calc(100dvh - 16px);min-height:520px;overflow:hidden}.seller-sidebar-v2{position:fixed;left:0;top:0;bottom:0;width:275px;height:100dvh;min-height:0;border-radius:0 18px 18px 0;box-shadow:12px 0 35px rgba(15,23,42,.18);transform:translateX(-110%);transition:transform .22s ease;padding-top:20px}.seller-console.mobile-open .seller-sidebar-v2{transform:translateX(0)}.seller-mobile-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:19}.seller-console.mobile-open .seller-mobile-backdrop{display:block}.seller-mobile-menu{display:grid}.seller-collapse-btn{display:none}.seller-console.is-collapsed .seller-brand-copy,.seller-console.is-collapsed .seller-store-copy,.seller-console.is-collapsed .seller-store-chevron,.seller-console.is-collapsed .seller-nav-label,.seller-console.is-collapsed .seller-nav-item span,.seller-console.is-collapsed .seller-nav-item em,.seller-console.is-collapsed .seller-signout-btn span{display:block}.seller-console.is-collapsed .seller-nav-item,.seller-console.is-collapsed .seller-signout-btn{justify-content:flex-start;padding:10px 11px}.seller-topbar-v2{height:62px;margin:9px 10px 0;padding:0 14px}.seller-content-v2{padding:19px}.seller-topbar-search{max-width:330px}.seller-collapse-btn{display:none}}
-@media(max-width:700px){.seller-topbar-v2{padding:0 12px;gap:9px}.seller-topbar-search{min-width:0;max-width:none;height:35px}.seller-topbar-search kbd{display:none}.seller-topbar-actions{gap:5px}.seller-topbar-icon{width:32px;height:32px}.seller-public-btn{width:32px;height:32px;padding:0;justify-content:center}.seller-public-btn span{display:none}.seller-topbar-user{display:none}.seller-breadcrumb small{font-size:8px}.seller-breadcrumb b{font-size:13px}.seller-content-v2{padding:13px}.seller-welcome-art{display:none}.seller-welcome-card{min-height:0;padding:19px}.seller-welcome-card h1{font-size:20px}.seller-welcome-card p{font-size:11px}.seller-stat-grid{gap:8px;margin:10px 0}.seller-stat-card{padding:12px}.seller-stat-card>strong{font-size:18px}.seller-stat-top{font-size:10px}.seller-stat-top>i{width:29px;height:29px}.seller-quick-grid{grid-template-columns:1fr}.seller-panel{padding:14px}.seller-page-heading{align-items:flex-start}.seller-page-heading h1{font-size:19px}.seller-page-heading .btn{font-size:10px;padding:8px}.seller-product-toolbar{flex-wrap:wrap}.seller-product-search{flex-basis:100%}.seller-product-toolbar select{flex:1;min-width:0}.seller-table-footer{align-items:flex-start;flex-direction:column}.seller-footer-v2{padding:11px 14px;font-size:9px}.seller-image-upload-box{align-items:flex-start;flex-direction:column}.seller-image-preview{width:100%;height:120px;flex-basis:120px}}
 
-/* Seller Center refinements: independent scroll regions, skeletons and customer chat */
-.seller-skeleton{display:flex;flex-direction:column;gap:16px;min-height:420px}.seller-skeleton-card,.seller-skeleton-table,.seller-skeleton-hero,.seller-skeleton-toolbar,.seller-skeleton-heading,.seller-skeleton-tabs{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative}.seller-skeleton-card{height:112px;padding:15px;display:flex;flex-direction:column;gap:10px}.seller-skeleton-card i,.seller-skeleton-card b,.seller-skeleton-card span,.seller-skeleton-hero i,.seller-skeleton-hero b,.seller-skeleton-hero span,.seller-skeleton-heading b,.seller-skeleton-heading i,.seller-skeleton-table i,.seller-skeleton-tabs i{display:block;border-radius:8px;background:linear-gradient(90deg,var(--surface-2,#eef1f5) 20%,color-mix(in srgb,var(--surface-2,#eef1f5) 55%,#fff) 45%,var(--surface-2,#eef1f5) 70%);background-size:220% 100%;animation:sellerShimmer 1.35s ease-in-out infinite}.seller-skeleton-card i{width:42%;height:10px}.seller-skeleton-card b{width:58%;height:22px}.seller-skeleton-card span{width:76%;height:8px}.seller-skeleton-hero{height:150px;padding:24px;background:var(--surface)}.seller-skeleton-hero i{width:22%;height:10px;margin-bottom:15px}.seller-skeleton-hero b{width:46%;height:26px;margin-bottom:12px}.seller-skeleton-hero span{width:72%;height:9px}.seller-skeleton-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.seller-skeleton-columns{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(230px,.8fr);gap:14px}.seller-skeleton-columns>div{display:flex;flex-direction:column;gap:12px}.seller-skeleton-table{padding:12px}.seller-skeleton-table>div{display:grid;grid-template-columns:1fr 1fr 1fr 70px;gap:12px;padding:14px 4px;border-bottom:1px solid var(--border)}.seller-skeleton-table>div:last-child{border:0}.seller-skeleton-table i{height:9px}.seller-skeleton-heading{height:62px;padding:15px;display:flex;justify-content:space-between}.seller-skeleton-heading b{height:22px;width:180px}.seller-skeleton-heading i{height:32px;width:120px}.seller-skeleton-toolbar{height:58px}.seller-skeleton-tabs{height:52px;display:flex;gap:12px;padding:10px}.seller-skeleton-tabs i{width:120px}.seller-skeleton-chat{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px}.seller-skeleton-chat>div{display:flex;flex-direction:column;gap:12px}@keyframes sellerShimmer{0%{background-position:100% 0}100%{background-position:-120% 0}}
-
-.seller-chat-conversation-header{min-height:58px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 15px;border-bottom:1px solid var(--border);background:var(--surface)}.seller-chat-conversation-identity{display:flex;flex-direction:column;gap:3px;min-width:0}.seller-chat-conversation-identity b{font-size:12px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.seller-chat-conversation-identity small{font-size:9px;color:var(--muted)}.seller-chat-conversation-header>a{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:var(--seller-accent);font-weight:750;text-decoration:none;white-space:nowrap}.seller-chat-window{min-height:0}
-.seller-chat-page{min-width:0}.seller-chat-page-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:17px}.seller-chat-page-heading h1{margin:0;color:var(--ink);font-size:25px}.seller-chat-page-heading p{margin:6px 0 0;color:var(--muted);font-size:12px}.seller-chat-summary{min-width:110px;padding:12px 16px;text-align:center;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.seller-chat-summary b{display:block;font-size:23px;color:var(--seller-accent)}.seller-chat-summary span{font-size:10px;color:var(--muted)}.seller-chat-tabs{display:flex;gap:8px;margin-bottom:12px;padding:5px;border:1px solid var(--border);border-radius:13px;background:var(--surface);width:max-content}.seller-chat-tabs button{border:0;background:transparent;color:var(--muted);padding:9px 15px;border-radius:9px;font-size:12px;font-weight:750;cursor:pointer}.seller-chat-tabs button.active{background:var(--seller-accent);color:#fff;box-shadow:0 4px 12px rgba(232,91,53,.2)}.seller-chat-workspace{display:grid;grid-template-columns:minmax(230px,280px) minmax(0,1fr) minmax(210px,250px);gap:12px;min-height:570px;height:min(690px,calc(100vh - 260px));}.seller-chat-customer-list,.seller-chat-center,.seller-chat-profile{min-width:0;min-height:0;background:var(--surface);border:1px solid var(--border);border-radius:15px;overflow:hidden}.seller-chat-customer-list{display:flex;flex-direction:column}.seller-chat-list-heading{display:flex;align-items:center;justify-content:space-between;padding:15px 14px 10px}.seller-chat-list-heading b{font-size:12px;color:var(--ink)}.seller-chat-list-heading span{font-size:10px;color:var(--muted);border-radius:20px;background:var(--surface-2);padding:3px 8px}.seller-chat-search{display:flex;align-items:center;gap:8px;margin:0 11px 10px;padding:9px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}.seller-chat-search i{font-size:11px;color:var(--muted)}.seller-chat-search input{border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;min-width:0;width:100%;padding:0!important;font-size:11px;color:var(--ink)}.seller-chat-customer-rows{flex:1;min-height:0;overflow:auto}.seller-chat-customer-row{width:100%;display:flex;align-items:center;gap:9px;text-align:left;padding:11px;border:0;border-top:1px solid var(--border);background:transparent;cursor:pointer;min-width:0}.seller-chat-customer-row:hover,.seller-chat-customer-row.active{background:color-mix(in srgb,var(--seller-accent) 8%,var(--surface))}.seller-chat-customer-avatar{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;overflow:hidden;border-radius:50%;background:var(--surface-2);color:var(--muted)}.seller-chat-customer-avatar img,.seller-chat-profile-avatar img{width:100%;height:100%;object-fit:cover}.seller-chat-customer-meta{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}.seller-chat-customer-meta b{font-size:11px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.seller-chat-customer-meta small{font-size:9px;color:var(--muted)}.seller-chat-preview{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.seller-chat-row-time{align-self:flex-start;white-space:nowrap;font-size:9px;color:var(--muted)}.seller-chat-no-customers{padding:25px 12px;text-align:center;font-size:11px;color:var(--muted)}.seller-chat-center{display:flex;flex-direction:column}.seller-chat-window{display:flex;flex-direction:column;flex:1;min-height:0;height:100%;padding:12px}.seller-chat-message-list{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:8px 3px}.seller-chat-empty,.seller-chat-profile-empty{height:100%;min-height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);text-align:center}.seller-chat-empty i,.seller-chat-profile-empty i{font-size:30px;opacity:.5}.seller-chat-empty b{font-size:13px;color:var(--ink)}.seller-chat-empty span,.seller-chat-profile-empty span{font-size:10px}.seller-chat-loading{height:100%;display:flex;align-items:center;justify-content:center;gap:9px;color:var(--muted);font-size:11px}.seller-chat-profile{padding:17px 14px;overflow:auto}.seller-chat-profile-card{display:flex;flex-direction:column;align-items:center;gap:7px}.seller-chat-profile-avatar{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:var(--surface-2);color:var(--muted);font-size:22px}.seller-chat-profile-card>b{font-size:13px;text-align:center;color:var(--ink)}.seller-chat-profile-card>small{font-size:10px;color:var(--muted)}.seller-chat-profile-card>a{font-size:10px;color:var(--seller-accent);text-decoration:none;font-weight:750;margin:4px 0 12px}.seller-chat-profile-data{width:100%;display:flex;flex-direction:column;gap:11px;border-top:1px solid var(--border);padding-top:13px}.seller-chat-profile-data>div{display:flex;flex-direction:column;gap:3px;overflow-wrap:anywhere}.seller-chat-profile-data small{font-size:9px;color:var(--muted)}.seller-chat-profile-data b{font-size:10px;color:var(--ink);font-weight:650}.seller-chat-profile-data a{color:inherit;text-decoration:none}.seller-broadcast-pane[hidden],.seller-chat-workspace[hidden]{display:none!important}.seller-broadcast-card{max-width:850px;background:var(--surface);border:1px solid var(--border);border-radius:17px;padding:22px}.seller-broadcast-heading h2{margin:0;font-size:20px;color:var(--ink)}.seller-broadcast-heading p{max-width:680px;font-size:12px;color:var(--muted);line-height:1.7}.seller-broadcast-form{display:flex;flex-direction:column;gap:15px;margin-top:20px}.seller-broadcast-form>label{display:flex;flex-direction:column;gap:7px;font-size:11px;font-weight:750;color:var(--ink)}.seller-broadcast-form input:not([type=radio]),.seller-broadcast-form textarea{width:100%;border:1px solid var(--border);border-radius:10px;padding:11px;background:var(--bg);color:var(--ink);font:inherit;font-size:12px}.seller-broadcast-target{display:flex;flex-wrap:wrap;gap:16px;font-size:11px;color:var(--ink)}.seller-broadcast-recipient-list{display:none;max-height:210px;overflow:auto;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:10px;border:1px solid var(--border);border-radius:12px}.seller-broadcast-recipient-list.is-select-mode{display:grid}.seller-broadcast-recipient-list label{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;background:var(--bg);font-size:10px}.seller-broadcast-recipient-list label span{display:flex;flex-direction:column;gap:2px}.seller-broadcast-recipient-list small{color:var(--muted)}.seller-broadcast-footer{display:flex;align-items:center;justify-content:space-between;gap:12px}.seller-broadcast-footer small{font-size:9px;color:var(--muted);max-width:420px}.chat-bubble{max-width:86%;padding:10px 12px;border-radius:13px;background:var(--surface-2);align-self:flex-start;overflow-wrap:anywhere}.chat-bubble.mine{background:#fff0eb;color:#81301e;align-self:flex-end}.chat-bubble.is-deleted{opacity:.75;font-style:italic}.chat-message-text{font-size:12px;line-height:1.55;white-space:pre-wrap}.chat-message-meta{display:flex!important;align-items:center;gap:8px;margin-top:7px;font-size:9px!important;opacity:.75}.chat-read-status.is-read{color:#15803d;font-weight:800}.chat-delete-message{border:0;background:transparent;color:#c2410c;font-size:9px;cursor:pointer;padding:0}.chat-image-link{display:block;position:relative;max-width:min(260px,100%);margin:2px 0;padding:0;border:0;border-radius:10px;background:transparent;cursor:zoom-in;text-align:left}.chat-image-link img{display:block;max-width:100%;max-height:230px;border-radius:9px;object-fit:contain}.chat-image-zoom-hint{display:flex;align-items:center;gap:5px;padding:5px 3px 0;font-size:9px;color:var(--muted)}.chat-image-modal-popup{max-width:96vw!important;background:#111!important;color:#fff!important}.chat-image-modal-popup .swal2-html-container{margin:8px 0 0!important;overflow:hidden!important}.chat-image-modal-frame{display:grid;place-items:center;max-height:80vh;overflow:auto}.chat-image-modal-frame img{display:block;max-width:100%;max-height:78vh;width:auto;height:auto;object-fit:contain;border-radius:8px}.chat-unread-badge{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#dc2626;color:#fff;font-size:10px;font-weight:800;line-height:1}.seller-chat-row-trailing{display:flex;flex-direction:column;align-items:flex-end;gap:6px;align-self:flex-start;min-width:42px}.chat-unread-total{margin-left:auto!important;background:#fee2e2!important;color:#b91c1c!important;font-weight:800!important}.chat-unread-total[hidden]{display:none!important}.buyer-chat-page .buyer-chat-workspace{margin-top:4px;grid-template-columns:minmax(230px,300px) minmax(0,1fr);height:min(760px,calc(100vh - 230px));min-height:560px}.buyer-chat-page .seller-chat-profile{display:none!important}.buyer-chat-page .seller-chat-center{min-width:0;width:100%;height:100%}.buyer-chat-page .seller-chat-window{width:100%;min-width:0;min-height:0;flex:1}.buyer-chat-page .seller-chat-compose{width:100%;margin-top:10px;padding:12px 0 0}.buyer-chat-page .chat-compose-row{width:100%;display:flex;align-items:stretch;gap:9px}.buyer-chat-page .chat-compose-row #chatMessageInput{display:block!important;flex:1 1 auto;width:100%;min-width:0;height:44px;box-sizing:border-box}.buyer-chat-page .chat-compose-row .chat-attach-button,.buyer-chat-page .chat-compose-row .btn{flex:0 0 44px;height:44px}.buyer-chat-page .seller-chat-row-time{min-width:52px;text-align:right;line-height:1.35}.buyer-chat-page .seller-chat-row-time small{font-size:8px;color:var(--muted)}@media(max-width:760px){.buyer-chat-page .buyer-chat-workspace{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.buyer-chat-page .seller-chat-customer-list{max-height:220px}.buyer-chat-page .seller-chat-center{height:65vh;min-height:440px}}.buyer-chat-page .seller-chat-window{min-height:0}.buyer-chat-page .seller-chat-conversation-header{position:relative}.buyer-chat-page .seller-chat-profile{display:block}.buyer-chat-page .customer-chat-store-description{font-weight:500;line-height:1.55;white-space:normal}.buyer-chat-page .seller-chat-profile-card .btn{justify-content:center}.buyer-chat-page .customer-chat-store-row .seller-chat-customer-avatar{border-radius:11px}.buyer-chat-page .seller-chat-empty{padding:24px}.buyer-chat-page .seller-chat-message-list{min-height:180px}.seller-chat-compose{margin-top:9px;padding-top:10px;border-top:1px solid var(--border)}.chat-compose-row{display:flex;align-items:center;gap:8px}.chat-compose-row>input[type=text],.chat-compose-row>input:not([type]){flex:1;min-width:0}.chat-compose-row #chatMessageInput{flex:1;min-width:0}.chat-attach-button{width:39px;height:39px;flex:0 0 39px;border:1px solid var(--border);border-radius:11px;background:var(--surface);color:var(--seller-accent);cursor:pointer}.chat-compose-row .btn{height:39px;white-space:nowrap}.chat-compose-attachment-preview{display:flex;align-items:center;gap:9px;margin-bottom:9px;padding:7px 9px;border:1px dashed var(--border);border-radius:10px;font-size:10px;color:var(--muted)}.chat-compose-attachment-preview[hidden]{display:none}.chat-compose-attachment-preview img{width:43px;height:43px;border-radius:7px;object-fit:cover}.chat-compose-attachment-preview span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.chat-compose-attachment-preview button{border:0;background:transparent;color:#dc4545;cursor:pointer}.seller-store-preview-actions{margin:0 0 13px;display:flex;align-items:center}.seller-store-preview-actions .btn{display:inline-flex;align-items:center;gap:8px}
-@media(max-width:1100px){.seller-chat-workspace{grid-template-columns:minmax(205px,245px) minmax(0,1fr)}.seller-chat-profile{grid-column:1/-1;display:none}.seller-chat-workspace:has(.seller-chat-customer-row.active) .seller-chat-profile{display:block}.seller-chat-profile{max-height:190px}.seller-chat-profile-card{align-items:flex-start}.seller-chat-profile-data{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:760px){.seller-skeleton-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-skeleton-columns{grid-template-columns:1fr}.seller-chat-page-heading h1{font-size:20px}.seller-chat-workspace{height:auto;min-height:0;grid-template-columns:1fr}.seller-chat-customer-list{max-height:230px}.seller-chat-center{min-height:460px}.seller-chat-profile{display:block!important;max-height:none;grid-column:auto}.seller-chat-profile-data{grid-template-columns:1fr}.seller-broadcast-card{padding:15px}.seller-broadcast-recipient-list{grid-template-columns:1fr}.seller-broadcast-footer{align-items:flex-start;flex-direction:column}.seller-chat-tabs{width:100%}.seller-chat-tabs button{flex:1}.seller-chat-row-time{display:none}}
-
-@media(max-width:420px){.seller-stat-grid{grid-template-columns:1fr 1fr}.seller-stat-card>strong{font-size:16px}.seller-welcome-actions .btn{font-size:10px;padding:8px 10px}.seller-topbar-left{gap:7px}.seller-topbar-v2{gap:6px}.seller-topbar-search{padding:0 8px}.seller-topbar-search input{font-size:10px}}
-
-
-/* Chat composer and list-time polish */
-.seller-chat-page .seller-chat-row-time{display:block;align-self:flex-start;flex:0 0 auto;min-width:64px;text-align:right;white-space:nowrap;font-size:10px;line-height:1.35;color:var(--muted);padding-top:2px}
-.seller-chat-page .customer-chat-store-row .seller-chat-row-time{min-width:62px}
-.seller-chat-compose{width:100%;box-sizing:border-box;flex:0 0 auto;margin-top:12px;padding:12px 0 0;border-top:1px solid var(--border)}
-.chat-compose-row{display:grid;grid-template-columns:44px minmax(0,1fr) 82px;align-items:end;gap:10px;width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--border);border-radius:16px;background:var(--bg);box-shadow:0 4px 14px rgba(15,23,42,.05)}
-.buyer-chat-page .chat-compose-row{display:grid!important;grid-template-columns:44px minmax(0,1fr) 82px;align-items:end}
-.buyer-chat-page .chat-compose-row .chat-attach-button{grid-column:1;flex:initial;width:44px;min-width:44px;height:44px}
-.buyer-chat-page .chat-compose-row #chatMessageInput{grid-column:2;flex:initial}
-.buyer-chat-page .chat-compose-row .btn{grid-column:3;flex:initial;width:82px;min-width:82px;height:44px}
-.chat-compose-row #chatMessageInput{display:block;grid-column:2;flex:initial;width:100%;min-width:0;max-width:100%;height:44px;min-height:44px;max-height:132px;box-sizing:border-box;resize:none;overflow-y:hidden;margin:0;padding:11px 13px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;font-size:12px;line-height:1.45;outline:none;transition:border-color .18s ease,box-shadow .18s ease}
-.chat-compose-row #chatMessageInput:focus{border-color:var(--seller-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--seller-accent) 14%,transparent)}
-.chat-compose-row #chatMessageInput::placeholder{color:var(--muted);opacity:.85}
-.chat-compose-row .chat-attach-button{grid-column:1;width:44px;height:44px;min-width:44px;flex:initial;border-radius:12px;display:grid;place-items:center}
-.chat-compose-row .btn{grid-column:3;min-width:82px;width:82px;height:44px;flex:initial;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 10px;border-radius:12px;white-space:nowrap}
-.chat-compose-attachment-preview{width:100%;box-sizing:border-box}
-@media(max-width:760px){
-  .seller-chat-page .seller-chat-row-time{display:block;min-width:58px;font-size:9px}
-  .chat-compose-row{grid-template-columns:42px minmax(0,1fr) 76px;gap:7px;padding:6px}
-  .chat-compose-row .chat-attach-button{width:42px;min-width:42px;height:42px}
-  .chat-compose-row .btn{width:76px;min-width:76px;height:42px;padding:0 7px;font-size:11px}
-  .chat-compose-row #chatMessageInput{min-height:42px;height:42px;padding:10px 11px;font-size:12px}
-  .buyer-chat-page .chat-compose-row{grid-template-columns:42px minmax(0,1fr) 76px}
-  .buyer-chat-page .chat-compose-row .chat-attach-button{width:42px;min-width:42px;height:42px}
-  .buyer-chat-page .chat-compose-row .btn{width:76px;min-width:76px;height:42px}
-  .buyer-chat-page .chat-compose-row #chatMessageInput{height:42px}
+@media(max-width:980px){
+  .shopee-detail-main.fashion-product-main{grid-template-columns:minmax(0,40%) minmax(0,60%)}
+  .fashion-product-info{padding:17px!important}
+  .fashion-shop-full{padding:20px}
+  .fashion-shop-profile{flex-basis:40%;max-width:40%;padding-right:20px;gap:12px}
+  .fashion-shop-stats{column-gap:18px;padding-left:20px}
 }
-@media(max-width:360px){
-  .chat-compose-row{grid-template-columns:38px minmax(0,1fr) 68px;gap:6px;padding:5px}
-  .chat-compose-row .chat-attach-button{width:38px;min-width:38px;height:40px}
-  .chat-compose-row .btn{width:68px;min-width:68px;height:40px;font-size:10px}
+@media(max-width:720px){
+  .shopee-detail-page.fashion-detail-page{max-width:100%}
+  .shopee-detail-main.fashion-product-main{grid-template-columns:minmax(0,1fr)}
+  .fashion-product-gallery{border-right:0!important;border-bottom:1px solid var(--border)!important}
+  .fashion-product-gallery .fashion-product-hero{max-width:450px;margin:0 auto}
+  .fashion-detail-thumbnails{max-width:450px;width:100%;margin:0 auto;grid-template-columns:repeat(4,minmax(0,1fr))}
+  .fashion-gallery-footer{max-width:450px;width:100%;margin:0 auto}
+  .fashion-product-info{padding:15px!important}
+  .fashion-product-meta{gap:7px!important}
+  .fashion-report-link{margin-left:auto}
+  .fashion-detail-row{grid-template-columns:82px minmax(0,1fr)}
+  .fashion-shop-full{display:block;padding:18px}
+  .fashion-shop-profile{width:100%;max-width:none;flex:auto;padding:0 0 18px;border-right:0;border-bottom:1px solid #e5e7eb}
+  .fashion-shop-stats{grid-template-columns:repeat(3,minmax(0,1fr));padding:18px 0 0;gap:14px 16px}
 }
-
+@media(max-width:520px){
+  .fashion-shop-full{padding:15px}
+  .fashion-shop-avatar{width:68px;height:68px;flex-basis:68px}
+  .fashion-shop-profile{gap:12px;padding-bottom:15px}
+  .fashion-shop-actions{gap:8px;margin-top:8px}
+  .fashion-shop-actions button{height:33px;padding:0 10px}
+  .fashion-shop-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 15px;padding-top:15px}
+  .fashion-shop-stat>span,.fashion-shop-stat>b{font-size:13px}
+}
 </style>
 
 
@@ -1553,33 +1539,33 @@
 .fashion-buy-actions .btn{min-height:44px;flex:1;min-width:0;border-radius:4px!important;font-size:12px;font-weight:700}
 .fashion-buy-actions .fashion-add-cart{background:#fff3ee!important;border:1px solid #ee4d2d!important;color:#ee4d2d!important}
 .fashion-buy-actions .fashion-buy-now{background:#ee4d2d!important;border:1px solid #ee4d2d!important;color:#fff!important}
-.fashion-shop-card{display:block;width:100%;max-width:100%;box-sizing:border-box;margin:15px 0 0;padding:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.fashion-shop-full{width:100%;min-width:0}
-.fashion-shop-banner{height:150px;width:100%;overflow:hidden;background:var(--surface-2)}
-.fashion-shop-banner img{display:block;width:100%;height:100%;object-fit:cover}
-.fashion-shop-full-head{padding:20px 22px 15px}
-.fashion-shop-identity{display:flex;align-items:center;gap:13px;min-width:0}
-.fashion-shop-avatar{width:66px;height:66px;flex:0 0 66px;border:1px solid var(--border);border-radius:50%;overflow:hidden;display:grid;place-items:center;background:var(--surface-2);color:var(--muted);font-size:22px}
+
+.fashion-shop-card{display:block;width:100%;max-width:1200px;box-sizing:border-box;margin:15px auto 0;padding:0;background:#fff;border:1px solid #eeeeee;border-radius:4px;overflow:hidden;color:#333}
+.fashion-shop-full{display:flex;align-items:stretch;width:100%;min-width:0;box-sizing:border-box;padding:25px;background:#fff}
+.fashion-shop-profile{display:flex;align-items:center;gap:16px;flex:0 0 38%;max-width:38%;min-width:0;padding-right:25px;border-right:1px solid #e5e7eb;box-sizing:border-box}
+.fashion-shop-avatar{width:80px;height:80px;flex:0 0 80px;border:1px solid #e5e7eb;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#fff;color:#9ca3af;font-size:25px}
 .fashion-shop-avatar img{width:100%;height:100%;object-fit:cover}
-.fashion-shop-name{min-width:0;display:flex;flex-direction:column;gap:3px}
-.fashion-shop-name>b{font-size:15px;color:var(--ink);overflow-wrap:anywhere}
-.fashion-shop-name>small{font-size:10px;color:var(--muted)}
-.fashion-shop-online-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-right:4px}
-.fashion-shop-actions{display:flex;gap:7px;margin-top:7px;flex-wrap:wrap}
-.fashion-shop-actions button{height:32px;padding:0 13px;border-radius:4px;font-size:11px;font-weight:600}
-.fashion-shop-chat{border:1px solid #ee4d2d;background:#fff5f0;color:#ee4d2d}
-.fashion-shop-view{border:1px solid var(--border);background:var(--surface);color:var(--ink)}
-.fashion-shop-description{padding:0 22px 17px;font-size:12px;line-height:1.75;overflow-wrap:anywhere}
-.fashion-shop-description img{max-width:100%;height:auto}
-.fashion-shop-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding:17px 22px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
-.fashion-shop-stat{display:flex;flex-direction:column;gap:4px;min-width:0}
-.fashion-shop-stat>span,.fashion-shop-detail>span{font-size:10px;color:var(--muted)}
-.fashion-shop-stat>b{font-size:13px;font-weight:600;color:#ee4d2d;overflow-wrap:anywhere}
-.fashion-shop-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 20px;padding:17px 22px}
-.fashion-shop-detail{display:flex;flex-direction:column;gap:4px;min-width:0}
-.fashion-shop-detail>b{font-size:12px;color:var(--ink);font-weight:500;overflow-wrap:anywhere}
-.fashion-shop-loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11px;min-height:62px;padding:15px}
-.fashion-shop-avatar-placeholder{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);color:var(--muted);font-size:19px}
+.fashion-shop-profile-copy{display:flex;flex:1;flex-direction:column;justify-content:center;min-width:0}
+.fashion-shop-name{display:block;min-width:0;color:#222;font-size:16px;font-weight:600;line-height:1.45;overflow-wrap:anywhere}
+.fashion-shop-presence{display:block;margin-top:3px;color:#9ca3af;font-size:13px;font-weight:400;line-height:1.4}
+.fashion-shop-online-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin:0 6px 1px 0}
+.fashion-shop-actions{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.fashion-shop-actions button{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:35px;padding:0 13px;border-radius:3px;font-family:inherit;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer}
+.fashion-shop-chat{border:1px solid #ee4d2d;background:#ffeee8;color:#ee4d2d}
+.fashion-shop-view{border:1px solid #d1d5db;background:#fff;color:#374151}
+.fashion-shop-stats{display:grid;flex:1;grid-template-columns:repeat(3,minmax(0,1fr));align-content:center;gap:16px 28px;min-width:0;padding-left:25px}
+.fashion-shop-stat{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;line-height:1.5}
+.fashion-shop-stat>span{min-width:0;color:#757575;font-size:14px;font-weight:400;overflow-wrap:anywhere}
+.fashion-shop-stat>b{min-width:0;color:#ee4d2d;font-size:14px;font-weight:400;text-align:right;overflow-wrap:anywhere}
+.fashion-shop-loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11px;min-height:100px;padding:25px}
+.fashion-shop-avatar-placeholder{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);color:var(--muted);font-size:22px}
+body.dark .fashion-shop-card,body.dark .fashion-shop-full{background:#161b22;border-color:#30363d;color:#e7ebf2}
+body.dark .fashion-shop-name{color:#e7ebf2}
+body.dark .fashion-shop-profile{border-right-color:#30363d}
+body.dark .fashion-shop-stat>span,body.dark .fashion-shop-presence{color:#9ca3af}
+body.dark .fashion-shop-view{background:#202833;border-color:#475569;color:#e7ebf2}
+body.dark .fashion-shop-avatar{background:#202833;border-color:#475569}
+body.dark .fashion-shop-chat{background:#2a1d1a}
 .fashion-product-description{margin-top:15px!important}
 body.dark .fashion-product-hero{background:#161b22}
 body.dark .fashion-price-panel{background:#202833!important}
@@ -3244,18 +3230,58 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
       if(months<1)return 'น้อยกว่า 1 เดือน';if(months<12)return months+' เดือนที่ผ่านมา';
       var years=Math.floor(months/12),rest=months%12;return years+' ปี'+(rest?' '+rest+' เดือน':'')+'ที่ผ่านมา';
     }
+    function productShopCompactNumber(value){
+      var n=Math.max(0,Number(value)||0);
+      if(n>=1000000)return (n/1000000).toFixed(n>=10000000?0:1).replace(/\\.0$/,'')+'m';
+      if(n>=1000)return (n/1000).toFixed(n>=10000?0:1).replace(/\\.0$/,'')+'k';
+      return Math.round(n).toLocaleString('th-TH');
+    }
     function renderProductShopCard(store){
       var p=APP.currentProduct,host=document.getElementById('detailShopInfo');if(!host||!p)return;
       store=store||{};
-      var name=store.shopName||p.storeName||'ร้านค้าบน Marketplace',logo=store.logo||p.storeLogo||'',banner=store.banner||'';
-      var rating=Number(store.rating||0),followers=Number(store.followers!==undefined?store.followers:store.followerCount||0),productCount=Number(store.productCount||0);
-      var stats=[['คะแนนร้านค้า',rating>0?'★ '+rating.toFixed(1)+' / 5':'ยังไม่มีคะแนน'],['ผู้ติดตาม',followers.toLocaleString('th-TH')+' คน'],['สินค้าในร้าน',productCount.toLocaleString('th-TH')+' รายการ'],['เปิดร้านเมื่อ',productStoreJoinLabel(store.createdAt)]];
-      var details=[['ชื่อร้านค้า',name],['URL ร้านค้า',store.slug||'—'],['อีเมล',store.email||'—'],['เบอร์โทรศัพท์',store.phone||'—'],['ที่อยู่ร้านค้า',store.address||'—']];
-      host.innerHTML='<div class="fashion-shop-full">'+(banner?'<div class="fashion-shop-banner"><img src="'+imageUrl(banner)+'" onerror="this.parentNode.style.display=\'none\'" alt="แบนเนอร์ร้านค้า"></div>':'')+
-        '<div class="fashion-shop-full-head"><div class="fashion-shop-identity"><div class="fashion-shop-avatar">'+(logo?'<img src="'+imageUrl(logo)+'" onerror="imageFallback(this)" alt="'+esc(name)+'">':'<i class="fa-solid fa-store"></i>')+'</div><div class="fashion-shop-name"><b>'+esc(name)+'</b><small><span class="fashion-shop-online-dot"></span> ร้านค้าบน Marketplace</small><div class="fashion-shop-actions"><button type="button" class="fashion-shop-chat" data-store-id="'+esc(store.id||p.storeId)+'" data-product-id="'+esc(p.id)+'" onclick="openChatWithStore(this.dataset.storeId,this.dataset.productId)"><i class="fa-regular fa-comments"></i> แชทเลย</button><button type="button" class="fashion-shop-view" data-store-id="'+esc(store.id||p.storeId)+'" onclick="showStorePage(this.dataset.storeId)">ดูร้านค้า</button></div></div></div></div>'+
-        (store.description?'<div class="fashion-shop-description">'+sanitizeRichEditorHtml(store.description)+'</div>':'')+
-        '<div class="fashion-shop-stats">'+stats.map(function(x){return '<div class="fashion-shop-stat"><span>'+esc(x[0])+'</span><b>'+esc(x[1])+'</b></div>';}).join('')+'</div>'+
-        '<div class="fashion-shop-details">'+details.map(function(x){return '<div class="fashion-shop-detail"><span>'+esc(x[0])+'</span><b>'+esc(x[1])+'</b></div>';}).join('')+'</div></div>';
+      var name=store.shopName||p.storeName||'ร้านค้าบน Marketplace';
+      var logo=store.logo||p.storeLogo||'';
+      var rating=Number(store.rating||0);
+      var followers=Number(store.followers!==undefined?store.followers:store.followerCount||0);
+      var productCount=Number(store.productCount||0);
+      var responseRate='—';
+      if(store.responseRate!==undefined&&store.responseRate!==null&&store.responseRate!==''){
+        var responseRateNumber=Number(store.responseRate);
+        responseRate=isFinite(responseRateNumber)?responseRateNumber+'%':String(store.responseRate);
+      }
+      var responseTime=store.responseTime||'—';
+      var isActive=String(store.status||'Active')==='Active';
+      var presenceLabel=isActive?'ร้านค้าเปิดให้บริการ':'ร้านค้าบน Marketplace';
+      var stats=[
+        ['คะแนน',rating>0?rating.toFixed(1)+' / 5':'—'],
+        ['อัตราการตอบกลับ',responseRate],
+        ['เข้าร่วมเมื่อ',productStoreJoinLabel(store.createdAt)],
+        ['รายการสินค้า',productShopCompactNumber(productCount)],
+        ['เวลาในการตอบกลับ',responseTime],
+        ['ผู้ติดตาม',productShopCompactNumber(followers)]
+      ];
+      var avatar=logo
+        ?'<img src="'+imageUrl(logo)+'" onerror="imageFallback(this)" alt="'+esc(name)+'">'
+        :'<i class="fa-solid fa-store" aria-hidden="true"></i>';
+      var storeId=esc(store.id||p.storeId),productId=esc(p.id);
+      var statsHtml=stats.map(function(item){
+        return '<div class="fashion-shop-stat"><span>'+esc(item[0])+'</span><b>'+esc(item[1])+'</b></div>';
+      }).join('');
+      host.innerHTML=
+        '<div class="fashion-shop-full">'+
+          '<div class="fashion-shop-profile">'+
+            '<div class="fashion-shop-avatar">'+avatar+'</div>'+
+            '<div class="fashion-shop-profile-copy">'+
+              '<b class="fashion-shop-name">'+esc(name)+'</b>'+
+              '<small class="fashion-shop-presence">'+(isActive?'<span class="fashion-shop-online-dot"></span>':'')+esc(presenceLabel)+'</small>'+
+              '<div class="fashion-shop-actions">'+
+                '<button type="button" class="fashion-shop-chat" data-store-id="'+storeId+'" data-product-id="'+productId+'" onclick="openChatWithStore(this.dataset.storeId,this.dataset.productId)"><i class="fa-regular fa-comments" aria-hidden="true"></i> แชทเลย</button>'+
+                '<button type="button" class="fashion-shop-view" data-store-id="'+storeId+'" onclick="showStorePage(this.dataset.storeId)"><i class="fa-solid fa-store" aria-hidden="true"></i> ดูร้านค้า</button>'+
+              '</div>'+
+            '</div>'+
+          '</div>'+
+          '<div class="fashion-shop-stats">'+statsHtml+'</div>'+
+        '</div>';
     }
     function loadProductShopInfo(product){
       var host=document.getElementById('detailShopInfo');if(!host||!product)return;
