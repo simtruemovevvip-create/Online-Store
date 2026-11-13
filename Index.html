@@ -3118,7 +3118,7 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
       APP.selectedVariantAttributes=APP.selectedVariantAttributes||{};
       if(APP.selectedVariantAttributes[key]!==value&&groupIndex>=0){for(var i=groupIndex+1;i<groups.length;i++)delete APP.selectedVariantAttributes[groups[i].key];}
       APP.selectedVariantAttributes[key]=value;
-      var matches=detailMatchingVariants();if(key==='สี'&&matches.length){var colorImage=detailVariantImage(matches[0]),mainImage=document.getElementById('detailImage');if(colorImage&&mainImage)mainImage.src=imageUrl(colorImage);}
+      var matches=detailMatchingVariants();if(key==='สี'&&matches.length){var colorImage=detailVariantImage(matches[0]);if(colorImage){var colorThumb=Array.prototype.slice.call(document.querySelectorAll('.detail-thumb')).filter(function(b){return b.getAttribute('data-image-url')===colorImage;})[0]||null;selectDetailImage(colorImage,colorThumb);}}
       var complete=groups.every(function(g){return !!APP.selectedVariantAttributes[g.key];});
       if(complete&&matches.length){selectProductVariant(matches[0].id,true);}
       else{
@@ -3165,7 +3165,7 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
         chain.unshift(String(item.name||'หมวดหมู่'));
         current=String(item.parentId||item.parentCategoryId||'');
       }
-      return ['Shopee'].concat(chain).concat([String(APP.currentProduct&&APP.currentProduct.name||'สินค้า')]).map(esc).join(' <span aria-hidden="true">›</span> ');
+      if(!chain.length&&categoryId){var fallbackCategory=categoryName(categoryId);if(fallbackCategory&&fallbackCategory!=='สินค้า')chain.push(fallbackCategory);}return ['Shopee'].concat(chain).concat([String(APP.currentProduct&&APP.currentProduct.name||'สินค้า')]).map(esc).join(' <span aria-hidden="true">›</span> ');
     }
     function productDetailShareUrl(){
       var p=APP.currentProduct;if(!p)return window.location.href;
@@ -3254,6 +3254,7 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
         '<section class="related-products shopee-detail-related"><div class="section-head"><div><h2 class="section-title">สินค้าที่คล้ายกัน</h2><div class="section-sub">สินค้าอื่นในหมวดหมู่เดียวกัน</div></div><button class="btn btn-outline btn-small" onclick="filterCategory(\\''+esc(p.categoryId)+'\\')">ดูทั้งหมด</button></div><div id="relatedProducts"><div class="product-grid">'+[1,2,3,4,5].map(function(){return '<div class="product-card"><div class="product-image skeleton"></div><div class="product-info"><div class="skeleton" style="height:12px;width:75%"></div><div class="skeleton" style="height:14px;width:45%;margin-top:8px"></div></div></div>';}).join('')+'</div></div></section></div>';
       document.getElementById('appRoot').innerHTML=html;
       apiCall('getShippingMethods',[{}],function(r){if(!document.getElementById('detailDeliveryInfo'))return;renderProductDelivery(r&&r.success?safeArray(r.data):[]);},false);
+      if(!safeArray(APP.categories).length)apiCall('getCategories',[{}],function(cr){if(cr&&cr.success){APP.categories=safeArray(cr.data);var breadcrumb=document.querySelector('.fashion-breadcrumb');if(breadcrumb&&APP.currentProduct&&String(APP.currentProduct.id)===String(p.id))breadcrumb.innerHTML=productCategoryBreadcrumb(p.categoryId);}},false,'',true);
       loadProductShopInfo(p);loadRelatedProducts(p);
     }
     function selectProductVariant(id,fromAttributes){
@@ -3263,7 +3264,7 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
       var selectedPrice=Number(v.salePrice)>0?Number(v.salePrice):Number(v.price||0),basePrice=Number(v.price||selectedPrice),priceEl=document.getElementById('detailPrice');if(priceEl)priceEl.innerHTML=detailPriceHtml(selectedPrice,basePrice);
       var stock=Math.max(0,Number(v.stock||0)),stockText=stock>0?'สินค้าพร้อมส่ง · คงเหลือ '+stock+' '+String(APP.currentProduct.unit||'ชิ้น'):'ตัวเลือกนี้สินค้าหมด';var stockEl=document.getElementById('detailStock');if(stockEl)stockEl.textContent=stockText;
       var sku=document.getElementById('detailSku');if(sku)sku.textContent=v.sku||APP.currentProduct.sku||'—';
-      var img=detailVariantImage(v);if(img){var main=document.getElementById('detailImage');if(main)main.src=imageUrl(img);}
+      var img=detailVariantImage(v);if(img){var variantThumb=Array.prototype.slice.call(document.querySelectorAll('.detail-thumb')).filter(function(b){return b.getAttribute('data-image-url')===img;})[0]||null;selectDetailImage(img,variantThumb);}
       document.querySelectorAll('[data-variant-key]').forEach(function(el){el.classList.toggle('active',String((APP.selectedVariantAttributes||{})[el.getAttribute('data-variant-key')]||'')===String(el.getAttribute('data-variant-value')));});
       document.querySelectorAll('[data-variant-id]').forEach(function(el){el.classList.toggle('active',String(el.getAttribute('data-variant-id'))===String(id));});
       var hint=document.getElementById('detailVariantHint');if(hint)hint.textContent='เลือกแล้ว: '+(v.variantName||v.sku||'ตัวเลือกสินค้า');
