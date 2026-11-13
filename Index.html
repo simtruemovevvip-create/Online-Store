@@ -16,8 +16,8 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    :root{--primary:#ee4d2d;--primary-dark:#d83b1d;--accent:#f59e0b;--ink:#172033;--muted:#697586;--bg:#f5f7fb;--surface:#fff;--surface-2:#eef2f7;--border:#e5eaf1;--success:#16a34a;--danger:#dc2626;--shadow:0 14px 40px rgba(15,23,42,.08);--radius:18px}
-    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:'Prompt','Inter',sans-serif;font-size:14px;line-height:1.6}body.dark{--ink:#e7ebf2;--muted:#9ca8b8;--bg:#0d1117;--surface:#161b22;--surface-2:#202833;--border:#303b49;--shadow:0 14px 40px rgba(0,0,0,.25)}button,input,select,textarea{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}img{max-width:100%;display:block}button:disabled{opacity:.55;cursor:not-allowed}
+    :root{--primary:#ee4d2d;--primary-dark:#d83b1d;--accent:#f59e0b;--ink:#1f2937;--muted:#64748b;--bg:#f4f6fa;--surface:#ffffff;--surface-2:#e7ebf2;--border:#dfe5ed;--success:#16a34a;--danger:#dc2626;--shadow:0 14px 40px rgba(15,23,42,.08);--radius:18px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:'Prompt','Inter',sans-serif;font-size:14px;line-height:1.6}body.dark{color-scheme:dark;--ink:#e7ebf2;--muted:#9ca8b8;--bg:#0d1117;--surface:#161b22;--surface-2:#202833;--border:#303b49;--shadow:0 14px 40px rgba(0,0,0,.25)}button,input,select,textarea{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}img{max-width:100%;display:block}button:disabled{opacity:.55;cursor:not-allowed}
     .announcement{background:#12233f;color:#e9f1ff;text-align:center;padding:7px 16px;font-size:12px;letter-spacing:.1px}.top-header{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}.header-main{max-width:1280px;margin:auto;display:flex;align-items:center;gap:22px;padding:15px 22px}.brand{display:flex;align-items:center;gap:10px;min-width:180px}.brand-mark{width:42px;height:42px;background:linear-gradient(135deg,var(--primary),#60a5fa);color:#fff;border-radius:14px;display:grid;place-items:center;font-size:19px;box-shadow:0 7px 16px rgba(37,99,235,.22)}.brand-name{font-size:19px;font-weight:700;line-height:1.2}.brand-sub{font-size:10px;color:var(--muted);letter-spacing:1px}.search-wrap{flex:1;max-width:570px;position:relative}.search-wrap input{width:100%;height:44px;border:1px solid var(--border);background:var(--bg);color:var(--ink);border-radius:14px;padding:0 48px 0 16px;outline:0}.search-wrap input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}.search-wrap button{position:absolute;right:5px;top:5px;width:34px;height:34px;border:0;border-radius:10px;background:var(--primary);color:#fff}.header-actions{display:flex;align-items:center;gap:8px;margin-left:auto}.icon-btn{border:1px solid var(--border);background:var(--surface);color:var(--ink);width:40px;height:40px;border-radius:13px;display:grid;place-items:center;position:relative}.icon-btn:hover{border-color:var(--primary);color:var(--primary)}.cart-count{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;border-radius:20px;min-width:18px;height:18px;padding:0 4px;font-size:10px;display:grid;place-items:center}.header-login{border:0;background:var(--primary);color:#fff;padding:10px 16px;border-radius:12px;font-weight:600}.nav-bar{max-width:1280px;margin:auto;padding:0 22px 12px;display:flex;gap:25px;align-items:center;overflow-x:auto;white-space:nowrap}.nav-bar a{color:var(--muted);font-size:13px}.nav-bar a:hover,.nav-bar a.active{color:var(--primary)}.mobile-menu{display:none}
     .container{max-width:1380px;margin:0 auto;padding:18px 18px 42px;min-height:62vh}.hero{background:linear-gradient(110deg,#102847,#1e4d84 56%,#3b82f6);border-radius:22px;overflow:hidden;min-height:210px;color:#fff;display:grid;grid-template-columns:1.1fr .9fr;position:relative;box-shadow:var(--shadow);margin-bottom:20px}.hero-copy{padding:24px 30px;position:relative;z-index:2;align-self:center}.hero-kicker{font-size:12px;letter-spacing:2px;color:#bfdbfe;font-weight:600}.hero h1{font-size:36px;line-height:1.25;margin:12px 0;font-weight:700;max-width:540px}.hero p{color:#dbeafe;max-width:530px;margin:0 0 22px}.hero-art{position:relative;min-height:220px;background:radial-gradient(circle at 55% 48%,rgba(255,255,255,.3),transparent 42%)}.hero-art img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:.82}.hero-circle{position:absolute;width:230px;height:230px;right:18%;top:12%;border-radius:50%;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.25);display:grid;place-items:center;font-size:92px;backdrop-filter:blur(3px)}.btn{border:0;border-radius:12px;padding:11px 18px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.18s}.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px)}.btn-light{background:#fff;color:#17345c}.btn-outline{background:transparent;border:1px solid var(--border);color:var(--ink)}.btn-danger{background:#fee2e2;color:#991b1b}.btn-small{padding:7px 11px;font-size:12px;border-radius:9px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:15px;margin:29px 0 15px}.section-title{font-size:22px;font-weight:700;margin:0}.section-sub{color:var(--muted);font-size:12px;margin-top:2px}.text-link{color:var(--primary);font-size:13px;font-weight:600}.category-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:13px}.category-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 12px;text-align:center;cursor:pointer;transition:.2s}.category-card:hover{transform:translateY(-3px);border-color:#93c5fd;box-shadow:var(--shadow)}.category-icon{width:45px;height:45px;margin:0 auto 8px;border-radius:14px;background:#eff6ff;color:var(--primary);display:grid;place-items:center;font-size:18px}.category-card strong{font-size:13px}.category-card small{display:block;color:var(--muted);font-size:11px;margin-top:3px}.product-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.product-card{border:1px solid var(--border);background:var(--surface);border-radius:18px;overflow:hidden;transition:.22s;position:relative}.product-card:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:#bfd5fa}.product-image{background:var(--surface-2);height:188px;position:relative;overflow:hidden;cursor:pointer}.product-image img{width:100%;height:100%;object-fit:cover;transition:transform .3s}.product-card:hover .product-image img{transform:scale(1.04)}.product-badge{position:absolute;top:12px;left:12px;background:#fee2e2;color:#b91c1c;padding:4px 8px;border-radius:8px;font-size:10px;font-weight:700}.product-badge.featured{background:#dbeafe;color:#1d4ed8}.product-info{padding:10px}.product-category{color:var(--muted);font-size:10px}.product-name{font-weight:600;font-size:12px;line-height:1.4;height:36px;overflow:hidden;margin:4px 0 7px;cursor:pointer}.product-price{font-size:16px;font-weight:700;color:var(--primary);display:flex;align-items:center;flex-wrap:wrap;gap:4px}.old-price{text-decoration:line-through;color:var(--muted);font-size:11px;margin-left:6px;font-weight:400}.product-stock{font-size:10px;color:var(--muted);margin-top:3px}.product-actions{display:flex;gap:7px;margin-top:12px}.product-actions .btn{flex:1}.product-actions .icon-btn{width:37px;height:37px;flex:0 0 37px}.promo-strip{margin:30px 0;padding:23px 26px;background:linear-gradient(110deg,#fff7ed,#ffedd5);border-radius:19px;display:flex;align-items:center;justify-content:space-between;color:#7c2d12;gap:15px}.promo-strip h3{margin:0 0 4px;font-size:19px}.promo-strip p{margin:0;font-size:12px;color:#9a3412}.empty-state{text-align:center;padding:55px 20px;background:var(--surface);border:1px dashed var(--border);border-radius:18px;color:var(--muted)}.empty-state i{font-size:32px;margin-bottom:12px;color:#94a3b8}.empty-state h3{color:var(--ink);margin:0 0 4px}.filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:17px}.filter-row input,.filter-row select{background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:11px;padding:9px 12px;min-width:150px}
     .product-detail{display:grid;grid-template-columns:1fr 1fr;gap:34px;background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:25px}.detail-image{height:440px;background:var(--surface-2);border-radius:17px;overflow:hidden}.detail-image img{width:100%;height:100%;object-fit:contain}
@@ -1482,6 +1482,21 @@
     @media(max-width:480px){#appRoot .shopee-mall-vertical-promo{height:135px}.admin-home-banner-card{grid-template-columns:1fr}.admin-home-banner-preview{width:100%;max-height:170px;aspect-ratio:16/5}.admin-home-banner-preview.is-vertical{width:100px;aspect-ratio:9/16;max-height:170px;margin:0 auto}}
   </style>
 
+<style id="store-theme-palette-and-modal-overrides">
+  /* Shared Light/Dark surface palette */
+  body{background:var(--bg);color:var(--ink)}
+  .admin-sidebar,.admin-navbar,.stat-card,.admin-settings-section,.seller-sidebar-v2,.customer-portal-sidebar,.customer-portal-content,.customer-portal-section-card{background:var(--surface);color:var(--ink)}
+  .admin-menu button:hover,.admin-menu button.active,.portal-mode-owner .admin-menu button:hover,.portal-mode-owner .admin-menu button.active{background:var(--surface-2)!important;color:var(--primary)!important}
+  .dark .admin-menu button:hover,.dark .admin-menu button.active,.dark.portal-mode-owner .admin-menu button:hover,.dark.portal-mode-owner .admin-menu button.active{background:var(--surface-2)!important;color:var(--ink)!important}
+  body.dark .swal2-popup:not(.market-toast){background:#161b22!important;color:#e7ebf2!important;border:1px solid #303b49!important}
+  body.dark .swal2-popup:not(.market-toast) .swal2-title{color:#e7ebf2!important}
+  body.dark .swal2-popup:not(.market-toast) .swal2-html-container,body.dark .swal2-popup:not(.market-toast) p,body.dark .swal2-popup:not(.market-toast) small{color:#9ca8b8}
+  body.dark .swal2-popup:not(.market-toast) label,body.dark .swal2-popup:not(.market-toast) .modal-field label,body.dark .swal2-popup:not(.market-toast) .admin-switch-copy{color:#e7ebf2!important}
+  body.dark .swal2-popup:not(.market-toast) input:not([type="checkbox"]):not([type="radio"]),body.dark .swal2-popup:not(.market-toast) textarea,body.dark .swal2-popup:not(.market-toast) select{background:#0d1117!important;color:#e7ebf2!important;border-color:#303b49!important}
+  body.dark .swal2-popup:not(.market-toast) .modal-field,body.dark .swal2-popup:not(.market-toast) .customer-portal-section-card{background:#161b22!important;color:#e7ebf2!important;border-color:#303b49!important}
+  body.dark .swal2-validation-message{background:#202833!important;color:#e7ebf2!important}
+  body.dark .customer-portal-nav-link.active,body.dark .seller-nav-item.active{background:#202833!important;color:#e7ebf2!important}
+</style>
 </head>
 <body data-qr-login="<?= qrLoginChallenge ?>" data-portal-entry="<?= portalEntry ?>" data-web-app-url="<?= webAppUrl ?>">
   <header class="top-header">
@@ -1550,6 +1565,12 @@
     };
     function safeArray(value){return Array.isArray(value)?value:[];}
     function safeJson(value,fallback){if(value===null||value===undefined||value==='')return fallback;try{var parsed=JSON.parse(value);if(Array.isArray(fallback))return Array.isArray(parsed)?parsed:fallback;if(fallback&&typeof fallback==='object')return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:fallback;return parsed===null||parsed===undefined?fallback:parsed;}catch(e){return fallback;}}
+    function portalRouteFingerprint(token){var value=String(token||''),hash=2166136261;for(var i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619);}return (hash>>>0).toString(36);}
+    function portalRouteStorageKey(portal,token){return 'store_last_page_'+String(portal||'')+'_'+portalRouteFingerprint(token);}
+    function getPortalRoutePage(portal,token,allowed,fallback){if(!token)return fallback;try{var page=localStorage.getItem(portalRouteStorageKey(portal,token));return safeArray(allowed).indexOf(page)>=0?page:fallback;}catch(e){return fallback;}}
+    function savePortalRoutePage(portal,token,page,allowed){if(!token||safeArray(allowed).indexOf(page)<0)return;try{localStorage.setItem(portalRouteStorageKey(portal,token),page);}catch(e){}}
+    function clearPortalRoutePage(portal,token){if(!token)return;try{localStorage.removeItem(portalRouteStorageKey(portal,token));}catch(e){}}
+    function customerPortalRouteIds(){return ['history','purchase','bank','addresses','privacy','notificationSettings','orderSettings','orderNotices','promoNotices','discounts','coins','vouchers','returns','chat','allNotices','following'];}
     function esc(value){return String(value===null||value===undefined?'':value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
     function money(value){var symbol=APP.settings.currencySymbol||'฿';return symbol+Number(value||0).toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:2});}
     function extractDriveAssetKey(url){var s=String(url||'').trim(),m;if(!s)return '';m=s.match(/^drive-asset:\/\/([A-Za-z0-9_-]{20,80})$/i);if(m)return m[1];m=s.match(/^drive-private:\/\/([A-Za-z0-9_-]{10,100})$/i);if(m)return m[1];m=s.match(/lh\d*\.googleusercontent\.com\/d\/([A-Za-z0-9_-]{10,100})/i);if(m)return m[1];m=s.match(/drive\.google\.com\/file\/d\/([A-Za-z0-9_-]{10,100})/i);if(m)return m[1];m=s.match(/[?&]id=([A-Za-z0-9_-]{10,100})/i);if(m)return m[1];return '';}
@@ -1830,7 +1851,7 @@
     }
 
     function initApp(){
-      var theme=localStorage.getItem('store_theme')||'light';if(theme==='dark')document.body.classList.add('dark');
+      var theme=localStorage.getItem('store_theme')||'light';document.body.classList.toggle('dark',theme==='dark');var initialThemeIcon=document.getElementById('themeIcon');if(initialThemeIcon)initialThemeIcon.className=theme==='dark'?'fa-regular fa-sun':'fa-regular fa-moon';
       var sid=localStorage.getItem('store_cart_session');if(!sid){sid='GUEST_'+makeKey();localStorage.setItem('store_cart_session',sid);}APP.sessionId=sid;
       APP.customerToken=localStorage.getItem('store_customer_token')||sessionStorage.getItem('store_customer_token')||'';
       APP.adminToken=localStorage.getItem('store_admin_token')||'';
@@ -1870,8 +1891,8 @@
       try{if(mode==='guest')localStorage.removeItem('store_access_mode');else localStorage.setItem('store_access_mode',mode);}catch(e){}
     }
     function clearInvalidPortal(mode){
-      if(mode==='owner'){APP.adminToken='';APP.adminUser=null;APP.adminRequestId=Number(APP.adminRequestId||0)+1;localStorage.removeItem('store_admin_token');}
-      else{APP.customerToken='';APP.customer=null;APP.sellerStore=null;localStorage.removeItem('store_customer_token');sessionStorage.removeItem('store_customer_token');}
+      if(mode==='owner'){clearPortalRoutePage('owner',APP.adminToken);APP.adminToken='';APP.adminUser=null;APP.adminRequestId=Number(APP.adminRequestId||0)+1;localStorage.removeItem('store_admin_token');}
+      else{clearPortalRoutePage('seller',APP.customerToken);clearPortalRoutePage('customer',APP.customerToken);clearPortalRoutePage('customerPurchaseTab',APP.customerToken);APP.customerToken='';APP.customer=null;APP.sellerStore=null;localStorage.removeItem('store_customer_token');sessionStorage.removeItem('store_customer_token');}
       APP.currentView='home';APP.accessMode='guest';applyAccessMode('guest');
       var root=document.getElementById('appRoot');if(root)root.innerHTML=marketplaceSkeletonMarkup('home');
       loadPublicData();
@@ -1899,14 +1920,14 @@
             APP.customer=r.data.customer;APP.sellerStore=r.data.store;applyAccessMode('seller');
             if(!r.data.store){showSellerApplicationForm();return;}
             if(r.data.store.status!=='Active'){renderSellerApplicationStatus(r.data.store);return;}
-            renderSellerShell();loadSellerPage('dashboard');
+            renderSellerShell();loadSellerPage(getPortalRoutePage('seller',APP.customerToken,SELLER_MENU.map(function(m){return m[0];}),'dashboard'));
             apiCall('mergeGuestCart',[APP.sessionId,APP.customerToken],function(){refreshCartCount();});
           },true,'กำลังตรวจสอบสิทธิ์ร้านค้า...');return;
         }
         apiCall('checkCustomerPortalSession',[APP.customerToken],function(r){
           if(!r.success){clearInvalidPortal('customer');return;}
           APP.customer=r.data.customer;applyAccessMode('customer');
-          openAccount();
+          var restoredCustomerPage=getPortalRoutePage('customer',APP.customerToken,customerPortalRouteIds(),'purchase');if(restoredCustomerPage==='purchase')APP.customerPurchaseTab=getPortalRoutePage('customerPurchaseTab',APP.customerToken,['unpaid','shipping','receiving','completed','cancelled','returns'],'unpaid');customerPortalNavigate(restoredCustomerPage);
           apiCall('mergeGuestCart',[APP.sessionId,APP.customerToken],function(){refreshCartCount();});
         },true,'กำลังตรวจสอบบัญชีลูกค้า...');return;
       }
@@ -1968,7 +1989,7 @@
       refreshCartCount();
     }
     function toggleMobileNav(){document.getElementById('mainNav').classList.toggle('open');}
-    function toggleTheme(){document.body.classList.toggle('dark');localStorage.setItem('store_theme',document.body.classList.contains('dark')?'dark':'light');document.getElementById('themeIcon').className=document.body.classList.contains('dark')?'fa-regular fa-sun':'fa-regular fa-moon';}
+    function toggleTheme(){document.body.classList.toggle('dark');var dark=document.body.classList.contains('dark');localStorage.setItem('store_theme',dark?'dark':'light');var icon=document.getElementById('themeIcon');if(icon)icon.className=dark?'fa-regular fa-sun':'fa-regular fa-moon';}
     function scrollToSection(id){var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth'});}
     function categoryName(id){var c=APP.categories.filter(function(x){return x.id===id;})[0];return c?c.name:'สินค้า';}
     function productPromoLabel(p){var enabled=p&&(p.quantityPromoEnabled===true||String(p.quantityPromoEnabled||'').toLowerCase()==='true'||String(p.quantityPromoEnabled)==='1');return enabled&&Number(p.quantityPromoQty)>=2&&Number(p.quantityPromoDiscount)>0?'ซื้อ '+Number(p.quantityPromoQty)+' ชิ้น ลด '+money(p.quantityPromoDiscount)+' / ชุด':'';}
@@ -3139,7 +3160,7 @@
         group('more','เพิ่มเติม','fa-ellipsis',link('coins','Coins','fa-coins')+link('vouchers','Voucher ของฉัน','fa-ticket')+link('returns','คืนสินค้า','fa-rotate-left')+link('chat','แชต','fa-comments')+link('allNotices','แจ้งเตือน','fa-bell')+link('following','ร้านที่ติดตาม','fa-heart'),false);
     }
     function customerPortalEnsureShell(activeId){
-      if(!APP.customerToken){openCustomerAuth('login');return false;}
+      if(!APP.customerToken){openCustomerAuth('login');return false;}savePortalRoutePage('customer',APP.customerToken,activeId,customerPortalRouteIds());
       var root=document.getElementById('appRoot');if(!root)return false;
       if(!document.getElementById('customerPortalLayout')){
         var c=APP.customer||{},photo=c.profileImage||'',name=customerPortalName(),id=c.id||'—';
@@ -3221,7 +3242,7 @@
     }
     function customerPurchasesSelectTab(tab){
       var allowed=['unpaid','shipping','receiving','completed','cancelled','returns'];if(allowed.indexOf(tab)<0)return;
-      APP.customerPurchaseTab=tab;customerPurchasesRender(tab);
+      APP.customerPurchaseTab=tab;savePortalRoutePage('customerPurchaseTab',APP.customerToken,tab,['unpaid','shipping','receiving','completed','cancelled','returns']);customerPurchasesRender(tab);
     }
     function customerPurchasesRender(tab){
       var host=document.getElementById('customerPurchasesRoot');if(!host)return;
@@ -3303,6 +3324,7 @@
       var root=document.getElementById('appRoot');
       APP.adminRequestId=Number(APP.adminRequestId||0)+1;
       APP.customerPortalSkeletonPending=false;
+      clearPortalRoutePage('owner',APP.adminToken);clearPortalRoutePage('seller',APP.customerToken);clearPortalRoutePage('customer',APP.customerToken);clearPortalRoutePage('customerPurchaseTab',APP.customerToken);
       APP.adminToken='';APP.adminUser=null;
       APP.customerToken='';APP.customer=null;APP.sellerStore=null;
       APP.accessMode='guest';APP.currentView='home';APP.adminPage='';
@@ -3754,7 +3776,7 @@
       {id:'newsletters',label:'ผู้รับข่าวสาร',icon:'fa-envelope'}, {id:'demo',label:'ข้อมูล Demo',icon:'fa-flask'}, {id:'backup',label:'Backup',icon:'fa-database'}
     ];
     function forceAdminPasswordChange(){Swal.fire({title:'เปลี่ยนรหัสผ่านเริ่มต้น',text:'เพื่อความปลอดภัย กรุณาตั้งรหัสผ่านใหม่ก่อนใช้งานระบบ',input:'password',inputLabel:'รหัสผ่านใหม่อย่างน้อย 8 ตัวอักษร',allowOutsideClick:false,confirmButtonText:'บันทึกรหัสผ่าน',preConfirm:function(v){if(!v||v.length<8){Swal.showValidationMessage('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');return false;}return v;}}).then(function(r){if(r.isConfirmed)apiCall('changePassword',[APP.adminToken,'',r.value],function(x){if(x.success){toast(x.message);openAdmin();}else alertError(x.message);},true,'กำลังเปลี่ยนรหัสผ่าน...');});}
-    function openAdmin(){applyAccessMode('owner');APP.currentView='admin';APP.adminPage='dashboard';APP.adminRequestId=Number(APP.adminRequestId||0)+1;renderAdminShell();loadAdminPage('dashboard');}
+    function openAdmin(){applyAccessMode('owner');APP.currentView='admin';APP.adminRequestId=Number(APP.adminRequestId||0)+1;renderAdminShell();var restoredPage=getPortalRoutePage('owner',APP.adminToken,ADMIN_MENUS.map(function(m){return m.id;}),'dashboard');loadAdminPage(restoredPage);}
     function renderAdminShell(){
       var adminName=APP.adminUser?APP.adminUser.name:'Administrator';
       var menuHtml=ADMIN_MENUS.map(function(m){return (m.group?'<div class="admin-label" data-menu-group="'+esc(m.group)+'">'+esc(m.group)+'</div>':'')+'<button id="nav_'+m.id+'" data-menu-id="'+m.id+'" title="'+esc(m.label)+'" type="button" onclick="loadAdminPage(\''+m.id+'\')"><i class="fa-solid '+m.icon+'"></i><span>'+esc(m.label)+'</span></button>';}).join('');
@@ -3824,7 +3846,7 @@
       return '<div class="admin-skeleton-panel admin-skeleton-table"><div class="admin-skeleton-table-head"><span class="skeleton skeleton-heading"></span><span class="skeleton skeleton-button"></span></div>'+rows+'</div>';
     }
     function loadAdminPage(page){
-      APP.adminPage=page;APP.adminRequestId=Number(APP.adminRequestId||0)+1;
+      APP.adminPage=page;savePortalRoutePage('owner',APP.adminToken,page,ADMIN_MENUS.map(function(m){return m.id;}));APP.adminRequestId=Number(APP.adminRequestId||0)+1;
       var active=document.querySelectorAll('.admin-menu button');active.forEach(function(b){b.classList.remove('active');});
       var nav=document.getElementById('nav_'+page);if(nav)nav.classList.add('active');
       var menu=ADMIN_MENUS.filter(function(x){return x.id===page;})[0],title=menu?menu.label:'Dashboard';
@@ -4689,7 +4711,7 @@
     }
     function loadSellerPage(page,onLoaded,silent){
       var apis={dashboard:'sellerDashboard',products:'sellerGetProducts',orders:'sellerGetOrders',vouchers:'sellerGetVouchers',deals:'sellerGetFlashDeals',returns:'sellerGetReturns',chat:'getSellerChatThreads',payouts:'sellerGetPayouts',live:'sellerGetLiveRooms',store:'sellerGetStoreProfile'};
-      if(!apis[page]){if(typeof onLoaded==='function')onLoaded(false,'ไม่พบหน้าที่ต้องการ');return;}
+      if(!apis[page]){if(typeof onLoaded==='function')onLoaded(false,'ไม่พบหน้าที่ต้องการ');return;}savePortalRoutePage('seller',APP.customerToken,page,SELLER_MENU.map(function(m){return m[0];}));
       if(APP.sellerChatPollTimer){clearInterval(APP.sellerChatPollTimer);APP.sellerChatPollTimer=null;}if(page!=='chat'&&APP.sellerChatListPollTimer){clearInterval(APP.sellerChatListPollTimer);APP.sellerChatListPollTimer=null;}APP.sellerChatActiveThread='';APP.sellerPage=page;APP.sellerRequestId=Number(APP.sellerRequestId||0)+1;var requestId=APP.sellerRequestId;
       SELLER_MENU.forEach(function(m){var b=document.getElementById('sellerNav_'+m[0]);if(b){b.classList.toggle('active',m[0]===page);b.setAttribute('aria-current',m[0]===page?'page':'false');}});
       var title=document.getElementById('sellerCurrentPageTitle');if(title)title.textContent=sellerMenuTitle(page);
