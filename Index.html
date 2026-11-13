@@ -1553,23 +1553,32 @@
 .fashion-buy-actions .btn{min-height:44px;flex:1;min-width:0;border-radius:4px!important;font-size:12px;font-weight:700}
 .fashion-buy-actions .fashion-add-cart{background:#fff3ee!important;border:1px solid #ee4d2d!important;color:#ee4d2d!important}
 .fashion-buy-actions .fashion-buy-now{background:#ee4d2d!important;border:1px solid #ee4d2d!important;color:#fff!important}
-.fashion-shop-card{display:grid;grid-template-columns:minmax(260px,.85fr) minmax(0,1.5fr);gap:18px;margin-top:15px;padding:19px 21px;background:var(--surface);border:1px solid var(--border);border-radius:8px;align-items:center}
+.fashion-shop-card{display:block;width:100%;max-width:100%;box-sizing:border-box;margin:15px 0 0;padding:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.fashion-shop-full{width:100%;min-width:0}
+.fashion-shop-banner{height:150px;width:100%;overflow:hidden;background:var(--surface-2)}
+.fashion-shop-banner img{display:block;width:100%;height:100%;object-fit:cover}
+.fashion-shop-full-head{padding:20px 22px 15px}
 .fashion-shop-identity{display:flex;align-items:center;gap:13px;min-width:0}
-.fashion-shop-avatar{width:62px;height:62px;flex:0 0 62px;border:1px solid var(--border);border-radius:50%;overflow:hidden;display:grid;place-items:center;background:var(--surface-2);color:var(--muted);font-size:22px}
+.fashion-shop-avatar{width:66px;height:66px;flex:0 0 66px;border:1px solid var(--border);border-radius:50%;overflow:hidden;display:grid;place-items:center;background:var(--surface-2);color:var(--muted);font-size:22px}
 .fashion-shop-avatar img{width:100%;height:100%;object-fit:cover}
 .fashion-shop-name{min-width:0;display:flex;flex-direction:column;gap:3px}
-.fashion-shop-name>b{font-size:14px;color:var(--ink)}
+.fashion-shop-name>b{font-size:15px;color:var(--ink);overflow-wrap:anywhere}
 .fashion-shop-name>small{font-size:10px;color:var(--muted)}
 .fashion-shop-online-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-right:4px}
-.fashion-shop-actions{display:flex;gap:7px;margin-top:7px}
-.fashion-shop-actions button{height:30px;padding:0 12px;border-radius:4px;font-size:10px;font-weight:600}
+.fashion-shop-actions{display:flex;gap:7px;margin-top:7px;flex-wrap:wrap}
+.fashion-shop-actions button{height:32px;padding:0 13px;border-radius:4px;font-size:11px;font-weight:600}
 .fashion-shop-chat{border:1px solid #ee4d2d;background:#fff5f0;color:#ee4d2d}
 .fashion-shop-view{border:1px solid var(--border);background:var(--surface);color:var(--ink)}
-.fashion-shop-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-left:1px solid var(--border);padding-left:18px;column-gap:17px;row-gap:14px}
-.fashion-shop-stat{display:flex;flex-direction:column;gap:2px;min-width:0}
-.fashion-shop-stat>span{font-size:10px;color:var(--muted)}
-.fashion-shop-stat>b{font-size:12px;font-weight:600;color:#ee4d2d;overflow-wrap:anywhere}
-.fashion-shop-loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11px;min-height:62px}
+.fashion-shop-description{padding:0 22px 17px;font-size:12px;line-height:1.75;overflow-wrap:anywhere}
+.fashion-shop-description img{max-width:100%;height:auto}
+.fashion-shop-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding:17px 22px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.fashion-shop-stat{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fashion-shop-stat>span,.fashion-shop-detail>span{font-size:10px;color:var(--muted)}
+.fashion-shop-stat>b{font-size:13px;font-weight:600;color:#ee4d2d;overflow-wrap:anywhere}
+.fashion-shop-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 20px;padding:17px 22px}
+.fashion-shop-detail{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fashion-shop-detail>b{font-size:12px;color:var(--ink);font-weight:500;overflow-wrap:anywhere}
+.fashion-shop-loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11px;min-height:62px;padding:15px}
 .fashion-shop-avatar-placeholder{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);color:var(--muted);font-size:19px}
 .fashion-product-description{margin-top:15px!important}
 body.dark .fashion-product-hero{background:#161b22}
@@ -1578,8 +1587,8 @@ body.dark .fashion-guarantee-panel{background:#202833!important}
 body.dark .fashion-color-options .shopee-variant-chip.active,body.dark .fashion-size-options .shopee-variant-chip.active{background:#2a1d1a!important}
 body.dark .fashion-buy-actions .fashion-add-cart{background:#2a1d1a!important}
 body.dark .fashion-shop-chat{background:#2a1d1a!important}
-@media(max-width:980px){.shopee-detail-main.fashion-product-main{grid-template-columns:minmax(0,40%) minmax(0,60%)}.fashion-product-info{padding:17px!important}.fashion-shop-card{grid-template-columns:1fr}.fashion-shop-stats{border-left:0;border-top:1px solid var(--border);padding:14px 0 0}}
-@media(max-width:720px){.shopee-detail-page.fashion-detail-page{max-width:100%}.shopee-detail-main.fashion-product-main{grid-template-columns:minmax(0,1fr)}.fashion-product-gallery{border-right:0!important;border-bottom:1px solid var(--border)!important}.fashion-product-gallery .fashion-product-hero{max-width:450px;margin:0 auto}.fashion-detail-thumbnails{max-width:450px;width:100%;margin:0 auto;grid-template-columns:repeat(4,minmax(0,1fr))}.fashion-gallery-footer{max-width:450px;width:100%;margin:0 auto}.fashion-product-info{padding:15px!important}.fashion-product-meta{gap:7px!important}.fashion-report-link{margin-left:auto}.fashion-detail-row{grid-template-columns:82px minmax(0,1fr)}.fashion-shop-card{padding:14px;gap:13px}.fashion-shop-stats{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px}.fashion-shop-stat>span{font-size:9px}.fashion-shop-stat>b{font-size:11px}}
+@media(max-width:980px){.shopee-detail-main.fashion-product-main{grid-template-columns:minmax(0,40%) minmax(0,60%)}.fashion-product-info{padding:17px!important}.fashion-shop-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.fashion-shop-details{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.shopee-detail-page.fashion-detail-page{max-width:100%}.shopee-detail-main.fashion-product-main{grid-template-columns:minmax(0,1fr)}.fashion-product-gallery{border-right:0!important;border-bottom:1px solid var(--border)!important}.fashion-product-gallery .fashion-product-hero{max-width:450px;margin:0 auto}.fashion-detail-thumbnails{max-width:450px;width:100%;margin:0 auto;grid-template-columns:repeat(4,minmax(0,1fr))}.fashion-gallery-footer{max-width:450px;width:100%;margin:0 auto}.fashion-product-info{padding:15px!important}.fashion-product-meta{gap:7px!important}.fashion-report-link{margin-left:auto}.fashion-detail-row{grid-template-columns:82px minmax(0,1fr)}.fashion-shop-card{padding:0}.fashion-shop-banner{height:105px}.fashion-shop-full-head{padding:15px}.fashion-shop-description{padding:0 15px 14px}.fashion-shop-stats{grid-template-columns:repeat(2,minmax(0,1fr));padding:14px 15px;gap:12px}.fashion-shop-details{grid-template-columns:1fr;padding:14px 15px;gap:12px}.fashion-shop-stat>span,.fashion-shop-detail>span{font-size:9px}.fashion-shop-stat>b,.fashion-shop-detail>b{font-size:11px}}
 </style>
 </head>
 <body data-qr-login="<?= qrLoginChallenge ?>" data-portal-entry="<?= portalEntry ?>" data-web-app-url="<?= webAppUrl ?>">
@@ -3237,12 +3246,16 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
     }
     function renderProductShopCard(store){
       var p=APP.currentProduct,host=document.getElementById('detailShopInfo');if(!host||!p)return;
-      store=store||{};var name=store.shopName||p.storeName||'ร้านค้าบน Marketplace',logo=store.logo||p.storeLogo||'';
+      store=store||{};
+      var name=store.shopName||p.storeName||'ร้านค้าบน Marketplace',logo=store.logo||p.storeLogo||'',banner=store.banner||'';
       var rating=Number(store.rating||0),followers=Number(store.followers!==undefined?store.followers:store.followerCount||0),productCount=Number(store.productCount||0);
-      var ratingText=rating>0?rating.toFixed(1):'—',productText=productCount>0?productCount.toLocaleString('th-TH'):'—';
-      var responseRate=store.responseRate||store.replyRate||'—',responseTime=store.responseTime||store.averageResponseTime||'—';
-      var stats=[['คะแนน',ratingText],['อัตราการตอบกลับ',responseRate==='—'?'—':String(responseRate).indexOf('%')>=0?responseRate:responseRate+'%'],['เข้าร่วมเมื่อ',productStoreJoinLabel(store.createdAt)],['รายการสินค้า',productText],['เวลาในการตอบกลับ',responseTime],['ผู้ติดตาม',followers.toLocaleString('th-TH')]];
-      host.innerHTML='<div class="fashion-shop-identity"><div class="fashion-shop-avatar">'+(logo?'<img src="'+imageUrl(logo)+'" onerror="imageFallback(this)" alt="'+esc(name)+'">':'<i class="fa-solid fa-store"></i>')+'</div><div class="fashion-shop-name"><b>'+esc(name)+'</b><small><span class="fashion-shop-online-dot"></span> ร้านค้าบน Marketplace</small><div class="fashion-shop-actions"><button type="button" class="fashion-shop-chat" data-store-id="'+esc(store.id||p.storeId)+'" data-product-id="'+esc(p.id)+'" onclick="openChatWithStore(this.dataset.storeId,this.dataset.productId)"><i class="fa-regular fa-comments"></i> แชทเลย</button><button type="button" class="fashion-shop-view" data-store-id="'+esc(store.id||p.storeId)+'" onclick="showStorePage(this.dataset.storeId)">ดูร้านค้า</button></div></div></div><div class="fashion-shop-stats">'+stats.map(function(x){return '<div class="fashion-shop-stat"><span>'+esc(x[0])+'</span><b>'+esc(x[1])+'</b></div>';}).join('')+'</div>';
+      var stats=[['คะแนนร้านค้า',rating>0?'★ '+rating.toFixed(1)+' / 5':'ยังไม่มีคะแนน'],['ผู้ติดตาม',followers.toLocaleString('th-TH')+' คน'],['สินค้าในร้าน',productCount.toLocaleString('th-TH')+' รายการ'],['เปิดร้านเมื่อ',productStoreJoinLabel(store.createdAt)]];
+      var details=[['ชื่อร้านค้า',name],['URL ร้านค้า',store.slug||'—'],['อีเมล',store.email||'—'],['เบอร์โทรศัพท์',store.phone||'—'],['ที่อยู่ร้านค้า',store.address||'—']];
+      host.innerHTML='<div class="fashion-shop-full">'+(banner?'<div class="fashion-shop-banner"><img src="'+imageUrl(banner)+'" onerror="this.parentNode.style.display=\'none\'" alt="แบนเนอร์ร้านค้า"></div>':'')+
+        '<div class="fashion-shop-full-head"><div class="fashion-shop-identity"><div class="fashion-shop-avatar">'+(logo?'<img src="'+imageUrl(logo)+'" onerror="imageFallback(this)" alt="'+esc(name)+'">':'<i class="fa-solid fa-store"></i>')+'</div><div class="fashion-shop-name"><b>'+esc(name)+'</b><small><span class="fashion-shop-online-dot"></span> ร้านค้าบน Marketplace</small><div class="fashion-shop-actions"><button type="button" class="fashion-shop-chat" data-store-id="'+esc(store.id||p.storeId)+'" data-product-id="'+esc(p.id)+'" onclick="openChatWithStore(this.dataset.storeId,this.dataset.productId)"><i class="fa-regular fa-comments"></i> แชทเลย</button><button type="button" class="fashion-shop-view" data-store-id="'+esc(store.id||p.storeId)+'" onclick="showStorePage(this.dataset.storeId)">ดูร้านค้า</button></div></div></div></div>'+
+        (store.description?'<div class="fashion-shop-description">'+sanitizeRichEditorHtml(store.description)+'</div>':'')+
+        '<div class="fashion-shop-stats">'+stats.map(function(x){return '<div class="fashion-shop-stat"><span>'+esc(x[0])+'</span><b>'+esc(x[1])+'</b></div>';}).join('')+'</div>'+
+        '<div class="fashion-shop-details">'+details.map(function(x){return '<div class="fashion-shop-detail"><span>'+esc(x[0])+'</span><b>'+esc(x[1])+'</b></div>';}).join('')+'</div></div>';
     }
     function loadProductShopInfo(product){
       var host=document.getElementById('detailShopInfo');if(!host||!product)return;
