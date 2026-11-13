@@ -71,7 +71,7 @@ var DEFAULT_SETTINGS_ = {
   bankName: '', bankAccountName: '', bankAccountNumber: '', bankQrImage: '', facebook: '', instagram: '',
   tiktok: '', line: '', youtube: '', googleMaps: '', returnPolicy: '', privacyPolicy: '', terms: '',
   primaryColor: '#ee4d2d', secondaryColor: '#0f172a', accentColor: '#f59e0b', footerText: 'ขอบคุณที่เลือกซื้อสินค้ากับเรา',
-  seoTitle: 'Online Store', seoDescription: '',
+  seoTitle: 'Online Store', seoDescription: '', homeSections: '[]',
   marketplaceCommissionRate: '5', returnWindowDays: '7', coinRewardRate: '1', sellerRegistrationEnabled: 'true'
 };
 
@@ -1645,6 +1645,29 @@ function getProducts(options) {
     var allProductsForFilter = readTable_('Products', true);
     productPublicMetrics_(allProductsForFilter);
     var categoriesForFilter = readTable_('Categories', true);
+    // Build related-data indexes once per request instead of re-reading and filtering
+    // entire Sheets for every product in the catalog.
+    var variantsForFilter = readTable_('ProductVariants', true);
+    var storesForFilter = readTable_('Stores', true);
+    var baseInventoryByProduct = Object.create(null);
+    var variantInventoryById = Object.create(null);
+    var variantsByProduct = Object.create(null);
+    var categoryById = Object.create(null);
+    var activeStoreById = Object.create(null);
+    inventoryForFilter.forEach(function(item) {
+      if (item.variantId) variantInventoryById[String(item.variantId)] = item;
+      else baseInventoryByProduct[String(item.productId)] = item;
+    });
+    variantsForFilter.forEach(function(variant) {
+      if (variant.status !== 'Active') return;
+      var key = String(variant.productId || '');
+      if (!variantsByProduct[key]) variantsByProduct[key] = [];
+      variantsByProduct[key].push(variant);
+    });
+    categoriesForFilter.forEach(function(category) { categoryById[String(category.id)] = category; });
+    storesForFilter.forEach(function(store) {
+      if (store.status === 'Active') activeStoreById[String(store.id)] = true;
+    });
     var selectedCategoryIds = safeArray_(options.categoryIds).map(function(v){return String(v);});
     var selectedCategoryNames = safeArray_(options.categoryNames).map(function(v){return String(v).trim().toLowerCase();});
     var selectedBrands = safeArray_(options.brands).map(function(v){return String(v).trim().toLowerCase();});
@@ -1653,15 +1676,19 @@ function getProducts(options) {
     var selectedPromotions = safeArray_(options.promotions).map(function(v){return String(v);});
     var minimumRating = Math.max(0, Math.min(5, number_(options.minRating, 0)));
     var rows = allProductsForFilter.filter(function(p) {
-      var invForProduct = inventoryForFilter.filter(function(x) { return x.productId === p.id && !x.variantId; })[0];
-      var childVariants=readTable_('ProductVariants',true).filter(function(v){return v.productId===p.id&&v.status==='Active';});
-      var computedStock = childVariants.length?childVariants.reduce(function(sum,v){var vi=inventoryForFilter.filter(function(z){return z.productId===p.id&&z.variantId===v.id;})[0];return sum+(vi?Math.max(0,number_(vi.quantity,0)-number_(vi.reserved,0)):number_(v.stock,0));},0):(invForProduct?Math.max(0, number_(invForProduct.quantity, 0) - number_(invForProduct.reserved, 0)):number_(p.stock,0));
+      var productKey = String(p.id || '');
+      var invForProduct = baseInventoryByProduct[productKey];
+      var childVariants = variantsByProduct[productKey] || [];
+      var computedStock = childVariants.length ? childVariants.reduce(function(sum, variant) {
+        var vi = variantInventoryById[String(variant.id)];
+        return sum + (vi ? Math.max(0, number_(vi.quantity, 0) - number_(vi.reserved, 0)) : number_(variant.stock, 0));
+      }, 0) : (invForProduct ? Math.max(0, number_(invForProduct.quantity, 0) - number_(invForProduct.reserved, 0)) : number_(p.stock, 0));
       if (!isAdmin && p.status !== 'Active') return false;
-      if (!isAdmin && p.sellerId && !readTable_('Stores',true).some(function(st){return st.id===p.sellerId&&st.status==='Active';})) return false;
+      if (!isAdmin && p.sellerId && !activeStoreById[String(p.sellerId)]) return false;
       if (options.categoryId && String(p.categoryId) !== String(options.categoryId)) return false;
       if (selectedCategoryIds.length && selectedCategoryIds.indexOf(String(p.categoryId || '')) < 0) return false;
       if (selectedCategoryNames.length) {
-        var productCategory = categoriesForFilter.filter(function(c){return String(c.id)===String(p.categoryId);})[0] || {};
+        var productCategory = categoryById[String(p.categoryId)] || {};
         if (selectedCategoryNames.indexOf(String(productCategory.name || '').trim().toLowerCase()) < 0) return false;
       }
       if (selectedBrands.length && selectedBrands.indexOf(String(p.brand || '').trim().toLowerCase()) < 0) return false;
@@ -3383,7 +3410,7 @@ function getAdminGridPage(token, moduleName, options) {
     if (!config) throw new Error('ไม่รองรับตารางที่ร้องขอ');
     requireAdmin_(token, config.permission);
 
-    var rows = readTable_(config.table, false).map(function(row, index) {
+    var rows = readTable_(config.table, true).map(function(row, index) {
       var copy = JSON.parse(JSON.stringify(row));
       copy.__gridSourceIndex = index;
       return copy;
@@ -3391,7 +3418,7 @@ function getAdminGridPage(token, moduleName, options) {
 
     // Join display-only fields without exposing password hashes or session data.
     if (moduleName === 'products') {
-      var inventoryRows = readTable_('Inventory', false), variants = readTable_('ProductVariants', false), categories = readTable_('Categories', true), stores = readTable_('Stores', true);
+      var inventoryRows = readTable_('Inventory', true), variants = readTable_('ProductVariants', true), categories = readTable_('Categories', true), stores = readTable_('Stores', true);
       rows.forEach(function(p) {
         var child = variants.filter(function(v) { return String(v.productId) === String(p.id) && v.status === 'Active'; });
         if (child.length) {
@@ -3409,7 +3436,7 @@ function getAdminGridPage(token, moduleName, options) {
         p.shopName = store ? store.shopName : '';
       });
     } else if (moduleName === 'inventory') {
-      var products = readTable_('Products', false), productVariants = readTable_('ProductVariants', false);
+      var products = readTable_('Products', true), productVariants = readTable_('ProductVariants', true);
       rows.forEach(function(x) {
         var p = products.filter(function(v) { return String(v.id) === String(x.productId); })[0] || {};
         var variant = productVariants.filter(function(v) { return String(v.id) === String(x.variantId); })[0] || {};
@@ -3419,14 +3446,14 @@ function getAdminGridPage(token, moduleName, options) {
         x.available = Math.max(0, number_(x.quantity, 0) - number_(x.reserved, 0));
       });
     } else if (moduleName === 'payments') {
-      var orderRows = readTable_('Orders', false);
+      var orderRows = readTable_('Orders', true);
       rows.forEach(function(x) {
         var o = orderRows.filter(function(v) { return String(v.id) === String(x.orderId); })[0] || {};
         x.orderNumber = o.orderNumber || '';
         x.customerName = o.customerName || '';
       });
     } else if (moduleName === 'sellers') {
-      var customers = readTable_('Customers', false);
+      var customers = readTable_('Customers', true);
       rows.forEach(function(x) {
         var c = customers.filter(function(v) { return String(v.id) === String(x.ownerCustomerId); })[0] || {};
         x.ownerName = [c.firstname || '', c.lastname || ''].join(' ').trim();
@@ -3434,7 +3461,7 @@ function getAdminGridPage(token, moduleName, options) {
         x.ownerPhone = c.phone || '';
       });
     } else if (moduleName === 'flashDeals') {
-      var dealProducts = readTable_('Products', false), dealStores = readTable_('Stores', false);
+      var dealProducts = readTable_('Products', true), dealStores = readTable_('Stores', true);
       rows.forEach(function(x) {
         var p = dealProducts.filter(function(v) { return String(v.id) === String(x.productId); })[0] || {};
         var s = dealStores.filter(function(v) { return String(v.id) === String(x.sellerId); })[0] || {};
@@ -3443,13 +3470,13 @@ function getAdminGridPage(token, moduleName, options) {
         x.remaining = number_(x.quota, 0) > 0 ? Math.max(0, number_(x.quota, 0) - number_(x.soldCount, 0)) : '';
       });
     } else if (moduleName === 'marketplacePayouts') {
-      var payoutStores = readTable_('Stores', false);
+      var payoutStores = readTable_('Stores', true);
       rows.forEach(function(x) {
         var s = payoutStores.filter(function(v) { return String(v.id) === String(x.sellerId); })[0] || {};
         x.shopName = s.shopName || '';
       });
     } else if (moduleName === 'reviews') {
-      var reviewProducts = readTable_('Products', false);
+      var reviewProducts = readTable_('Products', true);
       rows.forEach(function(x) {
         var p = reviewProducts.filter(function(v) { return String(v.id) === String(x.productId); })[0] || {};
         x.productName = p.name || '';
