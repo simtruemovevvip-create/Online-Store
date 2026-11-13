@@ -352,7 +352,7 @@ function getOrCreateFolder_(parent, name) {
 function clearRuntimeCaches_() {
   var cache = CacheService.getScriptCache();
   ['table_Settings','table_Products','table_Categories','table_Banners','table_Promotions','table_Inventory',
-   'table_Orders','table_OrderItems','table_Reviews','product_public_metrics_v1','dashboard','public_settings'].forEach(function(key) {
+   'table_Orders','table_OrderItems','table_Reviews','table_Favorites','product_public_metrics_v1','dashboard','public_settings'].forEach(function(key) {
     try { cache.remove(key); } catch (e) {}
   });
   return true;
@@ -1600,6 +1600,8 @@ function productPublicMetrics_(products) {
     });
     try { var serialized=JSON.stringify(metricMap); if(serialized.length<95000)cache.put(cacheKey,serialized,300); } catch(cacheWriteError) {}
   }
+  var favoriteCountMap=Object.create(null);
+  try { readTable_('Favorites',true).forEach(function(favorite){var productId=String(favorite.productId||'');if(productId)favoriteCountMap[productId]=(favoriteCountMap[productId]||0)+1;}); } catch(favoriteMetricError) {}
   safeArray_(products).forEach(function(p){
     var m=metricMap[String(p.id)]||{soldCount:0,monthlySoldCount:0,weeklySoldCount:0,ratingTotal:0,reviewCount:0};
     p.soldCount=number_(m.soldCount,0);
@@ -1607,6 +1609,7 @@ function productPublicMetrics_(products) {
     p.weeklySoldCount=number_(m.weeklySoldCount,0);
     p.reviewCount=number_(m.reviewCount,0);
     p.ratingAverage=p.reviewCount?Math.round((number_(m.ratingTotal,0)/p.reviewCount)*10)/10:0;
+    p.favoriteCount=number_(favoriteCountMap[String(p.id)],0);
   });
   return metricMap;
 }
@@ -2443,7 +2446,7 @@ function deleteAddress(customerToken,id){try{var c=requireCustomer_(customerToke
 
 /* -------------------------------- FAVORITES ------------------------------ */
 function getFavorites(customerToken){try{var c=requireCustomer_(customerToken);var ids=readTable_('Favorites',false).filter(function(x){return x.customerId===c.id;}).map(function(x){return x.productId;});return ok_(readTable_('Products',true).filter(function(p){return ids.indexOf(p.id)>=0&&p.status==='Active';}).map(publicProduct_));}catch(e){return fail_(safeError_(e));}}
-function addFavorite(customerToken,productId){try{var c=requireCustomer_(customerToken);var p=readTable_('Products',false).filter(function(x){return x.id===productId&&x.status==='Active';})[0];if(!p)throw new Error('ไม่พบสินค้า');var exists=readTable_('Favorites',false).some(function(x){return x.customerId===c.id&&x.productId===productId;});if(!exists)appendRecord_('Favorites',{id:newId_('FAV'),customerId:c.id,productId:productId,createdAt:now_()});return ok_(true,'เพิ่มรายการโปรดแล้ว');}catch(e){return fail_(safeError_(e));}}
+function addFavorite(customerToken,productId){try{var c=requireCustomer_(customerToken);var p=readTable_('Products',false).filter(function(x){return x.id===productId&&x.status==='Active';})[0];if(!p)throw new Error('ไม่พบสินค้า');var exists=readTable_('Favorites',false).some(function(x){return x.customerId===c.id&&x.productId===productId;});if(!exists){appendRecord_('Favorites',{id:newId_('FAV'),customerId:c.id,productId:productId,createdAt:now_()});clearRuntimeCaches_();}var favoriteCount=readTable_('Favorites',false).filter(function(x){return x.productId===productId;}).length;return ok_({added:!exists,favoriteCount:favoriteCount},exists?'สินค้าอยู่ในรายการโปรดแล้ว':'เพิ่มรายการโปรดแล้ว');}catch(e){return fail_(safeError_(e));}}
 function removeFavorite(customerToken,productId){try{var c=requireCustomer_(customerToken);deleteRows_('Favorites',function(x){return x.customerId===c.id&&x.productId===productId;});return ok_(true,'นำออกจากรายการโปรดแล้ว');}catch(e){return fail_(safeError_(e));}}
 
 /* --------------------------------- REVIEWS -------------------------------- */
