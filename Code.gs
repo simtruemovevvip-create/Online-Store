@@ -2101,7 +2101,6 @@ function saveProductVariantMatrixCore_(data,storeId,actorName) {
         if(!attrs.imageUrl&&oldAttrs.imageUrl)attrs.imageUrl=oldAttrs.imageUrl;
       }
       var optionNames=Object.keys(attrs).filter(function(k){return k!=='imageUrl';});
-      if(optionNames.length>3)throw new Error('รองรับกลุ่มตัวเลือกได้สูงสุด 3 กลุ่มต่อสินค้า');
       var signature=optionNames.slice().sort(function(a,b){return a.toLowerCase().localeCompare(b.toLowerCase());}).map(function(k){return k.toLowerCase();}).join('|');
       if(dimensionSignature&&dimensionSignature!==signature)throw new Error('ทุก SKU ต้องใช้ชื่อกลุ่มตัวเลือกชุดเดียวกัน เช่น สี และ ไซส์');
       dimensionSignature=signature;
