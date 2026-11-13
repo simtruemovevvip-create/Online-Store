@@ -3232,8 +3232,8 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
     }
     function productShopCompactNumber(value){
       var n=Math.max(0,Number(value)||0);
-      if(n>=1000000)return (n/1000000).toFixed(n>=10000000?0:1).replace(/\\.0$/,'')+'m';
-      if(n>=1000)return (n/1000).toFixed(n>=10000?0:1).replace(/\\.0$/,'')+'k';
+      if(n>=1000000)return (n/1000000).toFixed(n>=10000000?0:1).replace(/\.0$/,'')+'m';
+      if(n>=1000)return (n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'')+'k';
       return Math.round(n).toLocaleString('th-TH');
     }
     function renderProductShopCard(store){
