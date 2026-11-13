@@ -4798,12 +4798,12 @@ body.dark .vm-matrix-table th{background:#202833}
           var label=groups.map(function(g){return g.name+': '+attrs[g.name];}).join(' / '),key=variantMatrixKey(attrs);
           var existing=oldByKey[key]||originalByKey[key]||null;
           if(!existing)existing=original.filter(function(v){return !Object.keys(variantMatrixNormalizeAttrs(v)).length&&String(v.variantName||'')===label;})[0]||prior.filter(function(v){return String(v.variantName||'')===label;})[0]||null;
-          var oldAttrs=existing?variantMatrixNormalizeAttrs(existing):{};
-          if(oldAttrs.imageUrl)attrs.imageUrl=oldAttrs.imageUrl;
+          var oldAttrs=existing?variantMatrixNormalizeAttrs(existing):{},imageUrl=existing&&existing.imageUrl?String(existing.imageUrl):oldAttrs.imageUrl||'';
+          if(imageUrl)attrs.imageUrl=imageUrl;
           return {
             id:existing?existing.id:'',
             sku:existing&&existing.sku?existing.sku:makeAdminCode('VAR'),
-            imageUrl:oldAttrs.imageUrl||'',
+            imageUrl:imageUrl,
             variantName:label,attributes:attrs,
             price:existing?Number(existing.price||0):(priceDefault>0?priceDefault:Number(APP.variantMatrixProduct&&APP.variantMatrixProduct.price||0)),
             salePrice:existing?Number(existing.salePrice||0):saleDefault,
