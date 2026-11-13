@@ -37,7 +37,7 @@ var SCHEMA_ = {
   Coupons: ['id','code','title','discountType','discountValue','minimumOrder','maximumDiscount','usageLimit','usagePerCustomer','usedCount','startDate','endDate','sellerId','status','createdAt'],
   Reviews: ['id','productId','customerId','orderId','rating','review','images','status','createdAt'],
   ProductReports: ['id','productId','customerId','reason','detail','status','createdAt'],
-  Banners: ['id','title','description','image','url','buttonText','position','startDate','endDate','order','status','createdAt','updatedAt'],
+  Banners: ['id','title','description','image','url','buttonText','position','startDate','endDate','order','status','createdAt','updatedAt','destinationType','destinationStoreId','showDestination','openInNewTab'],
   Addresses: ['id','customerId','recipient','phone','address','subdistrict','district','province','postalCode','country','isDefault','createdAt'],
   Visitors: ['id','date','ipHash','userAgent','count','createdAt'],
   Logs: ['id','username','action','module','detail','timestamp'],
@@ -71,7 +71,7 @@ var DEFAULT_SETTINGS_ = {
   bankName: '', bankAccountName: '', bankAccountNumber: '', bankQrImage: '', facebook: '', instagram: '',
   tiktok: '', line: '', youtube: '', googleMaps: '', returnPolicy: '', privacyPolicy: '', terms: '',
   primaryColor: '#ee4d2d', secondaryColor: '#0f172a', accentColor: '#f59e0b', footerText: 'ขอบคุณที่เลือกซื้อสินค้ากับเรา',
-  seoTitle: 'Online Store', seoDescription: '', homeSections: '[]',
+  seoTitle: 'Online Store', seoDescription: '', homeSections: '[]', mallStoreIds: '[]',
   marketplaceCommissionRate: '5', returnWindowDays: '7', coinRewardRate: '1', sellerRegistrationEnabled: 'true'
 };
 
@@ -1528,9 +1528,20 @@ function saveSettings(token, data) {
     data = data || {};
     ['primaryColor','secondaryColor','accentColor'].forEach(function(k) { if (Object.prototype.hasOwnProperty.call(data,k) && data[k] && !/^#[0-9a-fA-F]{6}$/.test(String(data[k]))) throw new Error('รูปแบบสี '+k+' ไม่ถูกต้อง กรุณาใช้ Hex Color เช่น #EE4D2D'); });
     if (Object.prototype.hasOwnProperty.call(data, 'setFaviconUrl') && data.setFaviconUrl && !/^https:\/\//i.test(String(data.setFaviconUrl).trim())) throw new Error('URL ไอคอนเว็บไซต์ต้องขึ้นต้นด้วย https://');
+    if (Object.prototype.hasOwnProperty.call(data,'mallStoreIds')) {
+      var selectedMallStores=data.mallStoreIds;
+      if(typeof selectedMallStores==='string')selectedMallStores=safeJson_(selectedMallStores,[]);
+      if(!Array.isArray(selectedMallStores))throw new Error('รายการร้านค้าใน SHOPEE MALL ไม่ถูกต้อง');
+      var activeStoreIds=Object.create(null);
+      readTable_('Stores',true).forEach(function(store){if(store&&store.status==='Active')activeStoreIds[String(store.id)]=true;});
+      var uniqueMallStores=[];
+      selectedMallStores.forEach(function(id){var storeId=text_(id,100);if(!storeId)return;if(!activeStoreIds[storeId])throw new Error('พบร้านค้าที่ไม่มีอยู่หรือไม่ได้เปิดใช้งาน กรุณาเลือกใหม่');if(uniqueMallStores.indexOf(storeId)<0)uniqueMallStores.push(storeId);});
+      upsertSetting_('mallStoreIds',JSON.stringify(uniqueMallStores));
+    }
     var allowed = Object.keys(DEFAULT_SETTINGS_);
     var richSettingKeys={storeDescription:1,returnPolicy:1,privacyPolicy:1,terms:1,footerText:1};
     Object.keys(data).forEach(function(key) {
+      if(key==='mallStoreIds')return;
       if (allowed.indexOf(key) >= 0 && key !== 'bankAccountNumber') upsertSetting_(key, richSettingKeys[key]?sanitizeHtml_(data[key]):text_(data[key], 5000));
       else if (key === 'bankAccountNumber') upsertSetting_(key, text_(data[key], 80));
     });
@@ -1673,6 +1684,7 @@ function getProducts(options) {
     var selectedBrands = safeArray_(options.brands).map(function(v){return String(v).trim().toLowerCase();});
     var selectedOrigins = safeArray_(options.origins).map(function(v){return String(v).trim();});
     var selectedSellerTypes = safeArray_(options.sellerTypes).map(function(v){return String(v);});
+    var selectedStoreIds = safeArray_(options.storeIds).map(function(v){return String(v);}).filter(Boolean);
     var selectedPromotions = safeArray_(options.promotions).map(function(v){return String(v);});
     var minimumRating = Math.max(0, Math.min(5, number_(options.minRating, 0)));
     var rows = allProductsForFilter.filter(function(p) {
@@ -1731,6 +1743,7 @@ function getProducts(options) {
         if (!promotionMatch) return false;
       }
       if (options.storeId && String(p.sellerId || '') !== String(options.storeId)) return false;
+      if (selectedStoreIds.length && selectedStoreIds.indexOf(String(p.sellerId || '')) < 0) return false;
       if (options.featured && !parseBool_(p.featured)) return false;
       if (options.bestSeller && !parseBool_(p.bestSeller)) return false;
       if (options.available && computedStock <= 0) return false;
@@ -2360,8 +2373,36 @@ function saveSimpleEntity_(token,table,data,permission,fields,prefix){
 function deleteSimpleEntity_(token,table,id,permission){try{var user=requireAdmin_(token,permission);deleteRows_(table,function(x){return x.id===id;});log_('Delete '+table,table,id,user.username);return ok_(true,'ลบข้อมูลแล้ว');}catch(e){return fail_(safeError_(e));}}
 
 /* ---------------------------------- BANNERS ------------------------------ */
+
+function getBannerStoreOptions(token) {
+  try {
+    requireAdmin_(token,'settings.manage');
+    var rows=readTable_('Stores',true).filter(function(store){return store&&store.status==='Active';});
+    rows.sort(function(a,b){return String(a.shopName||'').localeCompare(String(b.shopName||''),'th');});
+    return ok_(rows.map(function(store){return {id:String(store.id||''),shopName:String(store.shopName||store.name||'')};}));
+  } catch(e) { return fail_(safeError_(e)); }
+}
+
 function getBanners(options){try{options=options||{};var isAdmin=false;if(options.token){try{requireAdmin_(options.token,'banners.view');isAdmin=true;}catch(authError){}}var rows=readTable_('Banners',true).filter(function(x){if(isAdmin)return true;var n=Date.now();return x.status==='Active'&&(!x.startDate||new Date(x.startDate).getTime()<=n)&&(!x.endDate||new Date(x.endDate).getTime()>=n);});rows.sort(function(a,b){return number_(a.order,0)-number_(b.order,0);});return ok_(rows);}catch(e){return fail_(safeError_(e));}}
-function saveBanner(token,data){return saveSimpleEntity_(token,'Banners',data,'banners.manage',['title','description','image','url','buttonText','position','startDate','endDate','order','status','createdAt','updatedAt'],'BAN');}
+function saveBanner(token,data){
+  try {
+    requireAdmin_(token,'banners.manage');
+    data=data||{};
+    ensureTableColumns_('Banners',['destinationType','destinationStoreId','showDestination','openInNewTab']);
+    var destinationType=text_(data.destinationType||'url',20);
+    if(['url','products','store','none'].indexOf(destinationType)<0)throw new Error('ประเภทปลายทางไม่ถูกต้อง');
+    if(destinationType==='store'){
+      var destinationStoreId=text_(data.destinationStoreId,100);
+      var destinationStore=readTable_('Stores',true).filter(function(store){return String(store.id)===destinationStoreId&&store.status==='Active';})[0];
+      if(!destinationStore)throw new Error('กรุณาเลือกร้านค้าที่เปิดใช้งานเป็นปลายทาง');
+    }
+    data.destinationType=destinationType;
+    data.destinationStoreId=text_(data.destinationStoreId,100);
+    data.showDestination=parseBool_(data.showDestination);
+    data.openInNewTab=parseBool_(data.openInNewTab);
+    return saveSimpleEntity_(token,'Banners',data,'banners.manage',['title','description','image','url','buttonText','position','startDate','endDate','order','status','createdAt','updatedAt','destinationType','destinationStoreId','showDestination','openInNewTab'],'BAN');
+  } catch(e) { return fail_(safeError_(e)); }
+}
 function deleteBanner(token,id){return deleteSimpleEntity_(token,'Banners',id,'banners.manage');}
 
 /* --------------------------------- CUSTOMERS ----------------------------- */
