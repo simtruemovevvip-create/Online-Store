@@ -1927,7 +1927,7 @@
       function finishCritical(){criticalPending--;if(criticalPending<=0&&!criticalComplete){criticalComplete=true;renderPublicHome();if(!completedCallback&&typeof onComplete==='function'){completedCallback=true;onComplete();}}}
       apiCall('getCategories',[{}],function(r){APP.categories=r.success?safeArray(r.data):[];finishCritical();},false,'',true);
       apiCall('getBanners',[{}],function(r){APP.banners=r.success?safeArray(r.data):[];finishCritical();},false,'',true);
-      apiCall('getProducts',[{page:1,pageSize:100,sort:'newest'}],function(r){APP.products=r.success&&r.data?safeArray(r.data.items):[];finishCritical();},false,'',true);
+      apiCall('getProducts',[{page:1,pageSize:100,sort:'relevance'}],function(r){APP.products=r.success&&r.data?safeArray(r.data.items):[];APP.homePublicProductsLoaded=!!(r&&r.success);finishCritical();},false,'',true);
       apiCall('getPromotions',[{}],function(r){APP.promotions=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
       apiCall('getMarketplaceStores',[{page:1,pageSize:12}],function(r){APP.stores=r.success&&r.data?safeArray(r.data.items):[];if(criticalComplete)renderPublicHome();},false,'',true);
       apiCall('getMarketplaceFlashDeals',[],function(r){APP.flashDeals=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
@@ -2365,28 +2365,68 @@
       window.requestAnimationFrame(syncHomeDealCarousels);
       if(!homeDealResizeBound){window.addEventListener('resize',syncHomeDealCarousels);homeDealResizeBound=true;}
     }
-    function renderHome(){
-      APP.currentView='home';
-      var categoryHtml=renderHomeCategoryCarousel();
-      var html='<div class="home-marketplace">'+renderHomeHero();
-      html+='<div class="market-shortcuts"><div class="market-shortcut" onclick="showStores()"><i class="fa-solid fa-store"></i><strong>ร้านค้า</strong><small>เลือกช้อปตามร้าน</small></div><div class="market-shortcut" onclick="showFlashDeals()"><i class="fa-solid fa-bolt"></i><strong>Flash Sale</strong><small>ดีลเวลาจำกัด</small></div><div class="market-shortcut" onclick="showMarketplaceVouchers()"><i class="fa-solid fa-ticket"></i><strong>Voucher</strong><small>เก็บโค้ดส่วนลด</small></div><div class="market-shortcut" onclick="openAccount()"><i class="fa-solid fa-box"></i><strong>คำสั่งซื้อ</strong><small>ติดตามพัสดุ</small></div><div class="market-shortcut" onclick="openChatInbox()"><i class="fa-solid fa-comments"></i><strong>แชต</strong><small>คุยกับร้านค้า</small></div><div class="market-shortcut" onclick="openSellerCenter()"><i class="fa-solid fa-shop"></i><strong>เปิดร้าน</strong><small>สมัครเป็นผู้ขาย</small></div></div>';
-      html+='<section id="categories" class="home-category-section"><div class="home-category-header"><h2>หมวดหมู่</h2></div>'+categoryHtml+'</section>';
-      html+=renderHomeFlashSaleSection();
-      html+=renderHomePromoBannerStrip();
-      html+='<div id="homeShopeeMallRoot"><div class="shopee-mall-loading"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลด Shopee Mall...</div></div>';
-      html+=renderHomeTopProductsCarousel();
 
-      if(APP.vouchers.length){html+='<section class="market-section"><div class="market-section-head"><div><h2><i class="fa-solid fa-ticket" style="color:var(--primary)"></i> Voucher สำหรับคุณ</h2><small class="muted">เก็บโค้ดส่วนลดจากร้านค้าก่อนชำระเงิน</small></div><button class="btn btn-outline btn-small" onclick="showMarketplaceVouchers()">ดูทั้งหมด</button></div><div class="voucher-grid">'+APP.vouchers.slice(0,3).map(function(v){return '<div class="market-ribbon"><div><span class="market-tag">'+esc(v.storeName)+'</span><h3 style="margin:5px 0">'+esc(v.title)+'</h3><b style="font-size:20px;color:var(--primary)">'+(v.discountType==='percent'?esc(v.discountValue)+'%':money(v.discountValue))+'</b><small class="muted" style="display:block">ขั้นต่ำ '+money(v.minimumOrder)+'</small></div><button class="btn btn-primary btn-small" onclick="collectVoucherAction(\''+esc(v.id)+'\')">เก็บโค้ด</button></div>';}).join('')+'</div></section>';}
-      if(APP.liveRooms.length){html+='<section class="market-section"><div class="market-section-head"><div><h2><i class="fa-solid fa-video" style="color:var(--primary)"></i> Live & Video</h2><small class="muted">รายการถ่ายทอดสดจากร้านค้า</small></div><button class="btn btn-outline btn-small" onclick="showLiveRooms()">ดูทั้งหมด</button></div><div class="store-grid">'+APP.liveRooms.slice(0,4).map(function(v){return '<div class="store-card"><div class="store-cover">'+(v.thumbnail?'<img src="'+imageUrl(v.thumbnail)+'" onerror="imageFallback(this)" alt="">':'')+'</div><div class="store-body"><span class="market-tag">'+esc(v.status)+'</span><h3>'+esc(v.title)+'</h3><p class="muted">'+esc(v.shopName)+'</p><a class="btn btn-primary btn-small" target="_blank" rel="noopener" href="'+safeHref(v.streamUrl,'#')+'">เปิด Live</a></div></div>';}).join('')+'</div></section>';}
-
-      if(APP.promotions.length){html+='<div class="promo-strip" id="promotions"><div><h3><i class="fa-solid fa-bolt"></i> '+esc(APP.promotions[0].name||'โปรโมชั่นพิเศษ')+'</h3><p>ข้อเสนอพิเศษสำหรับคุณ ตรวจสอบรายละเอียดสินค้าและเงื่อนไขก่อนสั่งซื้อ</p></div><button class="btn btn-light" onclick="showPromotions()">ดูโปรโมชั่น</button></div>';}
-      html+='<section id="dailyDiscoverSection" class="daily-discover-section" aria-label="สินค้าแนะนำประจำวัน">'+
-        '<div class="daily-discover-tab-header"><span>สินค้าแนะนำประจำวัน</span></div>'+
-        '<div id="homeDailyDiscoverGrid" class="daily-discover-grid-host"><div class="daily-discover-loading">กำลังโหลดสินค้าแนะนำ...</div></div>'+
-        '<div class="daily-discover-more-wrap"><button type="button" class="daily-discover-more-button" onclick="showRecommendedProducts()">ดูเพิ่มเติม</button></div>'+
-      '</section>';
-
-      html+='</div>';document.getElementById('appRoot').innerHTML=html;initHomeHeroSwiper();initHomeCategoryCarousel();initHomeDealSections();initHomeHeroSwiper();initHomeCategoryCarousel();loadHomeShopeeMall();loadHomeDailyDiscover();
+    function renderHomeShortcuts() {
+      return '<div class="market-shortcuts"><div class="market-shortcut" onclick="showStores()"><i class="fa-solid fa-store"></i><strong>ร้านค้า</strong><small>เลือกช้อปตามร้าน</small></div><div class="market-shortcut" onclick="showFlashDeals()"><i class="fa-solid fa-bolt"></i><strong>Flash Sale</strong><small>ดีลเวลาจำกัด</small></div><div class="market-shortcut" onclick="showMarketplaceVouchers()"><i class="fa-solid fa-ticket"></i><strong>Voucher</strong><small>เก็บโค้ดส่วนลด</small></div><div class="market-shortcut" onclick="openAccount()"><i class="fa-solid fa-box"></i><strong>คำสั่งซื้อ</strong><small>ติดตามพัสดุ</small></div><div class="market-shortcut" onclick="openChatInbox()"><i class="fa-solid fa-comments"></i><strong>แชต</strong><small>คุยกับร้านค้า</small></div><div class="market-shortcut" onclick="openSellerCenter()"><i class="fa-solid fa-shop"></i><strong>เปิดร้าน</strong><small>สมัครเป็นผู้ขาย</small></div></div>';
+    }
+    function collectHomeVoucherByIndex(index) {
+      var voucher = safeArray(APP.vouchers)[Number(index)];
+      if (voucher) collectVoucherAction(voucher.id);
+    }
+    function renderHomeVoucherSection() {
+      if (!safeArray(APP.vouchers).length) return '';
+      return '<section class="market-section"><div class="market-section-head"><div><h2><i class="fa-solid fa-ticket" style="color:var(--primary)"></i> Voucher สำหรับคุณ</h2><small class="muted">เก็บโค้ดส่วนลดจากร้านค้าก่อนชำระเงิน</small></div><button class="btn btn-outline btn-small" onclick="showMarketplaceVouchers()">ดูทั้งหมด</button></div><div class="voucher-grid">' +
+        APP.vouchers.slice(0,3).map(function(v,index) {
+          return '<div class="market-ribbon"><div><span class="market-tag">' + esc(v.storeName) + '</span><h3 style="margin:5px 0">' + esc(v.title) + '</h3><b style="font-size:20px;color:var(--primary)">' +
+            (v.discountType === 'percent' ? esc(v.discountValue) + '%' : money(v.discountValue)) +
+            '</b><small class="muted" style="display:block">ขั้นต่ำ ' + money(v.minimumOrder) + '</small></div><button class="btn btn-primary btn-small" onclick="collectHomeVoucherByIndex(' + index + ')">เก็บโค้ด</button></div>';
+        }).join('') + '</div></section>';
+    }
+    function renderHomeLiveVideoSection() {
+      if (!safeArray(APP.liveRooms).length) return '';
+      return '<section class="market-section"><div class="market-section-head"><div><h2><i class="fa-solid fa-video" style="color:var(--primary)"></i> Live & Video</h2><small class="muted">รายการถ่ายทอดสดจากร้านค้า</small></div><button class="btn btn-outline btn-small" onclick="showLiveRooms()">ดูทั้งหมด</button></div><div class="store-grid">' +
+        APP.liveRooms.slice(0,4).map(function(v) {
+          return '<div class="store-card"><div class="store-cover">' + (v.thumbnail ? '<img src="' + imageUrl(v.thumbnail) + '" onerror="imageFallback(this)" alt="">' : '') +
+            '</div><div class="store-body"><span class="market-tag">' + esc(v.status) + '</span><h3>' + esc(v.title) + '</h3><p class="muted">' + esc(v.shopName) + '</p><a class="btn btn-primary btn-small" target="_blank" rel="noopener" href="' + safeHref(v.streamUrl,'#') + '">เปิด Live</a></div></div>';
+        }).join('') + '</div></section>';
+    }
+    function renderHomePromoStripSection() {
+      if (!safeArray(APP.promotions).length) return '';
+      return '<div class="promo-strip" id="promotions"><div><h3><i class="fa-solid fa-bolt"></i> ' + esc(APP.promotions[0].name || 'โปรโมชั่นพิเศษ') +
+        '</h3><p>ข้อเสนอพิเศษสำหรับคุณ ตรวจสอบรายละเอียดสินค้าและเงื่อนไขก่อนสั่งซื้อ</p></div><button class="btn btn-light" onclick="showPromotions()">ดูโปรโมชั่น</button></div>';
+    }
+    function renderHomeDailyDiscoverSection() {
+      return '<section id="dailyDiscoverSection" class="daily-discover-section" aria-label="สินค้าแนะนำประจำวัน"><div class="daily-discover-tab-header"><span>สินค้าแนะนำประจำวัน</span></div><div id="homeDailyDiscoverGrid" class="daily-discover-grid-host"><div class="daily-discover-loading">กำลังโหลดสินค้าแนะนำ...</div></div><div class="daily-discover-more-wrap"><button type="button" class="daily-discover-more-button" onclick="showRecommendedProducts()">ดูเพิ่มเติม</button></div></section>';
+    }
+    function renderHome() {
+      APP.currentView = 'home';
+      var fragments = [], visible = {};
+      var builders = {
+        hero:function(){return renderHomeHero();},
+        shortcuts:function(){return renderHomeShortcuts();},
+        categories:function(){return '<section id="categories" class="home-category-section"><div class="home-category-header"><h2>หมวดหมู่</h2></div>' + renderHomeCategoryCarousel() + '</section>';},
+        flashSale:function(){return renderHomeFlashSaleSection();},
+        promoBanners:function(){return renderHomePromoBannerStrip();},
+        mall:function(){return '<div id="homeShopeeMallRoot"><div class="shopee-mall-loading"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลด Shopee Mall...</div></div>';},
+        topProducts:function(){return renderHomeTopProductsCarousel();},
+        vouchers:function(){return renderHomeVoucherSection();},
+        liveVideo:function(){return renderHomeLiveVideoSection();},
+        promoStrip:function(){return renderHomePromoStripSection();},
+        dailyDiscover:function(){return renderHomeDailyDiscoverSection();}
+      };
+      normalizeHomeSectionSettings(APP.settings && APP.settings.homeSections).forEach(function(item) {
+        if (!item.enabled || !builders[item.id]) return;
+        var section = builders[item.id]();
+        if (!section) return;
+        fragments.push(section);
+        visible[item.id] = true;
+      });
+      document.getElementById('appRoot').innerHTML = '<div class="home-marketplace">' + fragments.join('') + '</div>';
+      if (visible.hero) initHomeHeroSwiper();
+      if (visible.categories) initHomeCategoryCarousel();
+      if (visible.flashSale || visible.topProducts) initHomeDealSections();
+      if (visible.mall) loadHomeShopeeMall();
+      if (visible.dailyDiscover) loadHomeDailyDiscover();
     }
     var homeShopeeMallTimer=null;
     function homeMallProductEnabled(product){
@@ -2583,6 +2623,7 @@
       if(!host)return;
       APP.homeDailyDiscoverRequestId=Number(APP.homeDailyDiscoverRequestId||0)+1;
       var requestId=APP.homeDailyDiscoverRequestId;
+      if(APP.homePublicProductsLoaded){host.innerHTML=renderDailyDiscoverGrid(safeArray(APP.products).slice(0,30));return;}
       apiCall('getProducts',[{page:1,pageSize:30,sort:'relevance'}],function(r){
         if(APP.currentView!=='home'||requestId!==APP.homeDailyDiscoverRequestId)return;
         var target=document.getElementById('homeDailyDiscoverGrid');
@@ -3871,7 +3912,7 @@
     function adminGridSort(id,key){var s=ADMIN_GRID_STATES[id];if(!s)return;if(s.options.sortKey===key)s.options.sortDir=s.options.sortDir==='asc'?'desc':'asc';else{s.options.sortKey=key;s.options.sortDir='asc';}s.options.page=1;adminGridFetchState(s);}
     function adminGridApplyFilters(id){var s=ADMIN_GRID_STATES[id];if(!s)return;var search=document.getElementById(id+'_search'),status=document.getElementById(id+'_status'),from=document.getElementById(id+'_from'),to=document.getElementById(id+'_to');s.options.search=search?search.value.trim():s.options.search;s.options.status=status?status.value:'';s.options.dateFrom=from?from.value:'';s.options.dateTo=to?to.value:'';s.options.page=1;adminGridFetchState(s);}
     function adminGridChangePage(id,page){var s=ADMIN_GRID_STATES[id];if(!s)return;s.options.page=Math.max(1,Number(page)||1);adminGridFetchState(s);}
-    function adminGridChangePageSize(id,value){var s=ADMIN_GRID_STATES[id];if(!s)return;var size=Number(value)||10;s.options.pageSize=[10,25,50,100].indexOf(size)>=0?size:10;s.options.page=1;adminGridFetchState(s);}
+    function adminGridChangePageSize(id,value){var s=ADMIN_GRID_STATES[id];if(!s)return;if(String(value)==='all'){s.options.exportAll=true;s.options.pageSize=100;}else{s.options.exportAll=false;var size=Number(value)||10;s.options.pageSize=[10,25,50,100].indexOf(size)>=0?size:10;}s.options.page=1;adminGridFetchState(s);}
     function adminGridToggleColumns(id){var menu=document.getElementById(id+'_columns');if(menu)menu.classList.toggle('open');}
     function adminGridSetColumn(id,key,checked){var s=ADMIN_GRID_STATES[id];if(!s)return;var all=s.columns.map(function(c){return c.key;});if(!s.visibleKeys)s.visibleKeys=all.filter(function(k){return k!=='id'&&k!=='updatedAt';});if(checked&&s.visibleKeys.indexOf(key)<0)s.visibleKeys.push(key);if(!checked)s.visibleKeys=s.visibleKeys.filter(function(k){return k!==key;});try{localStorage.setItem('eg_cols_'+id,JSON.stringify(s.visibleKeys));}catch(e){}renderAdminGridHost(s);}
     function adminGridResetColumns(id){var s=ADMIN_GRID_STATES[id];if(!s)return;s.visibleKeys=s.columns.filter(function(c){return c.defaultVisible!==false;}).map(function(c){return c.key;});try{localStorage.removeItem('eg_cols_'+id);}catch(e){}renderAdminGridHost(s);}
@@ -3896,11 +3937,11 @@
     function adminGridCellHtml(row,col){var value=row[col.key];if(value===null||value===undefined||value==='')return '<span class="muted">—</span>';if(col.type==='status')return adminGridStatusHtml(value);if(col.type==='boolean')return adminGridStatusHtml((value===true||String(value).toLowerCase()==='true'||String(value)==='1')?'เปิดใช้งาน':'ปิดใช้งาน');if(col.type==='money')return esc(money(value));if(col.type==='number')return esc(Number(value||0).toLocaleString('th-TH',{maximumFractionDigits:2}));if(col.type==='date'){var d=new Date(value);return esc(isNaN(d.getTime())?String(value):new Intl.DateTimeFormat('th-TH',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(d));}var text=String(value);if(/<\/?[a-z][\s\S]*>/i.test(text))text=text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();return '<span class="eg-cell-clip" title="'+esc(text)+'">'+esc(text)+'</span>';}
     function adminGridColumnsMarkup(state){var id=state.id,visible=state.visibleKeys||state.columns.filter(function(c){return c.defaultVisible!==false;}).map(function(c){return c.key;});return '<div class="eg-column-control"><button class="eg-control-btn" type="button" onclick="adminGridToggleColumns(\''+id+'\')"><i class="fa-solid fa-columns"></i><span class="eg-btn-label">คอลัมน์</span><i class="fa-solid fa-chevron-down"></i></button><div class="eg-column-menu" id="'+id+'_columns"><div class="eg-column-menu-head"><span>เลือกคอลัมน์ที่แสดง</span><button type="button" onclick="adminGridResetColumns(\''+id+'\')">คืนค่าเริ่มต้น</button></div>'+state.columns.map(function(c){return '<label class="eg-column-option"><input type="checkbox" '+(visible.indexOf(c.key)>=0?'checked':'')+' onchange="adminGridSetColumn(\''+id+'\',\''+c.key+'\',this.checked)"><span>'+esc(c.label)+'</span></label>';}).join('')+'</div></div>';}
     function adminGridPaginationMarkup(state){
-      var meta=state.meta||{},id=state.id,page=Math.max(1,Number(state.options.page||1)),pageSize=Math.max(1,Number(state.options.pageSize||10)),filtered=Math.max(0,Number(meta.filteredTotal===undefined?safeArray(state.rows).length:meta.filteredTotal)),pages=Math.max(1,Math.ceil(filtered/pageSize));
+      var meta=state.meta||{},id=state.id,page=Math.max(1,Number(state.options.page||1)),pageSize=Math.max(1,Number(state.options.pageSize||10)),filtered=Math.max(0,Number(meta.filteredTotal===undefined?safeArray(state.rows).length:meta.filteredTotal)),pages=state.options.exportAll?1:Math.max(1,Math.ceil(filtered/pageSize));
       page=Math.min(page,pages);
       var from=filtered?(page-1)*pageSize+1:0,to=filtered?Math.min(page*pageSize,filtered):0;
       function button(label,target,disabled,active,aria){return '<button type="button" class="eg-page-btn'+(active?' active':'')+'" '+(disabled?'disabled ':'')+'title="'+esc(aria||label)+'" aria-label="'+esc(aria||label)+'" onclick="adminGridChangePage(\''+esc(id)+'\','+target+')"'+(active?' aria-current="page"':'')+'>'+esc(label)+'</button>';}
-      var html='<div class="eg-pagination" role="navigation" aria-label="แบ่งหน้าตาราง"><div class="eg-pagination-left"><span class="eg-pagination-info">'+from.toLocaleString('th-TH')+' ถึง '+to.toLocaleString('th-TH')+' จาก '+filtered.toLocaleString('th-TH')+' รายการ</span></div><div class="eg-pagination-controls">';
+      var html='<div class="eg-pagination" role="navigation" aria-label="แบ่งหน้าตาราง"><div class="eg-pagination-left"><span class="eg-pagination-info">'+from.toLocaleString('th-TH')+' ถึง '+to.toLocaleString('th-TH')+' จาก '+filtered.toLocaleString('th-TH')+' รายการ'+(meta.exportLimited?' · แสดงได้สูงสุด 5,000 รายการต่อครั้ง':'')+'</span></div><div class="eg-pagination-controls">';
       var start=Math.max(1,Math.min(page-2,pages-4)),end=Math.min(pages,start+4);
       html+=button('«',1,page<=1,false,'หน้าแรก');
       html+=button('‹',Math.max(1,page-1),page<=1,false,'ก่อนหน้า');
@@ -3911,7 +3952,7 @@
     }
     function adminGridRender(state){
       var id=state.id,meta=state.meta||{},rows=safeArray(state.rows),cols=state.columns||[],visible=state.visibleKeys||cols.filter(function(c){return c.defaultVisible!==false;}).map(function(c){return c.key;}),summary=meta.summary||{},page=Number(state.options.page||1),pageSize=Number(state.options.pageSize||10),filtered=Number(meta.filteredTotal===undefined?rows.length:meta.filteredTotal),total=Number(meta.total===undefined?filtered:meta.total),hasTotals=cols.some(function(c){return !!c.total&&summary[c.key]!==undefined;});
-      var html='<div class="eg-grid" id="'+id+'" data-eg-skip-enhance="1" aria-busy="false"><div class="eg-toolbar"><div class="eg-toolbar-left"><div class="eg-search"><input id="'+id+'_search" value="'+esc(state.options.search||'')+'" placeholder="ค้นหาในตาราง..." onkeydown="if(event.key===\'Enter\')adminGridApplyFilters(\''+id+'\')"><button type="button" title="ค้นหา" onclick="adminGridApplyFilters(\''+id+'\')"><i class="fa-solid fa-search"></i></button></div><label class="eg-toolbar-page-size" title="จำนวนรายการที่แสดง"><span>แสดง</span><select aria-label="จำนวนรายการที่แสดง" onchange="adminGridChangePageSize(\''+esc(id)+'\',this.value)">'+[10,25,50,100].map(function(size){return '<option value="'+size+'" '+(size===Number(state.options.pageSize||10)?'selected':'')+'>'+size+'</option>';}).join('')+'</select></label>';
+      var html='<div class="eg-grid" id="'+id+'" data-eg-skip-enhance="1" aria-busy="false"><div class="eg-toolbar"><div class="eg-toolbar-left"><div class="eg-search"><input id="'+id+'_search" value="'+esc(state.options.search||'')+'" placeholder="ค้นหาในตาราง..." onkeydown="if(event.key===\'Enter\')adminGridApplyFilters(\''+id+'\')"><button type="button" title="ค้นหา" onclick="adminGridApplyFilters(\''+id+'\')"><i class="fa-solid fa-search"></i></button></div><label class="eg-toolbar-page-size" title="จำนวนรายการที่แสดง"><span>แสดง</span><select aria-label="จำนวนรายการที่แสดง" onchange="adminGridChangePageSize(\''+esc(id)+'\',this.value)">'+[10,25,50,100].map(function(size){return '<option value="'+size+'" '+(size===Number(state.options.pageSize||10)?'selected':'')+'>'+size+'</option>';}).join('')+'<option value="all" '+(state.options.exportAll?'selected':'')+'>ทั้งหมด (สูงสุด 5,000)</option></select></label>';
       if(safeArray(meta.statusOptions).length)html+='<select id="'+id+'_status" class="eg-filter-select" onchange="adminGridApplyFilters(\''+id+'\')"><option value="">ทุกสถานะ</option>'+meta.statusOptions.map(function(x){return '<option value="'+esc(x)+'" '+(String(state.options.status||'')===String(x)?'selected':'')+'>'+esc(x)+'</option>';}).join('')+'</select>';
       html+='<input class="eg-date-filter" id="'+id+'_from" type="date" aria-label="ตั้งแต่วันที่" value="'+esc(state.options.dateFrom||'')+'" onchange="adminGridApplyFilters(\''+id+'\')"><input class="eg-date-filter" id="'+id+'_to" type="date" aria-label="ถึงวันที่" value="'+esc(state.options.dateTo||'')+'" onchange="adminGridApplyFilters(\''+id+'\')"></div><div class="eg-toolbar-right">'+adminGridColumnsMarkup(state)+'<button class="eg-control-btn" id="'+id+'_export_btn" type="button" onclick="adminGridExport(\''+id+'\')"><i class="fa-solid fa-file-csv"></i><span class="eg-btn-label">CSV ผลการกรอง</span></button><button class="eg-control-btn" type="button" onclick="adminGridRefresh(\''+id+'\')"><i class="fa-solid fa-rotate"></i><span class="eg-btn-label">รีเฟรช</span></button>'+(state.topActions||'')+'</div></div>';
       
@@ -4054,14 +4095,27 @@
       }next();
     }
 
-    function openEditor(page,id){ensureAdminEditorReferences(page,function(){openEditorNow(page,id);});}
+    function openEditor(page,id){
+      var cfg=MODULE_CONFIG[page];if(!cfg)return;
+      var waiting=(['products','categories','promotions'].indexOf(page)>=0&&!APP.adminCategoriesLoaded)||
+        (page==='promotions'&&!APP.adminProductsLoaded)||
+        (['promotions','coupons'].indexOf(page)>=0&&!APP.adminStoresLoaded);
+      APP.adminEditorRequestId=Number(APP.adminEditorRequestId||0)+1;
+      var requestId=APP.adminEditorRequestId;
+      if(!waiting){openEditorNow(page,id,false);return;}
+      Swal.fire({title:id?cfg.edit:cfg.add,html:'<div class="admin-editor-wait"><span class="inline-spinner"></span><b>กำลังเตรียมข้อมูลฟอร์ม</b><small>กำลังโหลดรายการที่เกี่ยวข้อง สามารถยกเลิกได้</small></div>',width:520,showCancelButton:true,showConfirmButton:false,cancelButtonText:'ยกเลิก',focusConfirm:false,allowOutsideClick:true,customClass:{popup:'enterprise-admin-modal admin-editor-loading-modal'}});
+      ensureAdminEditorReferences(page,function(){
+        if(APP.adminEditorRequestId!==requestId||!Swal.isVisible())return;
+        openEditorNow(page,id,true);
+      });
+    }
     function ensureAdminEditorReferences(page,callback){var jobs=[];var needsCategories=['products','categories','promotions'].indexOf(page)>=0;var needsProducts=page==='promotions';var needsStores=['promotions','coupons'].indexOf(page)>=0;if(needsCategories&&!APP.adminCategoriesLoaded)jobs.push(function(done){apiCall('getCategories',[{token:APP.adminToken,includeInactive:true}],function(r){if(r&&r.success)APP.adminCategories=safeArray(r.data);APP.adminCategoriesLoaded=true;done();});});if(needsProducts&&!APP.adminProductsLoaded)jobs.push(function(done){apiCall('getProductsAdmin',[{token:APP.adminToken,page:1,pageSize:500}],function(r){if(r&&r.success){var x=r.data||{};APP.adminProducts=safeArray(x.items||x);}APP.adminProductsLoaded=true;done();});});if(needsStores&&!APP.adminStoresLoaded)jobs.push(function(done){apiCall('adminGetSellers',[APP.adminToken,{}],function(r){if(r&&r.success)APP.adminStores=safeArray(r.data);APP.adminStoresLoaded=true;done();});});if(!jobs.length){callback();return;}var pending=jobs.length;jobs.forEach(function(job){job(function(){pending--;if(pending===0)callback();});});}
-    function openEditorNow(page,id){
+    function openEditorNow(page,id,updateExisting){
       var cfg=MODULE_CONFIG[page];if(!cfg)return;
       var row=id?safeArray(APP.adminData).filter(function(x){return String(x.id)===String(id);})[0]||{}:{};
       var html='<div class="admin-editor-intro"><span class="admin-editor-icon"><i class="fa-solid fa-pen-to-square"></i></span><span><b>'+(id?'แก้ไขข้อมูล':'กรอกข้อมูลใหม่')+'</b><small>ช่องที่มีความสัมพันธ์จะเลือกจากข้อมูลในระบบโดยอัตโนมัติ</small></span></div><div class="modal-form-grid">';
       cfg.fields.forEach(function(f){html+=renderAdminEditorField(page,f,row);});html+='</div>';
-      Swal.fire({title:id?cfg.edit:cfg.add,html:html,width:900,showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึกข้อมูล',cancelButtonText:'ยกเลิก',focusConfirm:false,buttonsStyling:true,customClass:{popup:'enterprise-admin-modal'},allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){
+      var formOptions={title:id?cfg.edit:cfg.add,html:html,width:900,showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึกข้อมูล',cancelButtonText:'ยกเลิก',focusConfirm:false,buttonsStyling:true,customClass:{popup:'enterprise-admin-modal'},allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){
         if(page==='products'&&APP.productCampaignImageUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดภาพแถบแคมเปญเสร็จก่อนบันทึกสินค้า');return false;}
         if(page==='products'&&APP.productVideoUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดวิดีโอเสร็จก่อนบันทึกสินค้า');return false;}
         var data={id:id||''},invalid=false;
@@ -4080,7 +4134,8 @@
         if(page==='products'&&data.quantityPromoEnabled){var promoQty=Math.floor(Number(data.quantityPromoQty||0)),promoDiscount=Number(data.quantityPromoDiscount||0),basePromoPrice=Number(data.salePrice)>0?Number(data.salePrice):Number(data.price);if(promoQty<2||promoDiscount<=0||promoDiscount>=basePromoPrice*promoQty){Swal.showValidationMessage('โปรโมชั่นต้องซื้ออย่างน้อย 2 ชิ้น และส่วนลดต้องมากกว่า 0 แต่น้อยกว่ามูลค่าสินค้าในชุด');return false;}}
         if(page==='categories'&&!String(data.name||'').trim()){Swal.showValidationMessage('กรุณาระบุชื่อหมวดหมู่');return false;}
         return runAdminModalMutation(page,cfg.save,[APP.adminToken,data]);
-      }});
+      }};
+      if(updateExisting&&Swal.isVisible())Swal.update(formOptions);else Swal.fire(formOptions);
     }
     function deleteAdminRecord(page,id){
       var cfg=MODULE_CONFIG[page];if(!cfg)return;
@@ -4227,6 +4282,91 @@
       });
     }
 
+
+    var HOME_SECTION_DEFAULTS = [
+      {id:'hero',label:'แบนเนอร์หลัก / Hero'},
+      {id:'shortcuts',label:'เมนูลัดร้านค้า'},
+      {id:'categories',label:'หมวดหมู่สินค้า'},
+      {id:'flashSale',label:'Flash Sale'},
+      {id:'promoBanners',label:'แบนเนอร์โปรโมชั่น 3 ช่อง'},
+      {id:'mall',label:'Shopee Mall'},
+      {id:'topProducts',label:'ขายดีประจำสัปดาห์'},
+      {id:'vouchers',label:'Voucher สำหรับคุณ'},
+      {id:'liveVideo',label:'Live & Video'},
+      {id:'promoStrip',label:'แถบโปรโมชั่นพิเศษ'},
+      {id:'dailyDiscover',label:'สินค้าแนะนำประจำวัน'}
+    ];
+    function normalizeHomeSectionSettings(value) {
+      var parsed = Array.isArray(value) ? value : safeJson(value, []);
+      var enabledById = {}, result = [];
+      safeArray(parsed).forEach(function(item) {
+        var id = String(item && item.id || '');
+        if (HOME_SECTION_DEFAULTS.some(function(def) { return def.id === id; })) {
+          enabledById[id] = item.enabled !== false && String(item.enabled) !== 'false' && String(item.enabled) !== '0';
+        }
+      });
+      safeArray(parsed).forEach(function(item) {
+        var id = String(item && item.id || '');
+        var def = HOME_SECTION_DEFAULTS.filter(function(entry) { return entry.id === id; })[0];
+        if (def && !result.some(function(row) { return row.id === id; })) {
+          result.push({id:id,label:def.label,enabled:enabledById[id] !== false});
+        }
+      });
+      HOME_SECTION_DEFAULTS.forEach(function(def) {
+        if (!result.some(function(row) { return row.id === def.id; })) {
+          result.push({id:def.id,label:def.label,enabled:true});
+        }
+      });
+      return result;
+    }
+    function renderAdminHomeSectionRows() {
+      return safeArray(APP.homeSectionDraft).map(function(item, index) {
+        return '<div class="admin-home-section-row">' +
+          '<span class="admin-home-section-order">' + (index + 1) + '</span>' +
+          '<span class="admin-home-section-name"><b>' + esc(item.label) + '</b><small>' + esc(item.id) + '</small></span>' +
+          '<label class="admin-home-section-toggle"><span>' + (item.enabled ? 'แสดง' : 'ซ่อน') + '</span>' +
+          '<input type="checkbox" ' + (item.enabled ? 'checked' : '') + ' data-home-index="' + index + '" onchange="updateAdminHomeSectionEnabledByIndex(this.dataset.homeIndex,this.checked)"><i></i></label>' +
+          '<span class="admin-home-section-actions">' +
+          '<button type="button" title="เลื่อนขึ้น" ' + (index === 0 ? 'disabled' : '') + ' data-home-index="' + index + '" onclick="moveAdminHomeSectionByIndex(this.dataset.homeIndex,-1)"><i class="fa-solid fa-chevron-up"></i></button>' +
+          '<button type="button" title="เลื่อนลง" ' + (index === APP.homeSectionDraft.length - 1 ? 'disabled' : '') + ' data-home-index="' + index + '" onclick="moveAdminHomeSectionByIndex(this.dataset.homeIndex,1)"><i class="fa-solid fa-chevron-down"></i></button>' +
+          '</span></div>';
+      }).join('');
+    }
+    function renderAdminHomeSectionsEditor(value) {
+      APP.homeSectionDraft = normalizeHomeSectionSettings(value);
+      return '<div class="field full admin-home-sections-field"><div class="admin-home-sections-editor">' +
+        '<div class="admin-home-sections-toolbar"><span><b>กล่องและส่วนประกอบหน้าแรก</b><small>เปิด/ปิดแต่ละส่วน และเลื่อนขึ้นลงเพื่อกำหนดลำดับที่ลูกค้าจะเห็น</small></span>' +
+        '<span><button type="button" onclick="setAllAdminHomeSections(true)">เปิดทั้งหมด</button><button type="button" onclick="setAllAdminHomeSections(false)">ปิดทั้งหมด</button></span></div>' +
+        '<div id="adminHomeSectionRows">' + renderAdminHomeSectionRows() + '</div>' +
+        '<p class="admin-home-sections-note">การตั้งค่านี้มีผลกับหน้าแรกของลูกค้าหลังบันทึก โดยไม่ลบข้อมูลหรือแบนเนอร์เดิม</p></div></div>';
+    }
+    function refreshAdminHomeSectionEditor() {
+      var host = document.getElementById('adminHomeSectionRows');
+      if (host) host.innerHTML = renderAdminHomeSectionRows();
+    }
+    function updateAdminHomeSectionEnabledByIndex(index, enabled) {
+      var rows = safeArray(APP.homeSectionDraft).slice(), position = Number(index), item = rows[position];
+      if (!item) return;
+      rows[position] = Object.assign({}, item, {enabled:!!enabled});
+      APP.homeSectionDraft = rows;
+      refreshAdminHomeSectionEditor();
+    }
+    function moveAdminHomeSectionByIndex(index, direction) {
+      var rows = safeArray(APP.homeSectionDraft).slice(), position = Number(index), target = position + Number(direction || 0);
+      if (position < 0 || position >= rows.length || target < 0 || target >= rows.length) return;
+      var moved = rows[position];
+      rows[position] = rows[target];
+      rows[target] = moved;
+      APP.homeSectionDraft = rows;
+      refreshAdminHomeSectionEditor();
+    }
+    function setAllAdminHomeSections(enabled) {
+      APP.homeSectionDraft = safeArray(APP.homeSectionDraft).map(function(item) {
+        return Object.assign({}, item, {enabled:!!enabled});
+      });
+      refreshAdminHomeSectionEditor();
+    }
+
     function loadAdminSettings(onLoaded){
       apiCall('getAdminSettings',[APP.adminToken],function(r){
         if(!r.success){showAdminError(r.message);if(typeof onLoaded==='function')onLoaded(false,r.message);return;}
@@ -4237,12 +4377,14 @@
           {title:'การขาย ภาษี และการจัดส่ง',desc:'กำหนดสกุลเงิน ภาษี ค่าจัดส่ง และเงื่อนไขซื้อขาย',keys:[['currency','สกุลเงิน','select:currency'],['currencySymbol','สัญลักษณ์เงิน'],['taxRate','อัตราภาษี (%)','number'],['defaultShippingFee','ค่าจัดส่งเริ่มต้น','number'],['freeShippingMinimum','ยอดขั้นต่ำสำหรับส่งฟรี','number'],['minimumOrder','ยอดสั่งซื้อขั้นต่ำ','number'],['allowGuestCheckout','อนุญาตให้สั่งซื้อโดยไม่สมัครสมาชิก','switch'],['paymentMethods','ช่องทางชำระเงิน','multi:payments']]},
           {title:'บัญชีรับชำระเงิน',desc:'ข้อมูลบัญชีและ QR สำหรับรับชำระเงินจากลูกค้า',keys:[['bankName','ชื่อธนาคาร'],['bankAccountName','ชื่อบัญชี'],['bankAccountNumber','เลขบัญชี'],['bankQrImage','QR Code รับชำระเงิน','image:Website']]},
           {title:'สีและรูปแบบหน้าร้าน',desc:'ปรับโทนสีหลัก สีรอง และสีเน้นได้ด้วยตนเอง',keys:[['primaryColor','สีหลักของระบบ','color'],['secondaryColor','สีรองของระบบ','color'],['accentColor','สีเน้น / Accent','color']]},
-          {title:'นโยบายและ SEO',desc:'ข้อความข้อกำหนด นโยบาย และข้อมูลสำหรับ Search Engine',keys:[['returnPolicy','นโยบายคืนสินค้า','richtext'],['privacyPolicy','นโยบายความเป็นส่วนตัว','richtext'],['terms','ข้อกำหนดและเงื่อนไข','richtext'],['footerText','ข้อความ Footer','richtext'],['seoDescription','SEO Description','textarea']]}
+          {title:'นโยบายและ SEO',desc:'ข้อความข้อกำหนด นโยบาย และข้อมูลสำหรับ Search Engine',keys:[['returnPolicy','นโยบายคืนสินค้า','richtext'],['privacyPolicy','นโยบายความเป็นส่วนตัว','richtext'],['terms','ข้อกำหนดและเงื่อนไข','richtext'],['footerText','ข้อความ Footer','richtext'],['seoDescription','SEO Description','textarea']]},
+          {title:'จัดการหน้าแรก',desc:'ควบคุมว่าจะแสดงกล่องใดบ้าง และจัดลำดับการแสดงผลหน้าแรกได้ด้วยตนเอง',keys:[['homeSections','ส่วนประกอบหน้าแรก','homeSections']]}
         ];
         var allKeys=[],html='<div class="admin-settings-page"><div class="admin-settings-heading"><div><span class="admin-settings-eyebrow">STORE CONFIGURATION</span><h2>ตั้งค่าร้านค้า</h2><p>ปรับ setTitle ชื่อร้าน โลโก้ และข้อมูลที่แสดงบนหน้าร้าน Marketplace</p></div><button id="saveAdminSettingsButton" class="btn btn-primary" onclick="saveAdminSettings(this)"><i class="fa-solid fa-floppy-disk"></i> บันทึกการตั้งค่า</button></div>';
         groups.forEach(function(group){html+='<section class="admin-settings-section"><header><h3>'+esc(group.title)+'</h3><p>'+esc(group.desc)+'</p></header><div class="form-grid">';group.keys.forEach(function(def){var key=def[0],label=def[1],kind=def[2]||'text',val=d[key]===undefined?'':d[key];allKeys.push(key);
           if(kind.indexOf('image:')===0){html+=renderAdminSettingImage(key,label,val,kind.split(':')[1]);return;}
           if(kind==='color'){html+=renderAdminColorSetting(key,label,val);return;}
+          if(kind==='homeSections'){html+=renderAdminHomeSectionsEditor(val);return;}
           if(kind==='richtext'){html+=richEditorMarkup('setting_'+key,label,val,'พิมพ์'+label+'ที่นี่...');return;}
           if(kind==='textarea'){html+='<div class="field full"><label for="setting_'+key+'">'+esc(label)+'</label><textarea id="setting_'+key+'" rows="3">'+esc(val)+'</textarea></div>';return;}
           if(kind==='switch'){html+='<div class="field"><label>'+esc(label)+'</label><label class="admin-switch-row" for="setting_'+key+'"><span class="admin-switch-copy"><b>'+((adminEditorIsOn(val))?'เปิด':'ปิด')+'</b><small>เปิดหรือปิดฟังก์ชันนี้สำหรับหน้าร้าน</small></span><input id="setting_'+key+'" type="checkbox" class="admin-switch-input" '+(adminEditorIsOn(val)?'checked':'')+' onchange="updateAdminSwitchLabel(this)"><span class="admin-switch-track"><i></i></span></label></div>';return;}
@@ -4257,7 +4399,7 @@
     }
     function updateCurrencySymbolFromCurrency(){var currency=document.getElementById('setting_currency'),symbol=document.getElementById('setting_currencySymbol');if(!currency||!symbol)return;var map={THB:'฿',MMK:'K',USD:'$',SGD:'S$',MYR:'RM',JPY:'¥',EUR:'€',GBP:'£'};symbol.value=map[currency.value]||symbol.value;}
     function saveAdminSettings(button){
-      var d={};safeArray(APP.editSettingsKeys).forEach(function(k){var e=document.getElementById('setting_'+k);if(!e)return;if(k==='allowGuestCheckout')d[k]=e.checked?'true':'false';else if(k==='paymentMethods')d[k]=JSON.stringify(Array.prototype.slice.call(e.selectedOptions||[]).map(function(o){return o.value;}));else if(e.isContentEditable)d[k]=getRichEditorHtml('setting_'+k);else d[k]=e.value;});
+      var d={};safeArray(APP.editSettingsKeys).forEach(function(k){var e=document.getElementById('setting_'+k);if(k==='homeSections'){d[k]=JSON.stringify(safeArray(APP.homeSectionDraft).map(function(item){return {id:item.id,enabled:!!item.enabled};}));return;}if(!e)return;if(k==='allowGuestCheckout')d[k]=e.checked?'true':'false';else if(k==='paymentMethods')d[k]=JSON.stringify(Array.prototype.slice.call(e.selectedOptions||[]).map(function(o){return o.value;}));else if(e.isContentEditable)d[k]=getRichEditorHtml('setting_'+k);else d[k]=e.value;});
       var busy=setInlineButtonBusy(button||document.getElementById('saveAdminSettingsButton'),'กำลังบันทึก...');
       apiCall('saveSettings',[APP.adminToken,d],function(r){if(!r.success){restoreInlineButton(busy);applySettings();alertError(r.message);return;}
         APP.settings=Object.assign({},APP.settings,d);loadAdminSettings(function(ok,message){if(!ok){restoreInlineButton(busy);alertError('บันทึกแล้วแต่โหลดการตั้งค่าล่าสุดไม่สำเร็จ: '+message);return;}applySettings();toast(r.message,'success','การตั้งค่าร้านค้าถูกบันทึกและโหลดกลับมาแล้ว');});
@@ -6532,6 +6674,47 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
       #appRoot .shopee-mall-brand-images {height:105px}
       #appRoot .shopee-mall-brand-name {max-width:95%;padding:3px 7px;font-size:10px}
       #appRoot .shopee-mall-brand-next {width:30px;height:30px}
+    }
+  </style>
+
+
+  <style id="storefront-admin-fullscreen-performance-v1">
+    body.portal-mode-owner #appRoot{width:100%;max-width:none;padding-left:10px;padding-right:10px}
+    body.portal-mode-owner .admin-shell,body.portal-mode-owner .admin-workspace,body.portal-mode-owner .admin-main,body.portal-mode-owner #adminContent{width:100%;max-width:none;min-width:0}
+    body.portal-mode-owner .admin-shell{grid-template-columns:clamp(210px,19vw,258px) minmax(0,1fr)}
+    body.portal-mode-owner .eg-grid,body.portal-mode-owner .eg-dom-grid{width:100%;max-width:none}
+    body.portal-mode-owner .eg-grid-viewport{max-height:calc(100dvh - 300px);min-height:240px;margin-left:10px;margin-right:10px}
+    body.portal-mode-owner .eg-dom-grid .eg-dom-table-wrapper,body.portal-mode-seller .eg-dom-grid .eg-dom-table-wrapper{max-height:calc(100dvh - 290px)}
+    .eg-pagination-controls{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+    .admin-editor-wait{min-height:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink)}
+    .admin-editor-wait .inline-spinner{width:28px;height:28px;border-width:3px}
+    .admin-editor-wait small{color:var(--muted);font-size:12px}
+    .admin-home-sections-field{grid-column:1/-1}
+    .admin-home-sections-editor{border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden}
+    .admin-home-sections-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 15px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+    .admin-home-sections-toolbar>span:first-child{display:flex;flex-direction:column;gap:4px}
+    .admin-home-sections-toolbar b{font-size:13px;color:var(--ink)}
+    .admin-home-sections-toolbar small{font-size:11px;color:var(--muted)}
+    .admin-home-sections-toolbar>span:last-child{display:flex;gap:6px;flex-wrap:wrap}
+    .admin-home-sections-toolbar button,.admin-home-section-actions button{border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);padding:7px 10px;font-size:11px;cursor:pointer}
+    .admin-home-sections-toolbar button:hover,.admin-home-section-actions button:hover{border-color:var(--primary);color:var(--primary)}
+    .admin-home-section-row{display:flex;align-items:center;gap:11px;padding:10px 13px;border-bottom:1px solid var(--border);min-height:58px}
+    .admin-home-section-row:last-child{border-bottom:0}
+    .admin-home-section-order{width:27px;height:27px;flex:0 0 27px;display:grid;place-items:center;border-radius:8px;background:var(--surface-2);color:var(--muted);font-size:11px;font-weight:800}
+    .admin-home-section-name{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+    .admin-home-section-name b{font-size:12px;color:var(--ink)}
+    .admin-home-section-name small{font-size:10px;color:var(--muted)}
+    .admin-home-section-toggle{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11px;white-space:nowrap;cursor:pointer}
+    .admin-home-section-toggle input{accent-color:var(--primary);width:16px;height:16px}
+    .admin-home-section-actions{display:flex;gap:5px}
+    .admin-home-section-actions button{width:30px;height:30px;padding:0}
+    .admin-home-section-actions button:disabled{opacity:.3;cursor:not-allowed}
+    .admin-home-sections-note{margin:0;padding:11px 14px;background:var(--surface-2);color:var(--muted);font-size:10px;line-height:1.5}
+    @media(max-width:720px){
+      body.portal-mode-owner #appRoot{padding-left:7px;padding-right:7px}
+      body.portal-mode-owner .eg-grid-viewport{max-height:calc(100dvh - 250px);min-height:190px}
+      .admin-home-sections-toolbar{align-items:flex-start;flex-direction:column}
+      .admin-home-section-row{gap:7px;padding:9px 8px}
     }
   </style>
 
