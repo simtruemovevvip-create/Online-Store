@@ -2927,6 +2927,7 @@ function requireSeller_(customerToken) {
 }
 function publicStore_(s) {
   return {id:s.id,shopName:s.shopName,slug:s.slug,description:s.description,logo:s.logo,banner:s.banner,
+    email:s.email,phone:s.phone,address:s.address,
     rating:number_(s.rating,0),followerCount:number_(s.followerCount,0),status:s.status,createdAt:s.createdAt};
 }
 function notify_(recipientType,recipientId,title,message,type,link) {
