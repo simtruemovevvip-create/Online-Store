@@ -1575,6 +1575,109 @@ body.dark .fashion-buy-actions .fashion-add-cart{background:#2a1d1a!important}
 body.dark .fashion-shop-chat{background:#2a1d1a!important}
 @media(max-width:980px){.shopee-detail-main.fashion-product-main{grid-template-columns:minmax(0,40%) minmax(0,60%)}.fashion-product-info{padding:17px!important}.fashion-shop-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.fashion-shop-details{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.shopee-detail-page.fashion-detail-page{max-width:100%}.shopee-detail-main.fashion-product-main{grid-template-columns:minmax(0,1fr)}.fashion-product-gallery{border-right:0!important;border-bottom:1px solid var(--border)!important}.fashion-product-gallery .fashion-product-hero{max-width:450px;margin:0 auto}.fashion-detail-thumbnails{max-width:450px;width:100%;margin:0 auto;grid-template-columns:repeat(4,minmax(0,1fr))}.fashion-gallery-footer{max-width:450px;width:100%;margin:0 auto}.fashion-product-info{padding:15px!important}.fashion-product-meta{gap:7px!important}.fashion-report-link{margin-left:auto}.fashion-detail-row{grid-template-columns:82px minmax(0,1fr)}.fashion-shop-card{padding:0}.fashion-shop-banner{height:105px}.fashion-shop-full-head{padding:15px}.fashion-shop-description{padding:0 15px 14px}.fashion-shop-stats{grid-template-columns:repeat(2,minmax(0,1fr));padding:14px 15px;gap:12px}.fashion-shop-details{grid-template-columns:1fr;padding:14px 15px;gap:12px}.fashion-shop-stat>span,.fashion-shop-detail>span{font-size:9px}.fashion-shop-stat>b,.fashion-shop-detail>b{font-size:11px}}
+
+/* Main Shopee-style product detail layout */
+.shopee-detail-page.fashion-detail-page{max-width:1200px;width:100%;margin:0 auto}
+.shopee-detail-main.fashion-product-main{display:grid;grid-template-columns:minmax(0,490px) minmax(0,1fr);align-items:start;background:#fff;border:1px solid #eee;border-radius:4px;overflow:hidden}
+.fashion-product-gallery{display:flex;flex-direction:column;gap:0;min-width:0;padding:20px!important;background:#fff}
+.fashion-product-gallery .fashion-product-hero{position:relative;display:block;width:100%;height:auto!important;aspect-ratio:1/1;max-width:450px;margin:0 auto;background:#f8fafc;border-radius:3px;overflow:hidden;cursor:zoom-in}
+.fashion-product-gallery .fashion-product-hero img{display:block;width:100%;height:100%;object-fit:contain}
+.fashion-detail-campaigns{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:stretch;gap:0;min-height:32px;z-index:2;pointer-events:none}
+.fashion-detail-campaign{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:50%;padding:6px 10px;font-size:11px;font-weight:750;line-height:1.25;overflow:hidden;text-overflow:ellipsis}
+.fashion-detail-campaign.free{background:#16a34a;color:#fff}
+.fashion-detail-campaign.free b{font-size:13px;font-weight:900}
+.fashion-detail-campaign.discount{background:#ffe35b;color:#c72f24}
+.fashion-detail-campaign.discount b{font-weight:850}
+.fashion-detail-thumbnails{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px!important;width:100%;padding:12px 0 0!important;overflow:visible!important}
+.fashion-detail-thumbnails .detail-thumb{position:relative;display:block;width:100%!important;height:auto!important;min-width:0;flex:auto!important;aspect-ratio:1/1;padding:1px!important;border:2px solid transparent!important;border-radius:3px!important;background:#fff;overflow:hidden}
+.fashion-detail-thumbnails .detail-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.fashion-detail-thumbnails .detail-thumb.active,.fashion-detail-thumbnails .detail-thumb:hover{border-color:#ee4d2d!important}
+.fashion-gallery-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%;margin-top:auto;padding-top:18px}
+.fashion-share-row{display:flex;align-items:center;gap:9px;font-size:12px;color:#444}
+.fashion-share-row button{width:28px;height:28px;display:grid;place-items:center;border:0;border-radius:50%;background:#fff;color:#64748b;font-size:13px;cursor:pointer}
+.fashion-share-row button[data-share-platform="messenger"]{background:#168bfa;color:#fff}
+.fashion-share-row button[data-share-platform="facebook"]{background:#1877f2;color:#fff}
+.fashion-share-row button[data-share-platform="pinterest"]{background:#e60023;color:#fff}
+.fashion-share-row button[data-share-platform="x"]{background:#111;color:#fff}
+.fashion-gallery-divider{height:23px;border-left:1px solid #e5e7eb}
+.fashion-favorite-button{display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:#555;font-size:12px;cursor:pointer}
+.fashion-favorite-button i{color:#ee4d2d;font-size:17px}
+.fashion-favorite-button:hover{color:#ee4d2d}
+.fashion-product-info{min-width:0;padding:20px 30px 20px!important;background:#fff}
+.fashion-product-overline{display:flex;align-items:center;gap:9px;min-height:20px;font-size:10px;color:#8b8b8b}
+.fashion-product-overline img{max-height:19px;width:auto}
+.fashion-product-info .shopee-detail-title{margin:0 0 12px;color:#222;font-size:20px;font-weight:500;line-height:1.5;overflow-wrap:anywhere}
+.fashion-product-meta{display:flex;align-items:center;gap:12px!important;flex-wrap:wrap;min-height:28px;margin:0 0 13px}
+.fashion-rating-value{color:#ee4d2d;font-size:14px;font-weight:650;text-decoration:underline;text-decoration-color:#ee4d2d;text-underline-offset:4px}
+.fashion-rating-stars{display:inline-flex;gap:2px;color:#d1d5db;font-size:12px}
+.fashion-rating-stars .is-filled{color:#ee4d2d}
+.fashion-meta-link{color:#2563eb;text-decoration:underline;text-underline-offset:2px;font-size:12px}
+.fashion-meta-sold{color:#555;font-size:12px}
+.fashion-meta-help{display:inline-grid;place-items:center;width:14px;height:14px;margin-left:3px;border:1px solid #9ca3af;border-radius:50%;color:#9ca3af;font-size:9px;font-weight:700}
+.fashion-report-link{margin-left:auto;border:0;background:transparent;color:#9ca3af;font-size:11px;cursor:pointer}
+.fashion-report-link:hover{color:#ee4d2d}
+.fashion-price-panel{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:64px;margin:0 0 14px!important;padding:15px 20px!important;background:#f9fafb!important;color:#ee4d2d!important}
+.fashion-price-panel .shopee-price-current{color:#ee4d2d;font-size:28px;font-weight:500;letter-spacing:-.4px}
+.fashion-price-panel .shopee-price-old{color:#9ca3af;font-size:13px}
+.fashion-price-panel .shopee-price-discount{padding:3px 6px;border-radius:2px;background:#ffede7;color:#ee4d2d;font-size:11px}
+.fashion-detail-row{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;padding:10px 0!important;border:0!important}
+.fashion-detail-row .shopee-detail-label{color:#8a8a8a;font-size:12px}
+.fashion-detail-row .shopee-detail-value{min-width:0;color:#444;font-size:12px}
+.fashion-detail-row .shopee-shipping-line{display:flex;align-items:flex-start;gap:9px;margin:0 0 8px;color:#555;font-size:12px;line-height:1.55}
+.fashion-detail-row .shopee-shipping-line>i{margin-top:2px;color:#16a34a;font-size:15px}
+.fashion-detail-row .shopee-shipping-line b{color:#333;font-weight:550}
+.fashion-detail-row .shopee-shipping-line small{display:block;margin-top:3px;color:#9ca3af;font-size:10px}
+.fashion-guarantee-panel{margin:0!important;padding:9px 11px!important;background:#fff!important;color:#555!important;border:1px solid #f1f1f1;border-radius:3px}
+.fashion-guarantee-panel p{margin:0;color:#555!important;font-size:12px;line-height:1.6}
+.fashion-guarantee-panel p>i{margin-right:5px;color:#ee4d2d}
+.fashion-policy-note{margin-top:5px;color:#9ca3af;font-size:10px;line-height:1.5}
+.fashion-detail-row .shopee-variant-options{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fashion-detail-row .shopee-variant-chip{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:4px 10px;border:1px solid #d9d9d9!important;border-radius:2px!important;background:#fff!important;color:#444!important;font-size:12px;cursor:pointer;overflow:hidden}
+.fashion-detail-row .shopee-variant-chip:hover,.fashion-detail-row .shopee-variant-chip.active{border:1px solid #ee4d2d!important;background:#fff!important;color:#ee4d2d!important}
+.fashion-detail-row .shopee-variant-chip.active:after{content:"";position:absolute;right:0;bottom:0;width:0;height:0;border-left:15px solid transparent;border-bottom:15px solid #ee4d2d}
+.fashion-detail-row .shopee-variant-chip.active:before{content:"✓";position:absolute;right:1px;bottom:-1px;z-index:1;color:#fff;font-size:8px;font-weight:900}
+.fashion-color-options .shopee-variant-chip{min-height:42px;padding:4px 9px 4px 6px}
+.fashion-color-options .shopee-color-image,.fashion-color-options .shopee-color-dot{width:30px;height:30px;flex:0 0 30px;object-fit:cover;border-radius:2px}
+.fashion-color-options .shopee-color-dot{display:inline-block}
+.fashion-size-options .shopee-variant-chip{width:42px;height:38px;min-width:42px;min-height:38px;padding:4px;font-weight:600}
+.fashion-size-chart-row{border-bottom:0!important;padding-top:1px!important}
+.fashion-size-chart-row .shopee-size-chart-link{border:0;background:transparent;color:#1d4ed8;font-size:11px;cursor:pointer}
+.fashion-size-chart-row .shopee-size-chart-link:hover{text-decoration:underline}
+.fashion-detail-row .shopee-quantity-control{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.fashion-detail-row .qty-control{display:inline-flex;align-items:center;height:34px;border:1px solid #d9d9d9;border-radius:2px;overflow:hidden}
+.fashion-detail-row .qty-control button{width:34px;height:32px;border:0;background:#fff;color:#555;font-size:17px;cursor:pointer}
+.fashion-detail-row .qty-control button:hover{background:#f3f4f6}
+.fashion-detail-row .qty-control input{width:42px;height:32px;border:0!important;border-right:1px solid #e5e7eb!important;border-left:1px solid #e5e7eb!important;border-radius:0!important;background:#fff!important;color:#333!important;text-align:center;font-size:12px}
+.fashion-detail-row .shopee-stock{color:#8b8b8b;font-size:11px}
+.fashion-buy-actions{display:flex;gap:10px!important;margin-top:18px!important}
+.fashion-buy-actions .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;flex:1;min-width:0;border-radius:3px!important;font-size:13px;font-weight:650}
+.fashion-buy-actions .fashion-add-cart{background:#ffeee8!important;border:1px solid #ee4d2d!important;color:#ee4d2d!important}
+.fashion-buy-actions .fashion-buy-now{background:#ee4d2d!important;border:1px solid #ee4d2d!important;color:#fff!important}
+.fashion-buy-actions .btn:disabled{opacity:.5;cursor:not-allowed}
+body.dark .shopee-detail-main.fashion-product-main,body.dark .fashion-product-gallery,body.dark .fashion-product-info{background:#161b22!important;border-color:#30363d}
+body.dark .fashion-product-info .shopee-detail-title,body.dark .fashion-rating-value,body.dark .fashion-meta-sold,body.dark .fashion-detail-row .shopee-detail-value{color:#e7ebf2}
+body.dark .fashion-price-panel{background:#202833!important}
+body.dark .fashion-guarantee-panel{background:#202833!important;border-color:#303b49}
+body.dark .fashion-detail-row .shopee-variant-chip,body.dark .fashion-detail-row .qty-control button,body.dark .fashion-detail-row .qty-control input{background:#202833!important;color:#e7ebf2!important;border-color:#475569!important}
+@media(max-width:980px){
+  .shopee-detail-main.fashion-product-main{grid-template-columns:minmax(0,44%) minmax(0,56%)}
+  .fashion-product-info{padding:18px 20px!important}
+}
+@media(max-width:720px){
+  .shopee-detail-main.fashion-product-main{grid-template-columns:minmax(0,1fr)}
+  .fashion-product-gallery{border-right:0!important;border-bottom:1px solid #eee!important}
+  .fashion-product-gallery .fashion-product-hero{max-width:450px}
+  .fashion-detail-thumbnails{max-width:450px;margin:0 auto}
+  .fashion-gallery-footer{max-width:450px;margin:0 auto}
+  .fashion-product-info{padding:18px 20px!important}
+}
+@media(max-width:480px){
+  .fashion-detail-row{grid-template-columns:88px minmax(0,1fr);gap:7px}
+  .fashion-product-info .shopee-detail-title{font-size:18px}
+  .fashion-product-meta{gap:8px!important}
+  .fashion-meta-sold{font-size:11px}
+  .fashion-buy-actions .btn{font-size:12px;padding:0 8px}
+}
 </style>
 </head>
 <body data-qr-login="<?= qrLoginChallenge ?>" data-portal-entry="<?= portalEntry ?>" data-web-app-url="<?= webAppUrl ?>">
@@ -3291,16 +3394,31 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
         if(r&&r.success)renderProductShopCard(r.data||{});else renderProductShopCard({id:product.storeId,shopName:product.storeName,logo:product.storeLogo});
       },false,'',true);
     }
+    function productDetailCampaignBadges(product){
+      product=product||{};
+      var settings=APP.settings||{},freeMinimum=Number(product.freeShippingMinimum||settings.freeShippingMinimum||0);
+      var base=Number(product.price||0),sale=Number(product.salePrice||0);
+      var discount=base>sale&&sale>0?Math.round((base-sale)*100/base):0;
+      var coupon=productCardActiveCoupon(product);
+      var campaignText=String(product.campaignLabel||product.promoTag||'').trim();
+      var free=freeMinimum>0?'<span class="fashion-detail-campaign free"><b>FREE</b><span>ส่งฟรี เมื่อครบ '+money(freeMinimum)+'</span></span>':'';
+      var discountText=discount>0?'ลด '+discount+'%':(coupon?'โค้ด '+String(coupon.code||'ส่วนลด'):(campaignText||''));
+      var promo=discountText?'<span class="fashion-detail-campaign discount"><b>ส่วนลด</b><span>'+esc(discountText)+'</span></span>':'';
+      return free||promo?'<div class="fashion-detail-campaigns">'+free+promo+'</div>':'';
+    }
     function renderProductDetail(){
       var p=APP.currentProduct;if(!p)return;APP.currentView='detail';
       var base=Number(p.price||0),price=Number(p.salePrice)>0?Number(p.salePrice):base;
-      var gallery=[p.coverImage].concat(safeArray(p.images),safeArray(APP.currentVariants).map(function(v){return detailVariantImage(v);})).filter(function(x,i,a){return !!x&&a.indexOf(x)===i;}).slice(0,5);
+      var gallery=[p.coverImage].concat(safeArray(p.images),safeArray(APP.currentVariants).map(function(v){return detailVariantImage(v);})).filter(function(x,i,a){return !!x&&a.indexOf(x)===i;}).slice(0,4);
       if(!gallery.length)gallery=[''];
-      var thumbs=gallery.length>1?'<div class="detail-thumbnails fashion-detail-thumbnails" aria-label="รูปภาพสินค้า">'+gallery.map(function(url,i){return '<button type="button" class="detail-thumb '+(i===0?'active':'')+'" data-image-url="'+esc(url)+'" onclick="selectDetailImageFromButton(this)" onmouseenter="selectDetailImageFromButton(this)"><img loading="lazy" src="'+imageUrl(url)+'" onerror="imageFallback(this)" alt="รูปสินค้า '+(i+1)+'"></button>';}).join('')+'</div>':'';
+      var thumbs=gallery.map(function(url,i){
+        return '<button type="button" class="detail-thumb '+(i===0?'active':'')+'" data-image-url="'+esc(url)+'" onclick="selectDetailImageFromButton(this)" onmouseenter="selectDetailImageFromButton(this)" aria-label="ดูรูปสินค้า '+(i+1)+'" aria-pressed="'+(i===0?'true':'false')+'"><img loading="lazy" src="'+imageUrl(url)+'" onerror="imageFallback(this)" alt="รูปสินค้า '+(i+1)+'"></button>';
+      }).join('');
       var variantOptions=renderDetailVariantSelectors();
       var mall=(p.mallBadgeEnabled===true||String(p.mallBadgeEnabled||'').toLowerCase()==='true'||String(p.mallBadgeEnabled)==='1')?'<span class="mall-inline-badge"><img src="https://deo.shopeemobile.com/shopee/shopee-pcmall-live-sg/productdetailspage/3ce084656b91b364.svg" alt="MALL"></span>':'';
-      var promo=productPromoLabel(p),rating=Number(p.ratingAverage||0),reviews=Number(p.reviewCount||0),sold=Number(p.soldCount||0);
-      var stars=rating>0?'<span class="fashion-rating-stars" aria-label="คะแนน '+rating.toFixed(1)+' จาก 5">'+[1,2,3,4,5].map(function(n){return '<i class="fa-solid fa-star '+(n<=Math.round(rating)?'is-filled':'')+'"></i>';}).join('')+'</span>':'<span class="muted">ยังไม่มีคะแนน</span>';
+      var promo=productPromoLabel(p),rating=Math.max(0,Math.min(5,Number(p.ratingAverage||0))),reviews=Number(p.reviewCount||0),sold=Number(p.soldCount||0);
+      var favoriteCount=Number(p.favoriteCount||0);
+      var stars='<span class="fashion-rating-stars" aria-label="คะแนน '+(rating>0?rating.toFixed(1):'ไม่มีคะแนน')+' จาก 5">'+[1,2,3,4,5].map(function(n){return '<i class="fa-solid fa-star '+(rating>=n-.5?'is-filled':'')+'"></i>';}).join('')+'</span>';
       var paymentMethods=safeArray(safeJson((APP.settings||{}).paymentMethods||'["bank_transfer","qr_payment","cod"]',['bank_transfer','qr_payment','cod']));
       var policy=(APP.settings||{}).returnPolicy||'';
       var initialPriceBlock=APP.currentVariants.length?function(){
@@ -3309,26 +3427,40 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
         var cur=lo===hi?money(lo):money(lo)+' - '+money(hi),old=blo===bhi?money(blo):money(blo)+' - '+money(bhi);
         return '<span class="shopee-price-current">'+cur+'</span>'+(pct>0?'<span class="shopee-price-old">'+old+'</span><span class="shopee-price-discount">-'+pct+'%</span>':'');
       }():detailPriceHtml(price,base);
-      var service='<div class="shopee-service-panel fashion-guarantee-panel"><p><i class="fa-solid fa-shield-heart"></i> ช้อปปี้ถูกชัวร์ · '+(paymentMethods.indexOf('cod')>=0?'เก็บเงินปลายทางตามพื้นที่ให้บริการ':'ชำระเงินผ่านช่องทางที่ร้านเปิดให้บริการ')+'</p>'+(policy?'<div class="fashion-policy-note">'+sanitizeRichEditorHtml(policy)+'</div>':'')+'</div>';
+      var service='<div class="shopee-service-panel fashion-guarantee-panel"><p><i class="fa-solid fa-shield-heart"></i> ช้อปปี้ถูกชัวร์ · '+(paymentMethods.indexOf('cod')>=0?'เก็บเงินปลายทางตามพื้นที่ให้บริการ':'ชำระเงินผ่านช่องทางที่ร้านเปิดให้บริการ')+' ⌄</p>'+(policy?'<div class="fashion-policy-note">'+sanitizeRichEditorHtml(policy)+'</div>':'')+'</div>';
       var stock=Number(p.stock||0);
       var html='<div class="shopee-detail-page fashion-detail-page">'+
         '<div class="shopee-detail-topbar"><div class="breadcrumb fashion-breadcrumb"> '+productCategoryBreadcrumb(p.categoryId)+'</div></div>'+
         '<div class="shopee-detail-main fashion-product-main">'+
           '<div class="shopee-detail-gallery fashion-product-gallery">'+
-            '<div class="detail-image fashion-product-hero"><img id="detailImage" src="'+imageUrl(gallery[0])+'" onclick="openProductImageModal()" onerror="imageFallback(this)" alt="'+esc(p.name)+'"></div>'+
-            thumbs+
-            '<div class="fashion-gallery-footer"><div class="fashion-share-row"><span>แชร์:</span><button type="button" title="Messenger" aria-label="แชร์ผ่าน Messenger" data-share-platform="messenger" onclick="shareProduct(this.dataset.sharePlatform)"><i class="fa-brands fa-facebook-messenger"></i></button><button type="button" title="Facebook" aria-label="แชร์ผ่าน Facebook" data-share-platform="facebook" onclick="shareProduct(this.dataset.sharePlatform)"><i class="fa-brands fa-facebook-f"></i></button><button type="button" title="Pinterest" aria-label="แชร์ผ่าน Pinterest" data-share-platform="pinterest" onclick="shareProduct(this.dataset.sharePlatform)"><i class="fa-brands fa-pinterest-p"></i></button><button type="button" title="X" aria-label="แชร์ผ่าน X" data-share-platform="x" onclick="shareProduct(this.dataset.sharePlatform)"><i class="fa-brands fa-x-twitter"></i></button></div><span class="fashion-gallery-divider"></span><button type="button" class="fashion-favorite-button" data-product-id="'+esc(p.id)+'" onclick="quickFavorite(this.dataset.productId)"><i class="fa-regular fa-heart"></i> Favorite</button></div>'+
+            '<div class="detail-image fashion-product-hero"><img id="detailImage" src="'+imageUrl(gallery[0])+'" onclick="openProductImageModal()" onerror="imageFallback(this)" alt="'+esc(p.name)+'">'+productDetailCampaignBadges(p)+'</div>'+
+            '<div class="detail-thumbnails fashion-detail-thumbnails" aria-label="รูปภาพสินค้า">'+thumbs+'</div>'+
+            '<div class="fashion-gallery-footer">'+
+              '<div class="fashion-share-row"><span>แชร์:</span>'+
+                '<button type="button" title="Messenger" aria-label="แชร์ผ่าน Messenger" data-share-platform="messenger" onclick="shareProduct(this.dataset.sharePlatform)"><i class="fa-brands fa-facebook-messenger"></i></button>'+
+                '<button type="button" title="Facebook" aria-label="แชร์ผ่าน Facebook" data-share-platform="facebook" onclick="shareProduct(this.dataset.sharePlatform)"><i class="fa-brands fa-facebook-f"></i></button>'+
+                '<button type="button" title="Pinterest" aria-label="แชร์ผ่าน Pinterest" data-share-platform="pinterest" onclick="shareProduct(this.dataset.sharePlatform)"><i class="fa-brands fa-pinterest-p"></i></button>'+
+                '<button type="button" title="X" aria-label="แชร์ผ่าน X" data-share-platform="x" onclick="shareProduct(this.dataset.sharePlatform)"><i class="fa-brands fa-x-twitter"></i></button>'+
+              '</div>'+
+              '<span class="fashion-gallery-divider"></span>'+
+              '<button type="button" class="fashion-favorite-button" data-product-id="'+esc(p.id)+'" onclick="quickFavorite(this.dataset.productId)"><i class="fa-regular fa-heart"></i><span data-detail-favorite-count>Favorite ('+productShopCompactNumber(favoriteCount)+')</span></button>'+
+            '</div>'+
           '</div>'+
           '<div class="shopee-detail-info fashion-product-info">'+
             '<div class="fashion-product-overline">'+mall+'<span>SKU: <b id="detailSku">'+esc(p.sku||'—')+'</b></span></div>'+
             '<h1 class="shopee-detail-title">'+esc(p.name)+'</h1>'+
-            '<div class="shopee-detail-meta fashion-product-meta"><span class="fashion-rating-value">'+(rating>0?rating.toFixed(1):'—')+'</span>'+stars+'<span class="fashion-meta-link">'+reviews.toLocaleString('th-TH')+' รีวิว</span><span class="fashion-meta-sold">ขายแล้ว '+sold.toLocaleString('th-TH')+' ชิ้น</span><button type="button" class="shopee-report-link" onclick="reportProductDialog()">รายงานสินค้า</button></div>'+
+            '<div class="shopee-detail-meta fashion-product-meta">'+
+              '<span class="fashion-rating-value">'+(rating>0?rating.toFixed(1):'—')+'</span>'+stars+
+              '<span class="fashion-meta-link">'+productShopCompactNumber(reviews)+' รีวิว</span>'+
+              '<span class="fashion-meta-sold">ขายแล้ว '+productShopCompactNumber(sold)+(sold>=20000?'+':'')+' ชิ้น <span class="fashion-meta-help" title="จำนวนสินค้าที่ขายสำเร็จ">?</span></span>'+
+              '<button type="button" class="shopee-report-link fashion-report-link" onclick="reportProductDialog()">รายงานสินค้า</button>'+
+            '</div>'+
             '<div class="shopee-price-panel fashion-price-panel" id="detailPrice">'+initialPriceBlock+'</div>'+
             (promo?'<div class="product-promo-box">'+esc(promo)+'</div>':'')+
             '<div class="shopee-detail-row fashion-detail-row"><div class="shopee-detail-label">การจัดส่ง</div><div class="shopee-detail-value"><div id="detailDeliveryInfo" class="shopee-shipping-list"><div class="shopee-shipping-line"><i class="fa-solid fa-truck-fast"></i><div>กำลังตรวจสอบวิธีจัดส่ง...</div></div></div></div></div>'+
             '<div class="shopee-detail-row fashion-detail-row"><div class="shopee-detail-label">ช้อปปี้การันตี</div><div class="shopee-detail-value">'+service+'</div></div>'+
             variantOptions+
-            (p.sizeChart?'<div class="shopee-detail-row fashion-detail-row fashion-size-chart-row"><div class="shopee-detail-label">ตารางไซส์</div><div class="shopee-detail-value"><button class="shopee-size-chart-link" type="button" onclick="openProductSizeChart()">ตารางขนาดสินค้า <i class="fa-solid fa-arrow-right"></i></button></div></div>':'')+
+            (p.sizeChart?'<div class="shopee-detail-row fashion-detail-row fashion-size-chart-row"><div class="shopee-detail-label"></div><div class="shopee-detail-value"><button class="shopee-size-chart-link" type="button" onclick="openProductSizeChart()">ตารางขนาดสินค้า <i class="fa-solid fa-arrow-right"></i></button></div></div>':'')+
             '<div class="shopee-detail-row fashion-detail-row"><div class="shopee-detail-label">จำนวน</div><div class="shopee-detail-value"><div class="shopee-quantity-control"><div class="qty-control"><button type="button" onclick="changeDetailQty(-1)" aria-label="ลดจำนวน">−</button><input id="detailQty" value="1" readonly aria-label="จำนวนสินค้า"><button type="button" onclick="changeDetailQty(1)" aria-label="เพิ่มจำนวน">+</button></div><span class="shopee-stock" id="detailStock">'+(stock>0?'สินค้าพร้อมส่ง · คงเหลือ '+stock+' '+esc(p.unit||'ชิ้น'):'สินค้าหมด')+'</span></div></div></div>'+
             '<div class="shopee-buy-actions fashion-buy-actions"><button class="btn fashion-add-cart" id="detailAddCartBtn" type="button" onclick="addDetailToCart()"><i class="fa-solid fa-cart-plus"></i> เพิ่มไปยังรถเข็น</button><button class="btn shopee-buy-now fashion-buy-now" id="detailBuyNowBtn" type="button" onclick="buyDetailNow()">ซื้อสินค้า</button></div>'+
           '</div>'+
@@ -3996,7 +4128,7 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
     }
     function editCustomerPassword(){Swal.fire({title:'เปลี่ยนรหัสผ่าน',html:'<div class="modal-form-grid"><div class="modal-field"><label for="oldPass">รหัสผ่านปัจจุบัน</label><input id="oldPass" type="password" autocomplete="current-password" placeholder="กรอกรหัสผ่านเดิม"></div><div class="modal-field"><label for="newPass">รหัสผ่านใหม่</label><input id="newPass" type="password" autocomplete="new-password" placeholder="กรอกรหัสผ่านใหม่"></div></div>',showCancelButton:true,confirmButtonText:'เปลี่ยนรหัสผ่าน'}).then(function(r){if(r.isConfirmed)apiCall('changeCustomerPassword',[APP.customerToken,document.getElementById('oldPass').value,document.getElementById('newPass').value],function(x){if(x.success)toast(x.message);else alertError(x.message);});});}
     function uploadPaymentProof(orderId,accessToken){var input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=function(){var f=input.files[0];if(!f)return;var reader=new FileReader();reader.onload=function(){apiCall('uploadFile',[accessToken||APP.customerToken,{accountType:APP.customerToken?'customer':'guest',orderId:orderId,folder:'Payments',name:f.name,mimeType:f.type,data:reader.result}],function(up){if(!up.success){alertError(up.message);return;}apiCall('submitPayment',[accessToken||APP.customerToken,orderId,{proofFileId:up.data.fileId,paymentDate:new Date().toISOString(),note:'หลักฐานจากหน้าเว็บ'}],function(r){if(r.success){toast(r.message);if(APP.customerToken){if(APP.customerPortalActive==='purchase')showCustomerPurchasesPage();else openAccount();}else Swal.fire({icon:'success',title:'ส่งหลักฐานแล้ว',text:'ร้านค้าจะตรวจสอบและอัปเดตสถานะคำสั่งซื้อให้คุณ'});}else alertError(r.message);},true,'กำลังส่งหลักฐาน...');},true,'กำลังอัปโหลดหลักฐาน...');};reader.readAsDataURL(f);};input.click();}
-    function quickFavorite(id){if(!APP.customerToken){openCustomerAuth('login');return;}apiCall('addFavorite',[APP.customerToken,id],function(r){if(r.success)toast(r.message);else alertError(r.message);});}
+    function quickFavorite(id){if(!APP.customerToken){openCustomerAuth('login');return;}apiCall('addFavorite',[APP.customerToken,id],function(r){if(!r.success){alertError(r.message);return;}var count=r.data&&r.data.favoriteCount!==undefined?Number(r.data.favoriteCount):null;if(count!==null&&isFinite(count)){if(APP.currentProduct&&String(APP.currentProduct.id)===String(id))APP.currentProduct.favoriteCount=count;var badge=document.querySelector('[data-detail-favorite-count]');if(badge&&APP.currentProduct&&String(APP.currentProduct.id)===String(id))badge.textContent='Favorite ('+productShopCompactNumber(count)+')';}toast(r.message);});}
     function openFavorites(){if(!APP.customerToken){openCustomerAuth('login');return;}apiCall('getFavorites',[APP.customerToken],function(r){if(!r.success){alertError(r.message);return;}var items=safeArray(r.data);document.getElementById('appRoot').innerHTML='<div class="section-head"><div><h1 class="section-title">รายการโปรด</h1></div></div>'+renderProductGrid(items);});}
     function loadProductReviews(id){apiCall('getReviews',[id,''],function(r){var host=document.getElementById('productReviews');if(!host)return;var rows=r.success?safeArray(r.data):[];host.innerHTML=rows.length?rows.map(function(x){return '<div class="panel" style="margin-top:8px"><div style="color:#f59e0b">'+('★'.repeat(Number(x.rating)))+'</div><p>'+esc(x.review)+'</p><small class="muted">'+esc(x.customerName||'ผู้ซื้อสินค้า')+'</small></div>';}).join(''):'<p class="muted">ยังไม่มีรีวิว</p>';});}
     function subscribeNews(){var email=document.getElementById('newsletterEmail').value;apiCall('subscribeNewsletter',[email],function(r){if(r.success){toast(r.message);document.getElementById('newsletterEmail').value='';}else alertError(r.message);});}
