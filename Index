@@ -6683,7 +6683,7 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     body.portal-mode-owner .admin-shell,body.portal-mode-owner .admin-workspace,body.portal-mode-owner .admin-main,body.portal-mode-owner #adminContent{width:100%;max-width:none;min-width:0}
     body.portal-mode-owner .admin-shell{grid-template-columns:clamp(210px,19vw,258px) minmax(0,1fr)}
     body.portal-mode-owner .eg-grid,body.portal-mode-owner .eg-dom-grid{width:100%;max-width:none}
-    body.portal-mode-owner .eg-grid-viewport{max-height:calc(100dvh - 300px);min-height:240px;margin-left:10px;margin-right:10px}
+    body.portal-mode-owner .eg-grid-viewport{height:calc(100dvh - 300px);max-height:calc(100dvh - 300px);min-height:240px;margin-left:10px;margin-right:10px}
     body.portal-mode-owner .eg-dom-grid .eg-dom-table-wrapper,body.portal-mode-seller .eg-dom-grid .eg-dom-table-wrapper{max-height:calc(100dvh - 290px)}
     .eg-pagination-controls{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
     .admin-editor-wait{min-height:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink)}
@@ -6712,7 +6712,7 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     .admin-home-sections-note{margin:0;padding:11px 14px;background:var(--surface-2);color:var(--muted);font-size:10px;line-height:1.5}
     @media(max-width:720px){
       body.portal-mode-owner #appRoot{padding-left:7px;padding-right:7px}
-      body.portal-mode-owner .eg-grid-viewport{max-height:calc(100dvh - 250px);min-height:190px}
+      body.portal-mode-owner .eg-grid-viewport{height:calc(100dvh - 250px);max-height:calc(100dvh - 250px);min-height:190px}
       .admin-home-sections-toolbar{align-items:flex-start;flex-direction:column}
       .admin-home-section-row{gap:7px;padding:9px 8px}
     }
