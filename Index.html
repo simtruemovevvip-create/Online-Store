@@ -4712,6 +4712,9 @@ body.dark .vm-matrix-table th{background:#202833}
       if(!order.length)return [{name:'สี',values:[]},{name:'ไซส์',values:[]}];
       return order.map(function(k){return {name:k,values:map[k]};});
     }
+    function variantMatrixGroupsSignature(groups){
+      return JSON.stringify(safeArray(groups).map(function(g){return {name:String(g.name||'').trim().toLowerCase(),values:safeArray(g.values).map(function(v){return String(v||'').trim().toLowerCase();})};}));
+    }
     function variantMatrixGroupsHtml(){
       return safeArray(APP.variantMatrixGroups).map(function(g,index){
         return '<div class="vm-group-row" data-vm-group-index="'+index+'">'+
@@ -4813,7 +4816,7 @@ body.dark .vm-matrix-table th{background:#202833}
             status:existing&&existing.status==='Inactive'?'Inactive':'Active'
           };
         });
-        APP.variantMatrixGroups=groups;APP.variantMatrixRows=nextRows;
+        APP.variantMatrixGroups=groups;APP.variantMatrixRows=nextRows;APP.variantMatrixBuiltSignature=variantMatrixGroupsSignature(groups);
         var groupHost=document.getElementById('vmGroupList');if(groupHost)groupHost.innerHTML=variantMatrixGroupsHtml();
         variantMatrixRenderRows();
         var hint=document.getElementById('vmMatrixHint');if(hint)hint.textContent='สร้าง '+nextRows.length+' SKU จาก '+groups.map(function(g){return g.name+' '+g.values.length+' ค่า';}).join(' × ')+'. ตรวจสอบราคา SKU และสต็อกแต่ละรายการก่อนบันทึก';
@@ -4823,6 +4826,7 @@ body.dark .vm-matrix-table th{background:#202833}
       try{
         variantMatrixCaptureRows();
         var groups=variantMatrixReadGroups(),rows=safeArray(APP.variantMatrixRows);
+        if(!APP.variantMatrixBuiltSignature||variantMatrixGroupsSignature(groups)!==APP.variantMatrixBuiltSignature)throw new Error('มีการแก้ไขกลุ่มตัวเลือก กรุณากด “สร้างชุดตัวเลือก” ก่อนบันทึก');
         if(!rows.length)throw new Error('กรุณาสร้างชุดตัวเลือกอย่างน้อย 1 SKU');
         var groupNames=groups.map(function(g){return g.name;});
         var payloadRows=rows.map(function(row,index){
@@ -4855,6 +4859,7 @@ body.dark .vm-matrix-table th{background:#202833}
         APP.variantMatrixOriginalRows=rows.map(function(v){var copy={};Object.keys(v).forEach(function(k){copy[k]=v[k];});copy.attributes=variantMatrixNormalizeAttrs(v);return copy;});
         APP.variantMatrixRows=APP.variantMatrixOriginalRows.map(function(v){var copy={};Object.keys(v).forEach(function(k){copy[k]=v[k];});return copy;});
         APP.variantMatrixGroups=variantMatrixGroupsFromRows(rows);
+        APP.variantMatrixBuiltSignature=rows.length?variantMatrixGroupsSignature(APP.variantMatrixGroups):'';
         var name=product.name||'สินค้า '+productId,sku=product.sku||'';
         var html='<div class="vm-intro"><span class="vm-intro-icon"><i class="fa-solid fa-layer-group"></i></span><div class="vm-intro-copy"><b>'+esc(name)+'</b><small>กำหนดกลุ่มตัวเลือก เช่น สี / ไซส์ / รุ่น แล้วสร้างชุด SKU อัตโนมัติ แต่ละชุดมี SKU ราคา ราคาลด และสต็อกแยกกัน<br>SKU ใหม่เริ่มสต็อก 0 เพื่อป้องกันการคัดลอกสต็อกสินค้าหลักซ้ำ ต้องกำหนดสต็อกให้แต่ละ SKU ก่อนเปิดขาย<br>SKU ที่เคยถูกใช้ในคำสั่งซื้อหรือมีประวัติสต็อกจะถูกเก็บเป็น Archived เมื่อเอาออกจากชุดตัวเลือก</small></div></div>'+
           '<div class="vm-section-title"><b>1. กลุ่มตัวเลือก</b><small>สูงสุด 3 กลุ่ม · 200 SKU ต่อสินค้า</small></div>'+
