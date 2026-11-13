@@ -4854,7 +4854,7 @@ body.dark .vm-matrix-table th{background:#202833}
       var host=document.getElementById('vmGroupList');if(host)host.innerHTML=variantMatrixGroupsHtml();
     }
     function variantMatrixGenerateSku(baseSku,attrs,usedSkus){
-      var base=String(baseSku||'').trim().toUpperCase().replace(/\\s+/g,'-').replace(/[^A-Z0-9_-]/g,'-').replace(/[-_]{2,}/g,'-').replace(/^[-_]+|[-_]+$/g,'').substring(0,60);
+      var base=String(baseSku||'').trim().toUpperCase().replace(/\s+/g,'-').replace(/[^A-Z0-9_-]/g,'-').replace(/[-_]{2,}/g,'-').replace(/^[-_]+|[-_]+$/g,'').substring(0,60);
       if(!base)throw new Error('ไม่พบ SKU หลักของสินค้า กรุณาบันทึก SKU สินค้าก่อนสร้างชุดตัวเลือก');
       var source=String(variantMatrixKey(attrs)||JSON.stringify(attrs||{})),hash=5381;
       for(var i=0;i<source.length;i++)hash=((hash<<5)+hash)^source.charCodeAt(i);
