@@ -1676,7 +1676,7 @@ function getProducts(options) {
       else baseInventoryByProduct[String(item.productId)] = item;
     });
     variantsForFilter.forEach(function(variant) {
-      if (variant.status !== 'Active') return;
+      if (!productVariantIsActive_(variant)) return;
       var key = String(variant.productId || '');
       if (!variantsByProduct[key]) variantsByProduct[key] = [];
       variantsByProduct[key].push(variant);
@@ -1782,11 +1782,22 @@ function getProducts(options) {
 }
 
 function effectivePrice_(p) { return number_(p.salePrice, 0) > 0 ? number_(p.salePrice, 0) : number_(p.price, 0); }
+function productVariantIsActive_(variant) {
+  var raw=variant&&variant.status;
+  var status=String(raw===undefined||raw===null||raw===''?'Active':raw).trim().toLowerCase();
+  return ['active','enabled','published','เปิดขาย','เปิดใช้งาน','ใช้งาน','1','true'].indexOf(status)>=0;
+}
+function productVariantAttributes_(variant) {
+  var raw=variant&&variant.attributes;
+  if(raw&&typeof raw==='object'&&!Array.isArray(raw))return raw;
+  if(typeof raw==='string')return safeJson_(raw,{});
+  return {};
+}
 function productWithStock_(p, inventoryRows, isAdmin, lookup) {
   lookup=lookup||{};
   var out = isAdmin ? JSON.parse(JSON.stringify(p)) : publicProduct_(p);
   var productId=String(p.id),inv=lookup.baseInventoryByProduct?lookup.baseInventoryByProduct[productId]:safeArray_(inventoryRows).filter(function(x){return String(x.productId)===productId&&!x.variantId;})[0];
-  var child=lookup.variantsByProduct?(lookup.variantsByProduct[productId]||[]):readTable_('ProductVariants',true).filter(function(v){return String(v.productId)===productId&&v.status==='Active';});
+  var child=lookup.variantsByProduct?(lookup.variantsByProduct[productId]||[]):readTable_('ProductVariants',true).filter(function(v){return String(v.productId)===productId&&productVariantIsActive_(v);});
   out.hasVariants=child.length>0;
   if(child.length)out.stock=child.reduce(function(sum,v){var vi=lookup.variantInventoryById?lookup.variantInventoryById[String(v.id)]:safeArray_(inventoryRows).filter(function(z){return String(z.productId)===productId&&String(z.variantId)===String(v.id);})[0];return sum+(vi?Math.max(0,number_(vi.quantity,0)-number_(vi.reserved,0)):number_(v.stock,0));},0);
   else if(inv)out.stock=Math.max(0,number_(inv.quantity,0)-number_(inv.reserved,0));
@@ -1823,18 +1834,34 @@ function getProductById(id, options) {
     if (!product || (product.status !== 'Active' && !isAdmin)) throw new Error('ไม่พบสินค้า');
     var storeRows=readTable_('Stores',true),activeStore=storeRows.filter(function(st){return st.id===product.sellerId&&st.status==='Active';})[0];
     if(!isAdmin&&product.sellerId&&!activeStore)throw new Error('ไม่พบสินค้า');
-    var variants = readTable_('ProductVariants', true).filter(function(v) { return String(v.productId) === String(id) && (v.status === 'Active' || isAdmin); });
+    var variants = readTable_('ProductVariants', true).filter(function(v) { return String(v.productId) === String(id) && (productVariantIsActive_(v) || isAdmin); });
     var inventoryRows = readTable_('Inventory', true),variantInventoryById=Object.create(null),baseInventoryByProduct=Object.create(null),variantsByProduct=Object.create(null),storeById=Object.create(null),flashDealsByProduct=Object.create(null);
     inventoryRows.forEach(function(inv){if(inv.variantId)variantInventoryById[String(inv.variantId)]=inv;else baseInventoryByProduct[String(inv.productId)]=inv;});
-    variantsByProduct[String(id)]=variants.filter(function(v){return v.status==='Active';});
+    variantsByProduct[String(id)]=variants.filter(function(v){return productVariantIsActive_(v);});
     if(activeStore)storeById[String(activeStore.id)]=activeStore;
     readTable_('FlashDeals',true).forEach(function(deal){if(String(deal.productId)!==String(id))return;if(!flashDealsByProduct[String(id)])flashDealsByProduct[String(id)]=[];flashDealsByProduct[String(id)].push(deal);});
     var lookup={baseInventoryByProduct:baseInventoryByProduct,variantInventoryById:variantInventoryById,variantsByProduct:variantsByProduct,storeById:storeById,flashDealsByProduct:flashDealsByProduct};
     var productOut=productWithStock_(product,inventoryRows,isAdmin,lookup);productPublicMetrics_([productOut]);
-    return ok_({ product: productOut, variants: variants.map(function(v) { var out = isAdmin ? v : publicVariant_(v); var inv = inventoryRows.filter(function(x) { return x.productId === product.id && x.variantId === v.id; })[0]; if (inv) out.stock = Math.max(0, number_(inv.quantity, 0) - number_(inv.reserved, 0)); return out; }) });
+    return ok_({ product: productOut, variants: variants.map(function(v) {
+      var out=isAdmin?JSON.parse(JSON.stringify(v)):publicVariant_(v);
+      var inv=inventoryRows.filter(function(x){return String(x.productId)===String(product.id)&&String(x.variantId)===String(v.id);})[0]||{};
+      var total=Math.max(0,number_(inv.quantity,number_(v.stock,0)));
+      var reserved=Math.max(0,number_(inv.reserved,0));
+      out.stock=Math.max(0,total-reserved);
+      out.reserved=reserved;
+      out.available=out.stock;
+      out.attributes=productVariantAttributes_(v);
+      return out;
+    }) });
   } catch (e) { return fail_(safeError_(e)); }
 }
-function publicVariant_(v) { return { id:v.id, productId:v.productId, sku:v.sku, variantName:v.variantName, attributes:safeJson_(v.attributes,{}), price:v.price, salePrice:v.salePrice, stock:v.stock, status:v.status }; }
+function publicVariant_(v) {
+  return {
+    id:v.id,productId:v.productId,sku:v.sku,variantName:v.variantName,
+    attributes:productVariantAttributes_(v),price:number_(v.price,0),
+    salePrice:number_(v.salePrice,0),stock:number_(v.stock,0),status:v.status||'Active'
+  };
+}
 
 function ensureProductReportsSheet_(){
   var ss=getSpreadsheet_(),name='ProductReports',headers=SCHEMA_.ProductReports,sh=ss.getSheetByName(name);
@@ -1854,8 +1881,25 @@ function reportProduct(customerToken,productId,reason,detail){
 }
 
 function getProductVariants(productId, options) {
-  try { options = options || {}; var isAdmin = false; if (options.token) { try { requireAdmin_(options.token, 'products.view'); isAdmin = true; } catch (authError) {} } var rows = readTable_('ProductVariants', true).filter(function(v) { return String(v.productId) === String(productId) && (v.status === 'Active' || isAdmin); }); var inventory=readTable_('Inventory',true); rows=rows.map(function(v){var inv=inventory.filter(function(x){return String(x.productId)===String(productId)&&String(x.variantId)===String(v.id);})[0]||{};v.stock=number_(inv.quantity,v.stock);v.reserved=number_(inv.reserved,0);v.available=Math.max(0,v.stock-v.reserved);return isAdmin?v:publicVariant_(v);}); return ok_(rows); }
-  catch (e) { return fail_(safeError_(e)); }
+  try {
+    options=options||{};
+    var isAdmin=false;
+    if(options.token){try{requireAdmin_(options.token,'products.view');isAdmin=true;}catch(authError){}}
+    var rows=readTable_('ProductVariants',true).filter(function(v){
+      return String(v.productId)===String(productId)&&(productVariantIsActive_(v)||isAdmin);
+    });
+    var inventory=readTable_('Inventory',true);
+    rows=rows.map(function(v){
+      var inv=inventory.filter(function(x){return String(x.productId)===String(productId)&&String(x.variantId)===String(v.id);})[0]||{};
+      var row=isAdmin?JSON.parse(JSON.stringify(v)):publicVariant_(v);
+      row.stock=Math.max(0,number_(inv.quantity,number_(v.stock,0)));
+      row.reserved=Math.max(0,number_(inv.reserved,0));
+      row.available=Math.max(0,row.stock-row.reserved);
+      row.attributes=productVariantAttributes_(v);
+      return row;
+    });
+    return ok_(rows);
+  }catch(e){return fail_(safeError_(e));}
 }
 
 /* --------------------------- PRODUCT / CATEGORY CRUD --------------------- */
@@ -2195,7 +2239,7 @@ function cartDetails_(items) {
     var p = products.filter(function(x) { return x.id === item.productId && x.status === 'Active'; })[0];
     if (!p) return;
     if(p.sellerId&&!readTable_('Stores',true).some(function(st){return st.id===p.sellerId&&st.status==='Active';})) return;
-    var activeVariants=variants.filter(function(x){return x.productId===p.id&&x.status==='Active';});
+    var activeVariants=variants.filter(function(x){return String(x.productId)===String(p.id)&&productVariantIsActive_(x);});
     var v = item.variantId ? activeVariants.filter(function(x) { return x.id === item.variantId; })[0] : null;
     if ((item.variantId && !v) || (activeVariants.length && !item.variantId)) return;
     var deal = !v ? activeFlashDealForProduct_(p.id) : null;
@@ -2223,7 +2267,7 @@ function addToCart(sessionId, productId, variantId, quantity, customerToken) {
     var p = readTable_('Products',false).filter(function(x){return x.id===productId && x.status==='Active';})[0];
     if(!p) throw new Error('ไม่พบสินค้าหรือสินค้าปิดขาย');
     if(p.sellerId&&!readTable_('Stores',false).some(function(st){return st.id===p.sellerId&&st.status==='Active';})) throw new Error('ร้านค้านี้ยังไม่เปิดให้สั่งซื้อ');
-    var activeVariants=readTable_('ProductVariants',false).filter(function(x){return x.productId===productId&&x.status==='Active';});
+    var activeVariants=readTable_('ProductVariants',false).filter(function(x){return String(x.productId)===String(productId)&&productVariantIsActive_(x);});
     var v = variantId ? activeVariants.filter(function(x){return x.id===variantId;})[0] : null;
     if(variantId && !v) throw new Error('ไม่พบตัวเลือกสินค้า');
     if(activeVariants.length&&!variantId) throw new Error('กรุณาเลือกตัวเลือกสินค้าก่อนเพิ่มลงตะกร้า');
@@ -2426,7 +2470,7 @@ function getInventory(token) {
 }
 function updateStock(token,data){return adjustStock(token,data);}
 function adjustStock(token,data){
-  try{return withLock_(function(){var user=requireAdmin_(token,'inventory.manage');data=data||{};var productId=text_(data.productId,100),variantId=text_(data.variantId,100),delta=number_(data.quantity,0);if(!productId||!delta)throw new Error('กรุณาระบุสินค้าและจำนวนที่ปรับ');var product=readTable_('Products',false).filter(function(p){return String(p.id)===productId;})[0];if(!product)throw new Error('ไม่พบสินค้าในระบบ');var productVariants=readTable_('ProductVariants',false).filter(function(v){return String(v.productId)===productId&&v.status==='Active';});if(variantId){var chosenVariant=productVariants.filter(function(v){return String(v.id)===variantId;})[0];if(!chosenVariant)throw new Error('ตัวเลือกสินค้าที่เลือกไม่สัมพันธ์กับสินค้านี้');}else if(productVariants.length){throw new Error('สินค้านี้แยกสต็อกตาม Variant กรุณาเลือกตัวเลือกสินค้าก่อนปรับสต็อก');}var row=inventoryRow_(productId,variantId);if(!row){var base=variantId?productVariants.filter(function(v){return String(v.id)===variantId;})[0]:product;ensureInventory_(productId,variantId,base?number_(base.stock,0):0,0);row=inventoryRow_(productId,variantId);}var next=number_(row.quantity,0)+delta;if(next<number_(row.reserved,0))throw new Error('จำนวนใหม่ต่ำกว่าสต็อกที่จองไว้');updateRecord_('Inventory',row.id,{quantity:next,updatedAt:now_()});appendRecord_('InventoryMovements',{id:newId_('MOV'),productId:productId,variantId:variantId,type:'Adjustment',quantity:delta,referenceId:text_(data.referenceId,100),reason:text_(data.reason,500),createdBy:user.username,createdAt:now_()});log_('Adjust Stock','Inventory',productId+' '+(variantId?'Variant '+variantId+' ':' ')+delta,user.username);return ok_(true,'ปรับสต็อกแล้ว');});}catch(e){return fail_(safeError_(e));}
+  try{return withLock_(function(){var user=requireAdmin_(token,'inventory.manage');data=data||{};var productId=text_(data.productId,100),variantId=text_(data.variantId,100),delta=number_(data.quantity,0);if(!productId||!delta)throw new Error('กรุณาระบุสินค้าและจำนวนที่ปรับ');var product=readTable_('Products',false).filter(function(p){return String(p.id)===productId;})[0];if(!product)throw new Error('ไม่พบสินค้าในระบบ');var productVariants=readTable_('ProductVariants',false).filter(function(v){return String(v.productId)===productId&&productVariantIsActive_(v);});if(variantId){var chosenVariant=productVariants.filter(function(v){return String(v.id)===variantId;})[0];if(!chosenVariant)throw new Error('ตัวเลือกสินค้าที่เลือกไม่สัมพันธ์กับสินค้านี้');}else if(productVariants.length){throw new Error('สินค้านี้แยกสต็อกตาม Variant กรุณาเลือกตัวเลือกสินค้าก่อนปรับสต็อก');}var row=inventoryRow_(productId,variantId);if(!row){var base=variantId?productVariants.filter(function(v){return String(v.id)===variantId;})[0]:product;ensureInventory_(productId,variantId,base?number_(base.stock,0):0,0);row=inventoryRow_(productId,variantId);}var next=number_(row.quantity,0)+delta;if(next<number_(row.reserved,0))throw new Error('จำนวนใหม่ต่ำกว่าสต็อกที่จองไว้');updateRecord_('Inventory',row.id,{quantity:next,updatedAt:now_()});appendRecord_('InventoryMovements',{id:newId_('MOV'),productId:productId,variantId:variantId,type:'Adjustment',quantity:delta,referenceId:text_(data.referenceId,100),reason:text_(data.reason,500),createdBy:user.username,createdAt:now_()});log_('Adjust Stock','Inventory',productId+' '+(variantId?'Variant '+variantId+' ':' ')+delta,user.username);return ok_(true,'ปรับสต็อกแล้ว');});}catch(e){return fail_(safeError_(e));}
 }
 function getStockMovements(token,filters){try{requireAdmin_(token,'inventory.view');var rows=readTable_('InventoryMovements',false);filters=filters||{};if(filters.productId)rows=rows.filter(function(x){return x.productId===filters.productId;});rows.sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt);});return ok_(rows.slice(0,500));}catch(e){return fail_(safeError_(e));}}
 
@@ -3338,12 +3382,12 @@ function sellerSaveFlashDeal(customerToken,data) {
     var x=requireSeller_(customerToken);data=data||{};
     var p=readTable_('Products',false).filter(function(v){return v.id===data.productId&&v.sellerId===x.store.id;})[0];
     if(!p||p.status!=='Active')throw new Error('เลือกสินค้าเปิดขายในร้านของคุณเท่านั้น');
-    if(readTable_('ProductVariants',false).some(function(v){return v.productId===p.id&&v.status==='Active';}))throw new Error('Flash Deal รุ่นนี้รองรับสินค้าที่ไม่มีตัวเลือก SKU เท่านั้น เพื่อป้องกันราคาไม่ตรงกับ Variant');
+    if(readTable_('ProductVariants',false).some(function(v){return String(v.productId)===String(p.id)&&productVariantIsActive_(v);}))throw new Error('Flash Deal รุ่นนี้รองรับสินค้าที่ไม่มีตัวเลือก SKU เท่านั้น เพื่อป้องกันราคาไม่ตรงกับ Variant');
     var price=Math.max(0,number_(data.dealPrice,0)),normal=effectivePrice_(p);
     if(price<=0||price>=normal)throw new Error('ราคา Flash Deal ต้องต่ำกว่าราคาปัจจุบัน');
     var start=text_(data.startAt,60),end=text_(data.endAt,60);
     if(!start||!end||isNaN(new Date(start).getTime())||isNaN(new Date(end).getTime())||new Date(end).getTime()<=new Date(start).getTime())throw new Error('กรุณากำหนดช่วงเวลา Flash Deal ให้ถูกต้อง');
-    var variants=readTable_('ProductVariants',false).filter(function(v){return v.productId===p.id&&v.status==='Active';});
+    var variants=readTable_('ProductVariants',false).filter(function(v){return String(v.productId)===String(p.id)&&productVariantIsActive_(v);});
     var stockAvailable=variants.length?variants.reduce(function(sum,v){return sum+availableStock_(p.id,v.id);},0):availableStock_(p.id,'');
     var quota=Math.max(0,Math.floor(number_(data.quota,0)));
     if(quota<=0)throw new Error('กรุณากำหนดโควตา Flash Deal อย่างน้อย 1 ชิ้น');
@@ -3777,7 +3821,7 @@ function getAdminGridPage(token, moduleName, options) {
     if (moduleName === 'products') {
       var inventoryRows = readTable_('Inventory', true), variants = readTable_('ProductVariants', true), categories = readTable_('Categories', true), stores = readTable_('Stores', true);
       rows.forEach(function(p) {
-        var child = variants.filter(function(v) { return String(v.productId) === String(p.id) && v.status === 'Active'; });
+        var child = variants.filter(function(v) { return String(v.productId) === String(p.id) && productVariantIsActive_(v); });
         if (child.length) {
           p.stock = child.reduce(function(sum, v) {
             var inv = inventoryRows.filter(function(x) { return String(x.productId) === String(p.id) && String(x.variantId) === String(v.id); })[0];
