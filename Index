@@ -1451,6 +1451,37 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@14.4.0/swiper-bundle.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/swiper@14.4.0/swiper-bundle.min.js"></script>
+
+  <style id="mall-vertical-promo-and-banner-settings-v1">
+    #appRoot .shopee-mall-layout.has-vertical-promo{grid-template-columns:minmax(0,350px) minmax(0,1fr) minmax(0,180px)}
+    #appRoot .shopee-mall-vertical-promo{position:relative;min-width:0;height:440px;overflow:hidden;background:#fff5f5}
+    #appRoot .shopee-mall-vertical-promo-link{position:relative;display:block;width:100%;height:100%;overflow:hidden}
+    #appRoot .shopee-mall-vertical-promo-link>img{display:block;width:100%;height:100%;object-fit:cover}
+    #appRoot .home-banner-destination-cta{position:absolute;right:12px;bottom:12px;z-index:2;display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:5px;background:rgba(208,1,27,.94);color:#fff;font-size:11px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.18);pointer-events:none}
+    #appRoot .shopee-mall-hero-copy .home-banner-destination-cta{position:static;margin-top:7px;width:max-content}
+    #appRoot .home-promo-banner .home-banner-destination-cta{right:38px;bottom:9px;font-size:10px;padding:6px 9px}
+    #appRoot .home-hero-banner-link{position:relative}
+    .admin-home-banner-destination-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:end}
+    .admin-home-banner-checks{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:36px}
+    .admin-home-banner-checks label{display:inline-flex;align-items:center;gap:5px;font-size:10px!important;font-weight:500}
+    .admin-home-banner-checks input{width:auto!important;height:auto!important}
+    .admin-mall-store-selector{padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+    .admin-mall-store-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:5px 0 10px}
+    .admin-mall-store-toolbar>span:first-child{display:grid;gap:3px}
+    .admin-mall-store-toolbar small{color:var(--muted);font-size:10px}
+    #adminMallStoreSearch{width:100%;max-width:420px;margin:0 0 9px}
+    .admin-mall-store-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;max-height:250px;overflow:auto;padding:2px}
+    .admin-mall-store-option{display:flex;align-items:center;gap:8px;min-width:0;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+    .admin-mall-store-option input{flex:0 0 auto;width:15px;height:15px}
+    .admin-mall-store-option span{display:grid;min-width:0;gap:2px}
+    .admin-mall-store-option b{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .admin-mall-store-option small{font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .admin-home-banner-preview.is-vertical{width:82px;aspect-ratio:9/16;max-height:170px}
+    @media(max-width:1000px){#appRoot .shopee-mall-layout.has-vertical-promo{grid-template-columns:minmax(0,1fr);height:auto}#appRoot .shopee-mall-vertical-promo{height:180px}}
+    @media(max-width:720px){#appRoot .shopee-mall-vertical-promo{height:155px}.admin-mall-store-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-home-banner-destination-grid{grid-template-columns:minmax(0,1fr)}}
+    @media(max-width:480px){#appRoot .shopee-mall-vertical-promo{height:135px}.admin-home-banner-card{grid-template-columns:1fr}.admin-home-banner-preview{width:100%;max-height:170px;aspect-ratio:16/5}.admin-home-banner-preview.is-vertical{width:100px;aspect-ratio:9/16;max-height:170px;margin:0 auto}}
+  </style>
+
 </head>
 <body data-qr-login="<?= qrLoginChallenge ?>" data-portal-entry="<?= portalEntry ?>" data-web-app-url="<?= webAppUrl ?>">
   <header class="top-header">
@@ -2167,17 +2198,40 @@
     function homeBannerPosition(banner){
       return String(banner&&banner.position||'').trim().toLowerCase().replace(/[_\s]+/g,'-');
     }
+    function homeBannerDestinationAttributes(banner){
+      banner=banner||{};
+      var type=String(banner.destinationType||'url').toLowerCase();
+      if(type==='none')return 'href="#" onclick="return false" aria-disabled="true"';
+      if(type==='products')return 'href="#products" onclick="showAllProducts(\'\',\'relevance\');return false"';
+      if(type==='store'){
+        var storeId=String(banner.destinationStoreId||'').replace(/[^a-zA-Z0-9_-]/g,'');
+        return storeId?'href="#store" onclick="showStorePage(\''+esc(storeId)+'\');return false"':'href="#" onclick="return false" aria-disabled="true"';
+      }
+      var url=safeHref(banner.url,'#products');
+      var openNew=banner.openInNewTab===true||String(banner.openInNewTab||'').toLowerCase()==='true'||String(banner.openInNewTab)==='1';
+      return 'href="'+url+'"'+(openNew&&/^https?:\/\//i.test(url)?' target="_blank" rel="noopener noreferrer"':'');
+    }
+    function homeBannerHasDestination(banner){
+      var type=String(banner&&banner.destinationType||'url').toLowerCase();
+      return type!=='none'&&(type!=='store'||!!String(banner.destinationStoreId||'').trim());
+    }
+    function homeBannerCtaMarkup(banner){
+      var enabled=banner&&(banner.showDestination===true||String(banner.showDestination||'').toLowerCase()==='true'||String(banner.showDestination)==='1');
+      if(!enabled||!homeBannerHasDestination(banner))return '';
+      return '<span class="home-banner-destination-cta">'+esc(banner.buttonText||'ดูเพิ่มเติม')+' <i class="fa-solid fa-arrow-up-right-from-square"></i></span>';
+    }
     function homeBannerMarkup(banner,extraClass){
       if(!banner)return '';
       var title=String(banner.title||APP.settings.storeName||'Online Store');
       var image=String(banner.image||'').trim();
-      var url=safeHref(banner.url,'#products');
       if(!image){
         return '<div class="home-hero-fallback '+(extraClass||'')+'"><span>WELCOME TO '+esc(APP.settings.storeNameEn||'OUR STORE').toUpperCase()+'</span><strong>'+esc(title)+'</strong><small>'+esc(banner.description||APP.settings.storeDescription||'สินค้าคุณภาพ ส่งตรงถึงคุณ')+'</small></div>';
       }
-      return '<a class="home-hero-banner-link '+(extraClass||'')+'" href="'+url+'" aria-label="'+esc(title)+'"><img src="'+imageUrl(image)+'" alt="'+esc(title)+'" loading="lazy" onerror="imageFallback(this)"></a>';
+      var linked=homeBannerHasDestination(banner),tag=linked?'a':'div';
+      return '<'+tag+' class="home-hero-banner-link '+(extraClass||'')+'" '+(linked?homeBannerDestinationAttributes(banner):'')+' aria-label="'+esc(title)+'"><img src="'+imageUrl(image)+'" alt="'+esc(title)+'" loading="lazy" onerror="imageFallback(this)">'+homeBannerCtaMarkup(banner)+'</'+tag+'>';
     }
-    function renderHomeHero(){
+
+        function renderHomeHero(){
       var banners=safeArray(APP.banners).filter(function(b){return !!b;});
       var sidePattern=/(^|[-_])(side|right|secondary)([-_]|$)/i;
       var mainPattern=/(^|[-_])(main|hero|carousel|home)([-_]|$)/i;
@@ -2186,9 +2240,9 @@
         return rank(a)-rank(b)||Number(a.order||0)-Number(b.order||0);
       });
       var explicitMain=banners.filter(function(b){return mainPattern.test(homeBannerPosition(b))&&!sidePattern.test(homeBannerPosition(b));});
-      var otherBanners=banners.filter(function(b){return !sidePattern.test(homeBannerPosition(b));});
+      var dedicatedPattern=/(promo|promotion|offer|tile|strip|mall|vertical)/i;
+      var otherBanners=banners.filter(function(b){var pos=homeBannerPosition(b);return !sidePattern.test(pos)&&!dedicatedPattern.test(pos);});
       var mainBanners=explicitMain.length?explicitMain:otherBanners;
-      if(!mainBanners.length)mainBanners=banners.slice();
       var slides=mainBanners.filter(function(b){return String(b.image||'').trim();});
       if(!slides.length&&String(APP.settings.heroImage||'').trim()){
         slides=[{id:'settings-hero',title:APP.settings.storeName||'Online Store',description:APP.settings.storeDescription||'สินค้าคุณภาพ ส่งตรงถึงคุณ',image:APP.settings.heroImage,url:'#products'}];
@@ -2297,26 +2351,32 @@
       viewport.scrollBy({left:Math.max(220,Math.round(viewport.clientWidth*.82))*(Number(direction)||1),behavior:'smooth'});
       window.setTimeout(syncHomeDealCarousels,380);
     }
-    function homePromoBannerMarkup(banner,index){
-      var defaults=[
-        {title:'โปรแรงประจำสัปดาห์',description:'ดีลพิเศษ คัดมาให้คุณ',icon:'fa-bolt',url:'#flash'},
-        {title:'โค้ดส่วนลดสุดคุ้ม',description:'เก็บคูปองก่อนช้อป',icon:'fa-ticket',url:'#promotions'},
-        {title:'ช้อปครบ ส่งฟรี',description:'เลือกสินค้าที่ร่วมรายการ',icon:'fa-truck-fast',url:'#products'}
-      ];
-      var data=banner||defaults[index]||defaults[0];
-      var title=String(data.title||defaults[index].title),description=String(data.description||defaults[index].description);
-      var image=String(data.image||'').trim(),url=safeHref(data.url||defaults[index].url,'#products');
-      var icon=String(data.icon||defaults[index].icon);
-      var art=image?'<img src="'+imageUrl(image)+'" alt="'+esc(title)+'" loading="lazy" onerror="imageFallback(this)">':'<div class="home-promo-artwork"><div class="home-promo-art-copy"><small>ONLINE STORE</small><strong>'+esc(title)+'</strong><span>'+esc(description)+'</span></div><i class="fa-solid '+esc(icon)+' home-promo-art-icon"></i></div>';
-      return '<a class="home-promo-banner home-promo-banner-'+(index+1)+(image?' has-image':'')+'" href="'+url+'" aria-label="'+esc(title)+'">'+art+'<span class="home-promo-arrow"><i class="fa-solid fa-chevron-right"></i></span></a>';
+    function homePromoBannerMarkup(data,index){
+      data=data||{};
+      var defaults=[{title:'โปรแรงประจำสัปดาห์',description:'ดีลพิเศษ คัดมาให้คุณ',icon:'fa-bolt',url:'#flash'},{title:'โค้ดส่วนลดสุดคุ้ม',description:'เก็บคูปองก่อนช้อป',icon:'fa-ticket',url:'#promotions'},{title:'ช้อปครบ ส่งฟรี',description:'เลือกสินค้าที่ร่วมรายการ',icon:'fa-truck-fast',url:'#products'}];
+      var fallback=defaults[index]||defaults[0];
+      data=Object.assign({},fallback,data);
+      var title=String(data.title||fallback.title),description=String(data.description||fallback.description);
+      var image=String(data.image||'').trim(),icon=String(data.icon||fallback.icon);
+      var art=image?'<img src="'+imageUrl(image)+'" alt="'+esc(title)+'" loading="lazy" onerror="imageFallback(this)">' :
+        '<div class="home-promo-artwork"><div class="home-promo-art-copy"><small>ONLINE STORE</small><strong>'+esc(title)+'</strong><span>'+esc(description)+'</span></div><i class="fa-solid '+esc(icon)+' home-promo-art-icon"></i></div>';
+      var linked=homeBannerHasDestination(data),tag=linked?'a':'div';
+      return '<'+tag+' class="home-promo-banner home-promo-banner-'+(index+1)+(image?' has-image':'')+'" '+(linked?homeBannerDestinationAttributes(data):'')+' aria-label="'+esc(title)+'">'+art+homeBannerCtaMarkup(data)+'<span class="home-promo-arrow"><i class="fa-solid fa-chevron-right"></i></span></'+tag+'>';
     }
     function renderHomePromoBannerStrip(){
-      var candidates=safeArray(APP.banners).filter(function(b){return /promo|promotion|offer|tile|strip/i.test(homeBannerPosition(b));}).sort(function(a,b){return Number(a.order||0)-Number(b.order||0);});
-      var defaults=[{title:'โปรแรงประจำสัปดาห์',description:'ดีลพิเศษ คัดมาให้คุณ',icon:'fa-bolt',url:'#flash'},{title:'โค้ดส่วนลดสุดคุ้ม',description:'เก็บคูปองก่อนช้อป',icon:'fa-ticket',url:'#promotions'},{title:'ช้อปครบ ส่งฟรี',description:'เลือกสินค้าที่ร่วมรายการ',icon:'fa-truck-fast',url:'#products'}];
-      var items=[0,1,2].map(function(i){return candidates[i]||defaults[i];});
-      return '<section class="home-promo-banner-strip" aria-label="โปรโมชั่นพิเศษ">'+items.map(homePromoBannerMarkup).join('')+'</section>';
+      var candidates=safeArray(APP.banners).filter(function(b){return !!b&&String(b.image||'').trim();}).sort(function(a,b){return Number(a.order||0)-Number(b.order||0);});
+      var exact={},legacy=[];
+      candidates.forEach(function(banner){
+        var position=homeBannerPosition(banner),match=position.match(/^promo-([123])$/);
+        if(match){if(!exact[match[1]])exact[match[1]]=banner;}
+        else if(/promo|promotion|offer|tile|strip/i.test(position))legacy.push(banner);
+      });
+      var legacyIndex=0;
+      var items=[0,1,2].map(function(index){return exact[String(index+1)]||legacy[legacyIndex++]||null;});
+      return '<section class="home-promo-banner-strip" aria-label="โปรโมชั่นพิเศษ">'+items.map(function(item,index){return homePromoBannerMarkup(item||{},index);}).join('')+'</section>';
     }
-    function homeCompactSales(value){
+
+        function homeCompactSales(value){
       var n=Math.max(0,Number(value||0));
       if(n>=1000000)return (Math.floor(n/100000)/10).toString().replace(/\.0$/,'')+'m+';
       if(n>=1000)return Math.floor(n/1000)+'k+';
@@ -2439,31 +2499,45 @@
     }
     function homeShopeeMallProducts(){
       var source=safeArray(APP.mallProducts).length?safeArray(APP.mallProducts):safeArray(APP.products).filter(homeMallProductEnabled);
-      return source.filter(function(product){return homeMallProductEnabled(product)&&String(product.status||'Active')==='Active';});
+      var selectedStores=safeArray(safeJson(APP.settings&&APP.settings.mallStoreIds,[])).map(function(id){return String(id);});
+      return source.filter(function(product){
+        var storeId=String(product&&(product.storeId||product.sellerId)||'');
+        return homeMallProductEnabled(product)&&String(product.status||'Active')==='Active'&&(!selectedStores.length||selectedStores.indexOf(storeId)>=0);
+      });
     }
-    function homeShopeeMallBannerItems(){
+
+        function homeShopeeMallBannerItems(){
       var configured=safeArray(APP.banners).filter(function(banner){
         var position=homeBannerPosition(banner);
-        return /(^|-)mall($|-)/i.test(position)&&String(banner.image||'').trim();
+        return /(^|-)mall($|-)/i.test(position)&&!/vertical/i.test(position)&&String(banner.image||'').trim();
       }).sort(function(a,b){return Number(a.order||0)-Number(b.order||0);});
       if(configured.length)return configured.map(function(banner){return {type:'banner',data:banner};});
       return homeShopeeMallProducts().filter(function(product){return String(product.coverImage||'').trim();})
         .slice().sort(function(a,b){return homeMallProductDiscount(b)-homeMallProductDiscount(a)||Number(b.soldCount||0)-Number(a.soldCount||0);})
         .slice(0,5).map(function(product){return {type:'product',data:product};});
     }
-    function homeShopeeMallHeroSlideMarkup(item,index){
-      var data=item&&item.data||{},image='',title='',description='',url='#products',inner='';
+    function homeShopeeMallVerticalBanner(){
+      return safeArray(APP.banners).filter(function(banner){
+        return /(^|-)mall-vertical($|-)/i.test(homeBannerPosition(banner))&&String(banner.image||'').trim();
+      }).sort(function(a,b){return Number(a.order||0)-Number(b.order||0);})[0]||null;
+    }
+    function renderHomeShopeeMallVerticalPromo(){
+      var banner=homeShopeeMallVerticalBanner();if(!banner)return '';
+      var linked=homeBannerHasDestination(banner),tag=linked?'a':'div';
+      return '<div class="shopee-mall-vertical-promo"><'+tag+' class="shopee-mall-vertical-promo-link" '+(linked?homeBannerDestinationAttributes(banner):'')+' aria-label="'+esc(banner.title||'Shopee Mall โปรโมชั่น')+'"><img src="'+imageUrl(banner.image)+'" alt="'+esc(banner.title||'Shopee Mall โปรโมชั่น')+'" loading="lazy" onerror="imageFallback(this)">'+homeBannerCtaMarkup(banner)+'</'+tag+'></div>';
+    }
+
+        function homeShopeeMallHeroSlideMarkup(item,index){
+      var data=item&&item.data||{},image='',title='',description='',inner='';
       if(item&&item.type==='banner'){
-        image=String(data.image||'').trim();
-        title=String(data.title||'แบรนด์ชั้นนำ').trim();
+        image=String(data.image||'').trim();title=String(data.title||'แบรนด์ชั้นนำ').trim();
         description=String(data.description||'ช้อปสินค้าจาก Shopee Mall').trim();
-        url=safeHref(data.url,'#products');
-        inner='<a class="shopee-mall-hero-slide'+(index===0?' is-active':'')+'" data-mall-slide="'+index+'" href="'+url+'" aria-label="'+esc(title)+'">'+
+        var linked=homeBannerHasDestination(data),tag=linked?'a':'div';
+        inner='<'+tag+' class="shopee-mall-hero-slide'+(index===0?' is-active':'')+'" '+(linked?homeBannerDestinationAttributes(data):'')+' data-mall-slide="'+index+'" aria-label="'+esc(title)+'">'+
           '<img src="'+imageUrl(image)+'" alt="'+esc(title)+'" loading="'+(index===0?'eager':'lazy')+'" onerror="imageFallback(this)">'+
-          '<span class="shopee-mall-hero-copy"><b>'+esc(title)+'</b><small>'+esc(description)+'</small></span></a>';
+          '<span class="shopee-mall-hero-copy"><b>'+esc(title)+'</b><small>'+esc(description)+'</small>'+homeBannerCtaMarkup(data)+'</span></'+tag+'>';
       }else{
-        image=String(data.coverImage||'').trim();
-        title=String(data.brand||data.name||'สินค้า Shopee Mall').trim();
+        image=String(data.coverImage||'').trim();title=String(data.brand||data.name||'สินค้า Shopee Mall').trim();
         description=String(data.name||'สินค้าแบรนด์ชั้นนำ').trim();
         var discount=homeMallProductDiscount(data);
         var promo=discount>0?'ลด '+discount+'%':'ราคา '+money(Number(data.salePrice)>0?data.salePrice:data.price);
@@ -2473,7 +2547,8 @@
       }
       return inner;
     }
-    function homeShopeeMallBrandGroups(){
+
+        function homeShopeeMallBrandGroups(){
       var grouped={},products=homeShopeeMallProducts();
       products.forEach(function(product){
         var brand=String(product.brand||'').trim();
@@ -2536,6 +2611,8 @@
     }
     function renderHomeShopeeMall(){
       var bannerItems=homeShopeeMallBannerItems(),slides=bannerItems.length?bannerItems.map(homeShopeeMallHeroSlideMarkup).join(''):'<div class="shopee-mall-hero-empty"><i class="fa-solid fa-store"></i><b>SHOPEE MALL</b><small>สินค้าแบรนด์ชั้นนำจะแสดงที่นี่เมื่อมีสินค้า Mall ที่เปิดใช้งาน</small></div>';
+      var verticalBanner=homeShopeeMallVerticalBanner(),verticalMarkup=verticalBanner?renderHomeShopeeMallVerticalPromo():'';
+      var layoutClass='shopee-mall-layout'+(verticalBanner?' has-vertical-promo':'');
       var dots=bannerItems.length>1?'<div class="shopee-mall-hero-dots" aria-label="เลือกแบนเนอร์">'+bannerItems.map(function(item,index){return '<button type="button" class="'+(index===0?'is-active':'')+'" aria-label="แบนเนอร์ที่ '+(index+1)+'" aria-current="'+(index===0?'true':'false')+'" onclick="selectHomeShopeeMallBanner('+index+')"></button>';}).join('')+'</div>':'';
       return '<section class="shopee-mall-section" id="shopeeMall" aria-label="Shopee Mall">'+
         '<header class="shopee-mall-header">'+
@@ -2546,15 +2623,17 @@
           '</div>'+
           '<button type="button" class="shopee-mall-see-all" onclick="showShopeeMallProducts()">ดูทั้งหมด <span><i class="fa-solid fa-chevron-right"></i></span></button>'+
         '</header>'+
-        '<div class="shopee-mall-layout">'+
+        '<div class="'+layoutClass+'">'+
           '<div class="shopee-mall-hero" id="shopeeMallHero">'+slides+dots+'</div>'+
+          verticalMarkup+
           '<div class="shopee-mall-brands-wrap"><div class="shopee-mall-brands-grid" id="shopeeMallBrandViewport"></div>'+
             '<button type="button" class="shopee-mall-brand-next" id="shopeeMallBrandNext" onclick="nextHomeShopeeMallBrands()" aria-label="ดูแบรนด์หน้าถัดไป" hidden><i class="fa-solid fa-chevron-right"></i></button>'+
           '</div>'+
         '</div>'+
       '</section>';
     }
-    function selectHomeShopeeMallBanner(index){
+
+        function selectHomeShopeeMallBanner(index){
       var root=document.getElementById('shopeeMallHero');
       if(!root)return;
       var slides=root.querySelectorAll('[data-mall-slide]'),dots=root.querySelectorAll('.shopee-mall-hero-dots button');
@@ -2583,7 +2662,7 @@
       }
       APP.mallProductsRequestId=Number(APP.mallProductsRequestId||0)+1;
       var requestId=APP.mallProductsRequestId;
-      apiCall('getProducts',[{page:1,pageSize:100,sellerTypes:['mall'],sort:'best_seller'}],function(result){
+      apiCall('getProducts',[{page:1,pageSize:100,sellerTypes:['mall'],storeIds:safeArray(safeJson(APP.settings&&APP.settings.mallStoreIds,[])),sort:'best_seller'}],function(result){
         if(requestId!==APP.mallProductsRequestId)return;
         APP.mallProducts=result&&result.success&&result.data?safeArray(result.data.items):[];
         APP.mallProductsLoaded=true;
@@ -4194,45 +4273,62 @@
         APP.adminHeroBanners=safeArray(r.data).slice().sort(function(a,b){return Number(a.order||0)-Number(b.order||0);});
         renderAdminHeroBannerManager();
       },false,'',true);
+      apiCall('getBannerStoreOptions',[APP.adminToken],function(r){
+        APP.adminBannerStores=r&&r.success?safeArray(r.data):[];
+        renderAdminMallStoreOptions();
+        if(document.getElementById('adminHeroBannerManager'))renderAdminHeroBannerManager();
+      },false,'',true);
     }
     function renderAdminHeroBannerCard(banner,index){
       banner=banner||{};
       var titleId='adminHeroTitle_'+index,imageId='adminHeroImage_'+index,previewId='adminHeroPreview_'+index,fileId='adminHeroFile_'+index;
       var position=String(banner.position||'main');
-      var options=[['main','ภาพสไลด์หลัก'],['side-top','ภาพย่อยด้านขวาบน'],['side-bottom','ภาพย่อยด้านขวาล่าง']];
-      var select=options.map(function(o){return '<option value="'+o[0]+'" '+(position===o[0]?'selected':'')+'>'+o[1]+'</option>';}).join('');
-      var preview=banner.image
-        ?'<img src="'+imageUrl(banner.image)+'" alt="ตัวอย่างแบนเนอร์" onerror="imageFallback(this)">'
-        :'<i class="fa-regular fa-image"></i><small>ยังไม่มีรูปภาพ</small>';
-      var active=String(banner.status||'Active')==='Active';
+      var options=[
+        ['main','Hero Banner — ภาพสไลด์หลัก'],['side-top','Hero Banner — ภาพย่อยขวาบน'],['side-bottom','Hero Banner — ภาพย่อยขวาล่าง'],
+        ['promo-1','โปรแรงประจำสัปดาห์'],['promo-2','โค้ดส่วนลดสุดคุ้ม'],['promo-3','ช้อปครบ ส่งฟรี'],
+        ['mall','SHOPEE MALL — แบนเนอร์สไลด์'],['mall-vertical','SHOPEE MALL — Vertical Promo Banner'],['promo','โปรโมชั่น (ตำแหน่งเดิม)']
+      ];
+      if(!options.some(function(o){return o[0]===position;}))options.push([position,position+' (ตำแหน่งเดิม)']);
+      var select=options.map(function(o){return '<option value="'+esc(o[0])+'" '+(position===o[0]?'selected':'')+'>'+esc(o[1])+'</option>';}).join('');
+      var preview=banner.image?'<img src="'+imageUrl(banner.image)+'" alt="ตัวอย่างแบนเนอร์" onerror="imageFallback(this)">':'<i class="fa-regular fa-image"></i><small>ยังไม่มีรูปภาพ</small>';
+      var active=String(banner.status||'Active')==='Active',destinationType=String(banner.destinationType||'url'),storeId=String(banner.destinationStoreId||'');
+      var destinationOptions=[['url','เปิด URL ที่กำหนด'],['products','ไปหน้าสินค้าทั้งหมด'],['store','ไปหน้าร้านที่เลือก'],['none','ไม่กำหนดปลายทาง / ไม่คลิก']];
+      var destinationSelect=destinationOptions.map(function(o){return '<option value="'+o[0]+'" '+(destinationType===o[0]?'selected':'')+'>'+o[1]+'</option>';}).join('');
+      var stores=safeArray(APP.adminBannerStores),storeSelect='<option value="">เลือกร้านค้า</option>'+stores.map(function(store){return '<option value="'+esc(store.id)+'" '+(storeId===String(store.id)?'selected':'')+'>'+esc(store.shopName||store.name||store.id)+'</option>';}).join('');
+      var showDestination=banner.showDestination===true||String(banner.showDestination||'').toLowerCase()==='true'||String(banner.showDestination)==='1';
+      var openInNewTab=banner.openInNewTab===true||String(banner.openInNewTab||'').toLowerCase()==='true'||String(banner.openInNewTab)==='1';
       return '<article class="admin-home-banner-card" data-banner-index="'+index+'">'+
-        '<div class="admin-home-banner-preview" id="'+previewId+'">'+preview+'</div>'+
+        '<div class="admin-home-banner-preview'+(position==='mall-vertical'?' is-vertical':'')+'" id="'+previewId+'">'+preview+'</div>'+
         '<div class="admin-home-banner-fields">'+
-          '<div class="field"><label for="'+titleId+'">ชื่อแบนเนอร์</label><input id="'+titleId+'" type="text" maxlength="160" value="'+esc(banner.title||'')+'" placeholder="เช่น โปรโมชั่นประจำเดือน"></div>'+
-          '<div class="admin-home-banner-grid">'+
-            '<div class="field"><label for="adminHeroPosition_'+index+'">ตำแหน่งแสดงผล</label><select id="adminHeroPosition_'+index+'">'+select+'</select></div>'+
-            '<div class="field"><label for="adminHeroOrder_'+index+'">ลำดับ</label><input id="adminHeroOrder_'+index+'" type="number" min="0" step="1" value="'+esc(banner.order===undefined?index+1:banner.order)+'"></div>'+
-          '</div>'+
+          '<div class="field"><label for="'+titleId+'">ชื่อป้าย / แบนเนอร์</label><input id="'+titleId+'" type="text" maxlength="160" value="'+esc(banner.title||'')+'" placeholder="เช่น โปรโมชั่นประจำเดือน"></div>'+
+          '<div class="field"><label for="adminHeroDescription_'+index+'">คำอธิบาย (ถ้ามี)</label><input id="adminHeroDescription_'+index+'" type="text" maxlength="240" value="'+esc(banner.description||'')+'" placeholder="ข้อความประกอบรูปภาพ"></div>'+
+          '<div class="admin-home-banner-grid"><div class="field"><label for="adminHeroPosition_'+index+'">ตำแหน่งแสดงผล</label><select id="adminHeroPosition_'+index+'">'+select+'</select></div>'+
+            '<div class="field"><label for="adminHeroOrder_'+index+'">ลำดับ</label><input id="adminHeroOrder_'+index+'" type="number" min="0" step="1" value="'+esc(banner.order===undefined?index+1:banner.order)+'"></div></div>'+
           '<div class="field"><label for="'+imageId+'">URL รูปภาพ</label><input id="'+imageId+'" type="url" value="'+esc(banner.image||'')+'" placeholder="URL รูปภาพ หรืออัปโหลดจากเครื่อง" oninput="previewAdminImageField(\''+imageId+'\',\''+previewId+'\')"></div>'+
           '<div class="admin-image-actions"><button type="button" class="btn btn-outline btn-small" onclick="document.getElementById(\''+fileId+'\').click()"><i class="fa-solid fa-cloud-arrow-up"></i> อัปโหลดรูป</button><button type="button" class="btn btn-ghost btn-small" onclick="clearAdminImageField(\''+imageId+'\',\''+previewId+'\')">นำรูปออก</button></div>'+
           '<input id="'+fileId+'" type="file" accept="image/*" hidden onchange="uploadAdminImageToField(this,\''+imageId+'\',\''+previewId+'\',\'Banners\')">'+
-          '<div class="field"><label for="adminHeroUrl_'+index+'">ลิงก์เมื่อคลิกแบนเนอร์</label><input id="adminHeroUrl_'+index+'" type="url" value="'+esc(banner.url||'')+'" placeholder="#products หรือ URL ปลายทาง"></div>'+
+          '<div class="admin-home-banner-destination-grid"><div class="field"><label for="adminHeroDestinationType_'+index+'">การทำงานเมื่อคลิก</label><select id="adminHeroDestinationType_'+index+'">'+destinationSelect+'</select></div>'+
+            '<div class="field"><label for="adminHeroDestinationStore_'+index+'">ร้านค้าปลายทาง</label><select id="adminHeroDestinationStore_'+index+'">'+storeSelect+'</select></div></div>'+
+          '<div class="field"><label for="adminHeroUrl_'+index+'">ลิงก์ปลายทาง (URL / #products / #promotions)</label><input id="adminHeroUrl_'+index+'" type="text" value="'+esc(banner.url||'')+'" placeholder="https://... หรือ #products"></div>'+
+          '<div class="admin-home-banner-destination-grid"><div class="field"><label for="adminHeroButtonText_'+index+'">ข้อความปุ่มปลายทาง</label><input id="adminHeroButtonText_'+index+'" type="text" maxlength="40" value="'+esc(banner.buttonText||'ดูเพิ่มเติม')+'" placeholder="ดูเพิ่มเติม"></div>'+
+            '<div class="field"><label>ตัวเลือกการแสดงผล</label><div class="admin-home-banner-checks"><label><input id="adminHeroShowDestination_'+index+'" type="checkbox" '+(showDestination?'checked':'')+'> แสดงปุ่มปลายทางบนรูป</label><label><input id="adminHeroOpenNewTab_'+index+'" type="checkbox" '+(openInNewTab?'checked':'')+'> เปิด URL แท็บใหม่</label></div></div></div>'+
           '<div class="admin-home-banner-footer"><label class="admin-home-banner-status"><input id="adminHeroStatus_'+index+'" type="checkbox" '+(active?'checked':'')+'> เปิดใช้งาน</label>'+
           '<div class="admin-home-banner-actions"><button type="button" class="btn btn-primary btn-small" onclick="saveAdminHeroBanner('+index+',this)"><i class="fa-solid fa-floppy-disk"></i> บันทึกแบนเนอร์</button>'+
           (banner.id?'<button type="button" class="btn btn-outline btn-small" onclick="deleteAdminHeroBanner('+index+',this)"><i class="fa-solid fa-trash"></i> ลบ</button>':'<button type="button" class="btn btn-ghost btn-small" onclick="removeNewAdminHeroBanner('+index+')">ยกเลิก</button>')+
           '</div></div></div></article>';
     }
-    function renderAdminHeroBannerManager(){
+
+        function renderAdminHeroBannerManager(){
       var host=document.getElementById('adminHeroBannerManager');if(!host)return;
       var rows=safeArray(APP.adminHeroBanners);
-      var html='<div class="admin-home-banner-toolbar"><div><b>รายการแบนเนอร์หน้าแรก</b><small>ภาพหลักแนะนำ 796 × 235 px · ภาพย่อยด้านขวาแนะนำ 398 × 115 px · เพิ่มภาพหลักได้หลายภาพเพื่อทำสไลด์</small></div><button type="button" class="btn btn-primary btn-small" onclick="addAdminHeroBanner()"><i class="fa-solid fa-plus"></i> เพิ่มแบนเนอร์</button></div>';
+      var html='<div class="admin-home-banner-toolbar"><div><b>รายการป้ายและแบนเนอร์</b><small>กำหนดตำแหน่ง Hero, โปรโมชั่น 3 ช่อง, SHOPEE MALL และ Vertical Promo Banner พร้อมเพิ่มรูปและปลายทางได้ในแต่ละรายการ</small></div><button type="button" class="btn btn-primary btn-small" onclick="addAdminHeroBanner()"><i class="fa-solid fa-plus"></i> เพิ่มแบนเนอร์</button></div>';
       if(!rows.length)html+='<div class="empty-state">ยังไม่มีแบนเนอร์ กด “เพิ่มแบนเนอร์” เพื่อเริ่มตั้งค่า</div>';
       else html+='<div class="admin-home-banner-list">'+rows.map(renderAdminHeroBannerCard).join('')+'</div>';
       host.innerHTML=html;
     }
     function addAdminHeroBanner(){
       if(!Array.isArray(APP.adminHeroBanners))APP.adminHeroBanners=[];
-      APP.adminHeroBanners.push({id:'',title:'',description:'',image:'',url:'#products',buttonText:'',position:'main',order:APP.adminHeroBanners.length+1,status:'Active'});
+      APP.adminHeroBanners.push({id:'',title:'',description:'',image:'',url:'#products',buttonText:'ดูเพิ่มเติม',destinationType:'url',destinationStoreId:'',showDestination:false,openInNewTab:false,position:'main',order:APP.adminHeroBanners.length+1,status:'Active'});
       renderAdminHeroBannerManager();
       var cards=document.querySelectorAll('.admin-home-banner-card');
       if(cards.length)cards[cards.length-1].scrollIntoView({behavior:'smooth',block:'center'});
@@ -4244,32 +4340,37 @@
     function saveAdminHeroBanner(index,button){
       var rows=safeArray(APP.adminHeroBanners),old=rows[index];if(!old)return;
       var value=function(id){var el=document.getElementById(id);return el?el.value:'';};
+      var checked=function(id){var el=document.getElementById(id);return !!(el&&el.checked);};
       var title=value('adminHeroTitle_'+index).trim(),image=value('adminHeroImage_'+index).trim();
       if(!title){alertError('กรุณาระบุชื่อแบนเนอร์');return;}
       if(!image){alertError('กรุณาอัปโหลดหรือใส่ URL รูปแบนเนอร์');return;}
-      var position=value('adminHeroPosition_'+index);
-      var status=(document.getElementById('adminHeroStatus_'+index)||{}).checked?'Active':'Inactive';
-      if(status==='Active'&&position!=='main'){
-        var duplicate=rows.some(function(item,itemIndex){
-          return itemIndex!==index&&String(item.position||'')===position&&String(item.status||'Active')==='Active';
-        });
-        if(duplicate){alertError(position==='side-top'?'มีแบนเนอร์ด้านขวาบนที่เปิดใช้งานอยู่แล้ว กรุณาย้ายหรือปิดรายการเดิมก่อน':'มีแบนเนอร์ด้านขวาล่างที่เปิดใช้งานอยู่แล้ว กรุณาย้ายหรือปิดรายการเดิมก่อน');return;}
+      var position=value('adminHeroPosition_'+index),destinationType=value('adminHeroDestinationType_'+index)||'url';
+      var destinationStoreId=value('adminHeroDestinationStore_'+index);
+      var status=checked('adminHeroStatus_'+index)?'Active':'Inactive';
+      if(destinationType==='store'&&!destinationStoreId){alertError('กรุณาเลือกร้านค้าปลายทาง');return;}
+      var fixedSlot=position!=='main'&&position!=='mall'&&['promo','promotion','offer','tile','strip'].indexOf(position)<0;
+      if(status==='Active'&&fixedSlot){
+        var duplicate=rows.some(function(item,itemIndex){return itemIndex!==index&&String(item.position||'')===position&&String(item.status||'Active')==='Active';});
+        if(duplicate){alertError('ตำแหน่งนี้มีแบนเนอร์ที่เปิดใช้งานอยู่แล้ว กรุณาปิดหรือลบรายการเดิมก่อน');return;}
       }
       var data=Object.assign({},old,{
-        title:title,image:image,position:position,
-        order:Math.max(0,Number(value('adminHeroOrder_'+index)||0)),
-        url:value('adminHeroUrl_'+index).trim(),status:status
+        title:title,description:value('adminHeroDescription_'+index).trim(),image:image,position:position,
+        order:Math.max(0,Number(value('adminHeroOrder_'+index)||0)),url:value('adminHeroUrl_'+index).trim(),
+        destinationType:destinationType,destinationStoreId:destinationStoreId,
+        showDestination:checked('adminHeroShowDestination_'+index)?'true':'false',
+        openInNewTab:checked('adminHeroOpenNewTab_'+index)?'true':'false',
+        buttonText:value('adminHeroButtonText_'+index).trim()||'ดูเพิ่มเติม',status:status
       });
       var busy=setInlineButtonBusy(button,'กำลังบันทึก...');
       apiCall('saveBanner',[APP.adminToken,data],function(r){
         restoreInlineButton(busy);
         if(!r||!r.success){alertError(r&&r.message||'บันทึกแบนเนอร์ไม่สำเร็จ');return;}
         APP.adminHeroBanners[index]=r.data||data;
-        renderAdminHeroBannerManager();
-        toast('บันทึกแบนเนอร์แล้ว','success');
+        renderAdminHeroBannerManager();toast('บันทึกแบนเนอร์แล้ว','success');
       },false,'',true);
     }
-    function deleteAdminHeroBanner(index,button){
+
+        function deleteAdminHeroBanner(index,button){
       var row=safeArray(APP.adminHeroBanners)[index];if(!row||!row.id)return;
       Swal.fire({title:'ลบแบนเนอร์นี้?',text:'ภาพนี้จะไม่แสดงบนหน้าแรกอีกต่อไป',icon:'warning',showCancelButton:true,confirmButtonText:'ลบแบนเนอร์',cancelButtonText:'ยกเลิก'}).then(function(answer){
         if(!answer.isConfirmed)return;
@@ -4367,6 +4468,35 @@
       refreshAdminHomeSectionEditor();
     }
 
+    function renderAdminMallStoreSelector(value){
+      APP.homeMallStoreDraft=safeArray(safeJson(value,[])).map(function(id){return String(id);});
+      return '<div class="field full admin-mall-store-selector"><label>ร้านค้าที่ต้องการให้สินค้าแสดงใน SHOPEE MALL</label>'+
+        '<div class="admin-mall-store-toolbar"><span><b>กำหนดร้านค้าต้นทาง</b><small>เลือกได้หลายร้าน หากไม่เลือกร้านใดเลย ระบบจะแสดงสินค้าจากทุกร้านที่ติดป้าย Mall</small></span>'+
+        '<span><button type="button" class="btn btn-outline btn-small" onclick="setAdminMallStoreSelection(true)">เลือกทั้งหมด</button> <button type="button" class="btn btn-ghost btn-small" onclick="setAdminMallStoreSelection(false)">ล้างการเลือก</button></span></div>'+
+        '<input id="adminMallStoreSearch" type="search" placeholder="ค้นหาชื่อร้านค้า..." oninput="filterAdminMallStoreOptions()">'+
+        '<div id="adminMallStoreOptions" class="admin-mall-store-grid"><div class="empty-state">กำลังโหลดรายชื่อร้านค้า...</div></div>'+
+        '<small class="modal-help">ตัวกรองนี้มีผลกับสินค้าและแบรนด์ที่แสดงในส่วน SHOPEE MALL เท่านั้น ไม่เปลี่ยนสินค้าในหมวดอื่น</small></div>';
+    }
+    function renderAdminMallStoreOptions(){
+      var host=document.getElementById('adminMallStoreOptions');if(!host)return;
+      var stores=safeArray(APP.adminBannerStores),selected=safeArray(APP.homeMallStoreDraft).map(String);
+      if(!stores.length){host.innerHTML='<div class="empty-state">ยังไม่มีร้านค้าที่เปิดใช้งาน หรือโหลดรายชื่อร้านค้าไม่สำเร็จ</div>';return;}
+      host.innerHTML=stores.map(function(store){
+        var name=String(store.shopName||store.name||store.id),id=String(store.id||'');
+        return '<label class="admin-mall-store-option" data-store-search="'+esc(name.toLowerCase())+'"><input type="checkbox" name="adminMallStoreIds" value="'+esc(id)+'" '+(selected.indexOf(id)>=0?'checked':'')+'><span><b>'+esc(name)+'</b><small>'+esc(id)+'</small></span></label>';
+      }).join('');
+      filterAdminMallStoreOptions();
+    }
+    function filterAdminMallStoreOptions(){
+      var input=document.getElementById('adminMallStoreSearch'),q=String(input&&input.value||'').trim().toLowerCase();
+      Array.prototype.forEach.call(document.querySelectorAll('#adminMallStoreOptions .admin-mall-store-option'),function(row){
+        row.style.display=!q||String(row.getAttribute('data-store-search')||'').indexOf(q)>=0?'flex':'none';
+      });
+    }
+    function setAdminMallStoreSelection(enabled){
+      Array.prototype.forEach.call(document.querySelectorAll('#adminMallStoreOptions input[name="adminMallStoreIds"]'),function(input){input.checked=!!enabled;});
+    }
+
     function loadAdminSettings(onLoaded){
       apiCall('getAdminSettings',[APP.adminToken],function(r){
         if(!r.success){showAdminError(r.message);if(typeof onLoaded==='function')onLoaded(false,r.message);return;}
@@ -4378,13 +4508,14 @@
           {title:'บัญชีรับชำระเงิน',desc:'ข้อมูลบัญชีและ QR สำหรับรับชำระเงินจากลูกค้า',keys:[['bankName','ชื่อธนาคาร'],['bankAccountName','ชื่อบัญชี'],['bankAccountNumber','เลขบัญชี'],['bankQrImage','QR Code รับชำระเงิน','image:Website']]},
           {title:'สีและรูปแบบหน้าร้าน',desc:'ปรับโทนสีหลัก สีรอง และสีเน้นได้ด้วยตนเอง',keys:[['primaryColor','สีหลักของระบบ','color'],['secondaryColor','สีรองของระบบ','color'],['accentColor','สีเน้น / Accent','color']]},
           {title:'นโยบายและ SEO',desc:'ข้อความข้อกำหนด นโยบาย และข้อมูลสำหรับ Search Engine',keys:[['returnPolicy','นโยบายคืนสินค้า','richtext'],['privacyPolicy','นโยบายความเป็นส่วนตัว','richtext'],['terms','ข้อกำหนดและเงื่อนไข','richtext'],['footerText','ข้อความ Footer','richtext'],['seoDescription','SEO Description','textarea']]},
-          {title:'จัดการหน้าแรก',desc:'ควบคุมว่าจะแสดงกล่องใดบ้าง และจัดลำดับการแสดงผลหน้าแรกได้ด้วยตนเอง',keys:[['homeSections','ส่วนประกอบหน้าแรก','homeSections']]}
+          {title:'จัดการหน้าแรก',desc:'ควบคุมส่วนประกอบ จัดลำดับ และเลือกร้านค้าที่ต้องการให้แสดงสินค้าใน SHOPEE MALL',keys:[['homeSections','ส่วนประกอบหน้าแรก','homeSections'],['mallStoreIds','เลือกร้านค้าที่แสดงสินค้าใน SHOPEE MALL','storeMulti']]}
         ];
         var allKeys=[],html='<div class="admin-settings-page"><div class="admin-settings-heading"><div><span class="admin-settings-eyebrow">STORE CONFIGURATION</span><h2>ตั้งค่าร้านค้า</h2><p>ปรับ setTitle ชื่อร้าน โลโก้ และข้อมูลที่แสดงบนหน้าร้าน Marketplace</p></div><button id="saveAdminSettingsButton" class="btn btn-primary" onclick="saveAdminSettings(this)"><i class="fa-solid fa-floppy-disk"></i> บันทึกการตั้งค่า</button></div>';
         groups.forEach(function(group){html+='<section class="admin-settings-section"><header><h3>'+esc(group.title)+'</h3><p>'+esc(group.desc)+'</p></header><div class="form-grid">';group.keys.forEach(function(def){var key=def[0],label=def[1],kind=def[2]||'text',val=d[key]===undefined?'':d[key];allKeys.push(key);
           if(kind.indexOf('image:')===0){html+=renderAdminSettingImage(key,label,val,kind.split(':')[1]);return;}
           if(kind==='color'){html+=renderAdminColorSetting(key,label,val);return;}
           if(kind==='homeSections'){html+=renderAdminHomeSectionsEditor(val);return;}
+          if(kind==='storeMulti'){html+=renderAdminMallStoreSelector(val);return;}
           if(kind==='richtext'){html+=richEditorMarkup('setting_'+key,label,val,'พิมพ์'+label+'ที่นี่...');return;}
           if(kind==='textarea'){html+='<div class="field full"><label for="setting_'+key+'">'+esc(label)+'</label><textarea id="setting_'+key+'" rows="3">'+esc(val)+'</textarea></div>';return;}
           if(kind==='switch'){html+='<div class="field"><label>'+esc(label)+'</label><label class="admin-switch-row" for="setting_'+key+'"><span class="admin-switch-copy"><b>'+((adminEditorIsOn(val))?'เปิด':'ปิด')+'</b><small>เปิดหรือปิดฟังก์ชันนี้สำหรับหน้าร้าน</small></span><input id="setting_'+key+'" type="checkbox" class="admin-switch-input" '+(adminEditorIsOn(val)?'checked':'')+' onchange="updateAdminSwitchLabel(this)"><span class="admin-switch-track"><i></i></span></label></div>';return;}
@@ -4392,14 +4523,14 @@
           if(kind==='multi:payments'){var allowedPayments=[['bank_transfer','โอนเงินผ่านธนาคาร'],['qr_payment','QR Payment'],['cod','เก็บเงินปลายทาง'],['card','บัตรเครดิต / เดบิต']];var currentPayments=safeArray(safeJson(val,[]));html+='<div class="field full"><label for="setting_'+key+'">'+esc(label)+'</label><select id="setting_'+key+'" multiple size="4">'+allowedPayments.map(function(x){return '<option value="'+x[0]+'" '+(currentPayments.indexOf(x[0])>=0?'selected':'')+'>'+x[1]+'</option>';}).join('')+'</select><small class="modal-help">เลือกได้หลายช่องทาง กด Ctrl หรือ Command เพื่อเลือกมากกว่าหนึ่งรายการ</small></div>';return;}
           html+='<div class="field"><label for="setting_'+key+'">'+esc(label)+'</label><input id="setting_'+key+'" type="'+(kind==='number'?'number':(kind==='email'?'email':(kind==='url'?'url':'text'))) +'" value="'+esc(val)+'"></div>';
         });html+='</div></section>';});
-        html+='<section class="admin-settings-section admin-home-banner-settings"><header><h3>แบนเนอร์หน้าแรก</h3><p>เพิ่ม แก้ไข อัปโหลด และจัดตำแหน่งภาพแบนเนอร์หลักและภาพย่อยด้านขวาให้ตรงกับหน้าแรก</p></header><div id="adminHeroBannerManager"><div class="admin-skeleton" aria-label="กำลังโหลดรายการแบนเนอร์">'+adminSkeleton('banners')+'</div></div></section>';
+        html+='<section class="admin-settings-section admin-home-banner-settings"><header><h3>จัดการป้ายและแบนเนอร์หน้าร้าน</h3><p>เพิ่มรูปและกำหนดตำแหน่ง Hero Banner, โปรโมชั่น 3 ช่อง, SHOPEE MALL และ Vertical Promo Banner พร้อมตั้งค่าลิงก์ปลายทางได้จากส่วนนี้</p></header><div id="adminHeroBannerManager"><div class="admin-skeleton" aria-label="กำลังโหลดรายการแบนเนอร์">'+adminSkeleton('banners')+'</div></div></section>';
         html+='<section class="admin-settings-section"><header><h3>การยืนยันตัวตนสมาชิก</h3><p>ระบบสมัครสมาชิกใช้ Email OTP ผ่าน Google Apps Script MailApp ไม่มี SMS OTP หรือ Twilio</p></header><div class="admin-email-otp-card"><span class="status-pill active">Email OTP</span><p class="muted" id="emailOtpServiceStatus">กำลังตรวจสอบสถานะ MailApp...</p><button type="button" class="btn btn-outline btn-small" onclick="refreshEmailOtpServiceStatus()">ตรวจสอบโควตาอีเมล</button></div></section></div>';
         document.getElementById('adminContent').innerHTML=html;document.getElementById('adminContent').setAttribute('aria-busy','false');APP.editSettingsKeys=allKeys;refreshEmailOtpServiceStatus();loadAdminHeroBanners();if(typeof onLoaded==='function')onLoaded(true,'');
       });
     }
     function updateCurrencySymbolFromCurrency(){var currency=document.getElementById('setting_currency'),symbol=document.getElementById('setting_currencySymbol');if(!currency||!symbol)return;var map={THB:'฿',MMK:'K',USD:'$',SGD:'S$',MYR:'RM',JPY:'¥',EUR:'€',GBP:'£'};symbol.value=map[currency.value]||symbol.value;}
     function saveAdminSettings(button){
-      var d={};safeArray(APP.editSettingsKeys).forEach(function(k){var e=document.getElementById('setting_'+k);if(k==='homeSections'){d[k]=JSON.stringify(safeArray(APP.homeSectionDraft).map(function(item){return {id:item.id,enabled:!!item.enabled};}));return;}if(!e)return;if(k==='allowGuestCheckout')d[k]=e.checked?'true':'false';else if(k==='paymentMethods')d[k]=JSON.stringify(Array.prototype.slice.call(e.selectedOptions||[]).map(function(o){return o.value;}));else if(e.isContentEditable)d[k]=getRichEditorHtml('setting_'+k);else d[k]=e.value;});
+      var d={};safeArray(APP.editSettingsKeys).forEach(function(k){var e=document.getElementById('setting_'+k);if(k==='homeSections'){d[k]=JSON.stringify(safeArray(APP.homeSectionDraft).map(function(item){return {id:item.id,enabled:!!item.enabled};}));return;}if(k==='mallStoreIds'){d[k]=JSON.stringify(Array.prototype.map.call(document.querySelectorAll('#adminMallStoreOptions input[name="adminMallStoreIds"]:checked'),function(input){return input.value;}));return;}if(!e)return;if(k==='allowGuestCheckout')d[k]=e.checked?'true':'false';else if(k==='paymentMethods')d[k]=JSON.stringify(Array.prototype.slice.call(e.selectedOptions||[]).map(function(o){return o.value;}));else if(e.isContentEditable)d[k]=getRichEditorHtml('setting_'+k);else d[k]=e.value;});
       var busy=setInlineButtonBusy(button||document.getElementById('saveAdminSettingsButton'),'กำลังบันทึก...');
       apiCall('saveSettings',[APP.adminToken,d],function(r){if(!r.success){restoreInlineButton(busy);applySettings();alertError(r.message);return;}
         APP.settings=Object.assign({},APP.settings,d);loadAdminSettings(function(ok,message){if(!ok){restoreInlineButton(busy);alertError('บันทึกแล้วแต่โหลดการตั้งค่าล่าสุดไม่สำเร็จ: '+message);return;}applySettings();toast(r.message,'success','การตั้งค่าร้านค้าถูกบันทึกและโหลดกลับมาแล้ว');});
