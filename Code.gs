@@ -13,7 +13,6 @@ var SESSION_HOURS_ = 8;
 var CACHE_SECONDS_ = 240;
 var PASSWORD_ROUNDS_ = 4000;
 var MAX_UPLOAD_BYTES_ = 5 * 1024 * 1024;
-var MAX_PRODUCT_VIDEO_BYTES_ = 10 * 1024 * 1024;
 var DB_SPREADSHEET_ = null; // Reuse one Spreadsheet handle within each Apps Script execution.
 
 var SCHEMA_ = {
@@ -23,7 +22,7 @@ var SCHEMA_ = {
   EmailOtpChallenges: ['id','email','purpose','userId','codeHash','status','attempts','expiresAt','lastSentAt','registrationTicketHash','registrationTicketExpiresAt','verifiedAt','consumedAt','createdAt'],
   Sessions: ['id','tokenHash','userId','username','accountType','role','permissions','expiresAt','createdAt','revokedAt'],
   Categories: ['id','name','slug','description','image','parentId','order','status','createdAt','updatedAt'],
-  Products: ['id','sku','barcode','name','slug','categoryId','brand','summary','description','coverImage','images','price','salePrice','costPrice','stock','unit','weight','featured','featuredLabel','bestSeller','sellerId','tags','status','createdAt','updatedAt','quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart'],
+  Products: ['id','sku','barcode','name','slug','categoryId','brand','summary','description','coverImage','images','price','salePrice','costPrice','stock','unit','weight','featured','bestSeller','sellerId','tags','status','createdAt','updatedAt','quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','sizeChart'],
   ProductVariants: ['id','productId','sku','variantName','attributes','price','salePrice','stock','status','createdAt','updatedAt'],
   Carts: ['id','customerId','sessionId','items','updatedAt'],
   Orders: ['id','orderNumber','customerId','customerName','phone','email','shippingAddress','subtotal','discount','shippingFee','tax','grandTotal','paymentMethod','paymentStatus','orderStatus','shippingStatus','trackingNumber','note','idempotencyKey','guestAccessToken','createdAt','updatedAt','paidAt','completedAt','grossSubtotal','quantityPromoDiscount'],
@@ -37,7 +36,7 @@ var SCHEMA_ = {
   Coupons: ['id','code','title','discountType','discountValue','minimumOrder','maximumDiscount','usageLimit','usagePerCustomer','usedCount','startDate','endDate','sellerId','status','createdAt'],
   Reviews: ['id','productId','customerId','orderId','rating','review','images','status','createdAt'],
   ProductReports: ['id','productId','customerId','reason','detail','status','createdAt'],
-  Banners: ['id','title','description','image','url','buttonText','position','startDate','endDate','order','status','createdAt','updatedAt','destinationType','destinationStoreId','showDestination','openInNewTab'],
+  Banners: ['id','title','description','image','url','buttonText','position','startDate','endDate','order','status','createdAt','updatedAt'],
   Addresses: ['id','customerId','recipient','phone','address','subdistrict','district','province','postalCode','country','isDefault','createdAt'],
   Visitors: ['id','date','ipHash','userAgent','count','createdAt'],
   Logs: ['id','username','action','module','detail','timestamp'],
@@ -71,7 +70,7 @@ var DEFAULT_SETTINGS_ = {
   bankName: '', bankAccountName: '', bankAccountNumber: '', bankQrImage: '', facebook: '', instagram: '',
   tiktok: '', line: '', youtube: '', googleMaps: '', returnPolicy: '', privacyPolicy: '', terms: '',
   primaryColor: '#ee4d2d', secondaryColor: '#0f172a', accentColor: '#f59e0b', footerText: 'ขอบคุณที่เลือกซื้อสินค้ากับเรา',
-  seoTitle: 'Online Store', seoDescription: '', homeSections: '[]', mallStoreIds: '[]',
+  seoTitle: 'Online Store', seoDescription: '',
   marketplaceCommissionRate: '5', returnWindowDays: '7', coinRewardRate: '1', sellerRegistrationEnabled: 'true'
 };
 
@@ -86,72 +85,12 @@ function doGet(e) {
   page.portalEntry = portalEntry;
   page.webAppUrl = getWebAppUrl_();
   var output = page.evaluate().setTitle(getInitialPageTitle_());
-  // Apps Script must receive the favicon URL from HtmlOutput.setFaviconUrl();
-  // a <link rel=icon> added by client JavaScript is inside the sandbox iframe
-  // and does not reliably control the browser tab icon.
-  try {
-    var browserFaviconUrl = getInitialFaviconUrl_();
-    if (browserFaviconUrl) output.setFaviconUrl(browserFaviconUrl);
-  } catch (faviconError) {
-    // A bad or inaccessible favicon must never prevent the storefront loading.
-    console.warn('Favicon skipped: ' + String(faviconError && faviconError.message || faviconError));
-  }
+  // Do not pass private Drive URLs (which have no .png/.ico extension) or
+  // unknown formats to HtmlOutput.setFaviconUrl(). Apps Script throws before
+  // serving the page when the URL's image extension is unsupported. The
+  // client loads the private favicon through the authorized Drive image
+  // service and applies it as a data URI after the page has rendered.
   return output.addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1');
-}
-
-/**
- * Returns a URL with an explicit image extension for HtmlOutput.setFaviconUrl.
- * Only the configured Website/Favicon file is made publicly readable: browser
- * tabs fetch favicons outside the authenticated Apps Script image service.
- * All other Drive assets remain private and continue using the asset service.
- */
-function getInitialFaviconUrl_() {
-  try {
-    var result = getSettings();
-    var settings = result && result.success ? (result.data || {}) : {};
-    var configured = String(settings.setFaviconUrl || settings.favicon || '').trim();
-    if (!configured) return '';
-
-    var driveId = extractDriveIdFromAssetValue_(configured);
-    if (driveId) {
-      if (!/^[A-Za-z0-9_-]{10,100}$/.test(driveId)) return '';
-      var file = DriveApp.getFileById(driveId);
-      if (!file || file.isTrashed() || !isFileInSystemFolder_(file, 'Website')) return '';
-      var mime = String(file.getMimeType() || '').toLowerCase();
-      // New uploads are normalized to PNG before they are saved.
-      if (mime !== 'image/png') return '';
-      var access = file.getSharingAccess();
-      if (access !== DriveApp.Access.ANYONE_WITH_LINK && access !== DriveApp.Access.ANYONE) {
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        access = file.getSharingAccess();
-      }
-      if (access !== DriveApp.Access.ANYONE_WITH_LINK && access !== DriveApp.Access.ANYONE) return '';
-      var version = file.getLastUpdated ? file.getLastUpdated().getTime() : Date.now();
-      // `format=png` is intentionally the final URL suffix. HtmlOutput checks
-      // the URL's image extension before accepting setFaviconUrl().
-      return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(driveId) +
-        '&v=' + encodeURIComponent(String(version)) + '&format=png';
-    }
-
-    // External Favicon URLs must identify an image format. Preserve signed
-    // query parameters and append a recognized format suffix where needed.
-    if (!/^https:\/\//i.test(configured)) return '';
-    var extMatch = configured.match(/\.(png|ico|gif|jpe?g)(?:[?#].*)?$/i);
-    if (!extMatch) return '';
-    var ext = String(extMatch[1] || 'png').toLowerCase();
-    if (/[?#]/.test(configured)) {
-      if (configured.indexOf('#') >= 0) {
-        var parts = configured.split('#');
-        configured = parts[0] + (parts[0].indexOf('?') >= 0 ? '&' : '?') + 'format=' + ext + '#' + parts.slice(1).join('#');
-      } else {
-        configured += (configured.indexOf('?') >= 0 ? '&' : '?') + 'format=' + ext;
-      }
-    }
-    return configured;
-  } catch (error) {
-    console.warn('Unable to prepare browser favicon: ' + String(error && error.message || error));
-    return '';
-  }
 }
 
 /**
@@ -1528,20 +1467,9 @@ function saveSettings(token, data) {
     data = data || {};
     ['primaryColor','secondaryColor','accentColor'].forEach(function(k) { if (Object.prototype.hasOwnProperty.call(data,k) && data[k] && !/^#[0-9a-fA-F]{6}$/.test(String(data[k]))) throw new Error('รูปแบบสี '+k+' ไม่ถูกต้อง กรุณาใช้ Hex Color เช่น #EE4D2D'); });
     if (Object.prototype.hasOwnProperty.call(data, 'setFaviconUrl') && data.setFaviconUrl && !/^https:\/\//i.test(String(data.setFaviconUrl).trim())) throw new Error('URL ไอคอนเว็บไซต์ต้องขึ้นต้นด้วย https://');
-    if (Object.prototype.hasOwnProperty.call(data,'mallStoreIds')) {
-      var selectedMallStores=data.mallStoreIds;
-      if(typeof selectedMallStores==='string')selectedMallStores=safeJson_(selectedMallStores,[]);
-      if(!Array.isArray(selectedMallStores))throw new Error('รายการร้านค้าใน SHOPEE MALL ไม่ถูกต้อง');
-      var activeStoreIds=Object.create(null);
-      readTable_('Stores',true).forEach(function(store){if(store&&store.status==='Active')activeStoreIds[String(store.id)]=true;});
-      var uniqueMallStores=[];
-      selectedMallStores.forEach(function(id){var storeId=text_(id,100);if(!storeId)return;if(!activeStoreIds[storeId])throw new Error('พบร้านค้าที่ไม่มีอยู่หรือไม่ได้เปิดใช้งาน กรุณาเลือกใหม่');if(uniqueMallStores.indexOf(storeId)<0)uniqueMallStores.push(storeId);});
-      upsertSetting_('mallStoreIds',JSON.stringify(uniqueMallStores));
-    }
     var allowed = Object.keys(DEFAULT_SETTINGS_);
     var richSettingKeys={storeDescription:1,returnPolicy:1,privacyPolicy:1,terms:1,footerText:1};
     Object.keys(data).forEach(function(key) {
-      if(key==='mallStoreIds')return;
       if (allowed.indexOf(key) >= 0 && key !== 'bankAccountNumber') upsertSetting_(key, richSettingKeys[key]?sanitizeHtml_(data[key]):text_(data[key], 5000));
       else if (key === 'bankAccountNumber') upsertSetting_(key, text_(data[key], 80));
     });
@@ -1563,48 +1491,33 @@ function getCategories(options) {
 }
 
 function productPublicMetrics_(products) {
-  var timezone=Session.getScriptTimeZone()||'Asia/Bangkok';
-  var now=new Date();
-  var currentDateKey=Utilities.formatDate(now,timezone,'yyyy-MM-dd');
-  var currentMonthKey=currentDateKey.substring(0,7);
-  var dayOfWeek=Math.max(1,number_(Utilities.formatDate(now,timezone,'u'),1));
-  var weekStartKey=Utilities.formatDate(new Date(now.getTime()-(dayOfWeek-1)*86400000),timezone,'yyyy-MM-dd');
-  var cacheKey='product_public_metrics_v2_'+currentMonthKey+'_'+weekStartKey,cache=CacheService.getScriptCache(),metricMap=null;
+  var cacheKey='product_public_metrics_v1',cache=CacheService.getScriptCache(),metricMap=null;
   try { var cached=cache.get(cacheKey); if(cached) metricMap=JSON.parse(cached); } catch(cacheReadError) { metricMap=null; }
   if(!metricMap||typeof metricMap!=='object') {
     metricMap={};
-    var validOrders={},monthlyOrders={},weeklyOrders={},orders=readTable_('Orders',true);
+    var validOrders={},orders=readTable_('Orders',true);
     orders.forEach(function(o){
-      var status=String(o.orderStatus||''),pay=String(o.paymentStatus||''),orderId=String(o.id||'');
-      if(!orderId||status==='Cancelled'||status==='Refunded'||!(pay==='Verified'||status==='Completed'))return;
-      validOrders[orderId]=true;
-      var rawDate=o.createdAt||o.paidAt||'',dateKey='';
-      if(rawDate){var parsedDate=new Date(rawDate);if(!isNaN(parsedDate.getTime()))dateKey=Utilities.formatDate(parsedDate,timezone,'yyyy-MM-dd');}
-      if(dateKey&&dateKey.substring(0,7)===currentMonthKey)monthlyOrders[orderId]=true;
-      if(dateKey&&dateKey>=weekStartKey&&dateKey<=currentDateKey)weeklyOrders[orderId]=true;
+      var status=String(o.orderStatus||''),pay=String(o.paymentStatus||'');
+      if(status!=='Cancelled'&&status!=='Refunded'&&(pay==='Verified'||status==='Completed'))validOrders[String(o.id)]=true;
     });
     readTable_('OrderItems',true).forEach(function(item){
-      var key=String(item.productId||''),orderId=String(item.orderId||''),quantity=Math.max(0,number_(item.quantity,0));
-      if(!key||!validOrders[orderId])return;
-      if(!metricMap[key])metricMap[key]={soldCount:0,monthlySoldCount:0,weeklySoldCount:0,ratingTotal:0,reviewCount:0};
-      metricMap[key].soldCount+=quantity;
-      if(monthlyOrders[orderId])metricMap[key].monthlySoldCount+=quantity;
-      if(weeklyOrders[orderId])metricMap[key].weeklySoldCount+=quantity;
+      var key=String(item.productId||'');
+      if(!key||!validOrders[String(item.orderId)])return;
+      if(!metricMap[key])metricMap[key]={soldCount:0,ratingTotal:0,reviewCount:0};
+      metricMap[key].soldCount+=Math.max(0,number_(item.quantity,0));
     });
     readTable_('Reviews',true).forEach(function(review){
       var key=String(review.productId||''),status=String(review.status||'Approved');
       if(!key||['Approved','Active','Published'].indexOf(status)<0)return;
       var rating=number_(review.rating,0);if(rating<=0||rating>5)return;
-      if(!metricMap[key])metricMap[key]={soldCount:0,monthlySoldCount:0,weeklySoldCount:0,ratingTotal:0,reviewCount:0};
+      if(!metricMap[key])metricMap[key]={soldCount:0,ratingTotal:0,reviewCount:0};
       metricMap[key].ratingTotal+=rating;metricMap[key].reviewCount++;
     });
-    try { var serialized=JSON.stringify(metricMap); if(serialized.length<95000)cache.put(cacheKey,serialized,300); } catch(cacheWriteError) {}
+    try { var serialized=JSON.stringify(metricMap); if(serialized.length<95000)cache.put(cacheKey,serialized,30); } catch(cacheWriteError) {}
   }
   safeArray_(products).forEach(function(p){
-    var m=metricMap[String(p.id)]||{soldCount:0,monthlySoldCount:0,weeklySoldCount:0,ratingTotal:0,reviewCount:0};
+    var m=metricMap[String(p.id)]||{soldCount:0,ratingTotal:0,reviewCount:0};
     p.soldCount=number_(m.soldCount,0);
-    p.monthlySoldCount=number_(m.monthlySoldCount,0);
-    p.weeklySoldCount=number_(m.weeklySoldCount,0);
     p.reviewCount=number_(m.reviewCount,0);
     p.ratingAverage=p.reviewCount?Math.round((number_(m.ratingTotal,0)/p.reviewCount)*10)/10:0;
   });
@@ -1618,187 +1531,57 @@ function quantityPromoForProduct_(product,unitPrice,quantity) {
 }
 function moneyForBackend_(value) { return '฿'+number_(value,0).toLocaleString('en-US',{maximumFractionDigits:2}); }
 
-function productSearchRelevance_(product,query){
-  var q=String(query||'').trim().toLowerCase();
-  var name=String(product&&product.name||'').toLowerCase();
-  var brand=String(product&&product.brand||'').toLowerCase();
-  var sku=String(product&&product.sku||'').toLowerCase();
-  var barcode=String(product&&product.barcode||'').toLowerCase();
-  var score=0;
-  if(q){
-    if(name===q)score+=10000;
-    else if(name.indexOf(q)===0)score+=8000;
-    else if(name.indexOf(q)>=0)score+=6000;
-    if(brand===q)score+=4500;
-    else if(brand.indexOf(q)===0)score+=3500;
-    else if(brand.indexOf(q)>=0)score+=2500;
-    if(sku===q)score+=5000;else if(sku.indexOf(q)>=0)score+=3000;
-    if(barcode===q)score+=5000;else if(barcode.indexOf(q)>=0)score+=3000;
-    var tags=String(product&&product.tags||'').toLowerCase();
-    if(tags.indexOf(q)>=0)score+=1500;
-  }else{
-    if(parseBool_(product&&product.featured))score+=120;
-    if(parseBool_(product&&product.bestSeller))score+=80;
-  }
-  var sold=Math.max(0,number_(product&&product.soldCount,0));
-  score+=Math.min(40,Math.log(sold+1)*5);
-  return score;
-}
-
 function getProducts(options) {
   try {
-    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','sizeChart']);
     options = options || {};
     var isAdmin = false;
     if (options.token) { try { requireAdmin_(options.token, 'products.view'); isAdmin = true; } catch (e) {} }
-    var searchQuery = text_(options.search, 120).toLowerCase();
     var inventoryForFilter = readTable_('Inventory', true);
-    var allProductsForFilter = readTable_('Products', true);
-    productPublicMetrics_(allProductsForFilter);
-    var categoriesForFilter = readTable_('Categories', true);
-    // Build related-data indexes once per request instead of re-reading and filtering
-    // entire Sheets for every product in the catalog.
-    var variantsForFilter = readTable_('ProductVariants', true);
-    var storesForFilter = readTable_('Stores', true);
-    var baseInventoryByProduct = Object.create(null);
-    var variantInventoryById = Object.create(null);
-    var variantsByProduct = Object.create(null);
-    var categoryById = Object.create(null);
-    var activeStoreById = Object.create(null);
-    var storeById = Object.create(null);
-    var flashDealsByProduct = Object.create(null);
-    var flashDealsForFilter = readTable_('FlashDeals', true);
-    inventoryForFilter.forEach(function(item) {
-      if (item.variantId) variantInventoryById[String(item.variantId)] = item;
-      else baseInventoryByProduct[String(item.productId)] = item;
-    });
-    variantsForFilter.forEach(function(variant) {
-      if (variant.status !== 'Active') return;
-      var key = String(variant.productId || '');
-      if (!variantsByProduct[key]) variantsByProduct[key] = [];
-      variantsByProduct[key].push(variant);
-    });
-    categoriesForFilter.forEach(function(category) { categoryById[String(category.id)] = category; });
-    storesForFilter.forEach(function(store) {
-      if (store.status === 'Active') { activeStoreById[String(store.id)] = true; storeById[String(store.id)] = store; }
-    });
-    flashDealsForFilter.forEach(function(deal) {
-      var key=String(deal.productId||'');if(!key)return;
-      if(!flashDealsByProduct[key])flashDealsByProduct[key]=[];
-      flashDealsByProduct[key].push(deal);
-    });
-    var productLookup={baseInventoryByProduct:baseInventoryByProduct,variantInventoryById:variantInventoryById,variantsByProduct:variantsByProduct,storeById:storeById,flashDealsByProduct:flashDealsByProduct};
-    var selectedCategoryIds = safeArray_(options.categoryIds).map(function(v){return String(v);});
-    var selectedCategoryNames = safeArray_(options.categoryNames).map(function(v){return String(v).trim().toLowerCase();});
-    var selectedBrands = safeArray_(options.brands).map(function(v){return String(v).trim().toLowerCase();});
-    var selectedOrigins = safeArray_(options.origins).map(function(v){return String(v).trim();});
-    var selectedSellerTypes = safeArray_(options.sellerTypes).map(function(v){return String(v);});
-    var selectedStoreIds = safeArray_(options.storeIds).map(function(v){return String(v);}).filter(Boolean);
-    var selectedPromotions = safeArray_(options.promotions).map(function(v){return String(v);});
-    var minimumRating = Math.max(0, Math.min(5, number_(options.minRating, 0)));
-    var rows = allProductsForFilter.filter(function(p) {
-      var productKey = String(p.id || '');
-      var invForProduct = baseInventoryByProduct[productKey];
-      var childVariants = variantsByProduct[productKey] || [];
-      var computedStock = childVariants.length ? childVariants.reduce(function(sum, variant) {
-        var vi = variantInventoryById[String(variant.id)];
-        return sum + (vi ? Math.max(0, number_(vi.quantity, 0) - number_(vi.reserved, 0)) : number_(variant.stock, 0));
-      }, 0) : (invForProduct ? Math.max(0, number_(invForProduct.quantity, 0) - number_(invForProduct.reserved, 0)) : number_(p.stock, 0));
+    var rows = readTable_('Products', true).filter(function(p) {
+      var invForProduct = inventoryForFilter.filter(function(x) { return x.productId === p.id && !x.variantId; })[0];
+      var childVariants=readTable_('ProductVariants',true).filter(function(v){return v.productId===p.id&&v.status==='Active';});
+      var computedStock = childVariants.length?childVariants.reduce(function(sum,v){var vi=inventoryForFilter.filter(function(z){return z.productId===p.id&&z.variantId===v.id;})[0];return sum+(vi?Math.max(0,number_(vi.quantity,0)-number_(vi.reserved,0)):number_(v.stock,0));},0):(invForProduct?Math.max(0, number_(invForProduct.quantity, 0) - number_(invForProduct.reserved, 0)):number_(p.stock,0));
       if (!isAdmin && p.status !== 'Active') return false;
-      if (!isAdmin && p.sellerId && !activeStoreById[String(p.sellerId)]) return false;
+      if (!isAdmin && p.sellerId && !readTable_('Stores',true).some(function(st){return st.id===p.sellerId&&st.status==='Active';})) return false;
       if (options.categoryId && String(p.categoryId) !== String(options.categoryId)) return false;
-      if (selectedCategoryIds.length && selectedCategoryIds.indexOf(String(p.categoryId || '')) < 0) return false;
-      if (selectedCategoryNames.length) {
-        var productCategory = categoryById[String(p.categoryId)] || {};
-        if (selectedCategoryNames.indexOf(String(productCategory.name || '').trim().toLowerCase()) < 0) return false;
-      }
-      if (selectedBrands.length && selectedBrands.indexOf(String(p.brand || '').trim().toLowerCase()) < 0) return false;
-      if (minimumRating > 0 && number_(p.ratingAverage, 0) < minimumRating) return false;
-      if (selectedOrigins.length) {
-        var originText = String(p.originProvince || '').trim();
-        var originIsForeign = /ต่างประเทศ|นำเข้า|import|china|จีน|ญี่ปุ่น|เกาหลี|usa|อเมริกา/i.test(originText);
-        var southNames = /กระบี่|ชุมพร|ตรัง|นครศรีธรรมราช|นราธิวาส|ปัตตานี|พังงา|พัทลุง|ภูเก็ต|ยะลา|ระนอง|สงขลา|สตูล|สุราษฎร์ธานี/;
-        var metroNames = /กรุงเทพ|กทม|นนทบุรี|ปทุมธานี|สมุทรปราการ|สมุทรสาคร|นครปฐม/;
-        var originMatch = selectedOrigins.some(function(v){
-          if (v === 'ต่างประเทศ') return originIsForeign;
-          if (v === 'ภายในประเทศ') return !!originText && !originIsForeign;
-          if (v === 'ภาคใต้') return southNames.test(originText);
-          if (v === 'กรุงเทพและปริมณฑล') return metroNames.test(originText);
-          return originText.toLowerCase() === v.toLowerCase();
-        });
-        if (!originMatch) return false;
-      }
-      if (selectedSellerTypes.length) {
-        var productTags = String(p.tags || '').toLowerCase();
-        var sellerTypeMatch = selectedSellerTypes.some(function(v){
-          if (v === 'mall') return parseBool_(p.mallBadgeEnabled);
-          if (v === 'recommended') return parseBool_(p.featured);
-          if (v === 'fulfilled') return /fulfilled by shopee|fulfilled_by_shopee|fbs/i.test(productTags);
-          return false;
-        });
-        if (!sellerTypeMatch) return false;
-      }
-      if (selectedPromotions.length) {
-        var currentPrice = number_(p.salePrice, 0) > 0 ? number_(p.salePrice, 0) : number_(p.price, 0);
-        var originalPrice = number_(p.price, 0);
-        var promoTagText = String(p.promoTag || '').toLowerCase();
-        var promotionMatch = selectedPromotions.some(function(v){
-          if (v === 'free_shipping') return number_(p.freeShippingMinimum, 0) > 0 || /ส่งฟรี|free.?shipping/.test(promoTagText);
-          if (v === 'spaylater') return /spaylater|ผ่อน 0%/.test(promoTagText);
-          if (v === 'discount') return currentPrice > 0 && originalPrice > currentPrice;
-          if (v === 'wholesale') return parseBool_(p.quantityPromoEnabled);
-          return false;
-        });
-        if (!promotionMatch) return false;
-      }
       if (options.storeId && String(p.sellerId || '') !== String(options.storeId)) return false;
-      if (selectedStoreIds.length && selectedStoreIds.indexOf(String(p.sellerId || '')) < 0) return false;
       if (options.featured && !parseBool_(p.featured)) return false;
       if (options.bestSeller && !parseBool_(p.bestSeller)) return false;
       if (options.available && computedStock <= 0) return false;
-      var q = searchQuery;
-      if (q && [p.name,p.sku,p.barcode,p.brand,p.tags].join(' ').toLowerCase().indexOf(q) < 0) return false;
+      var q = text_(options.search, 120).toLowerCase();
+      if (q && [p.name,p.sku,p.barcode,p.brand].join(' ').toLowerCase().indexOf(q) < 0) return false;
       var price = number_(p.salePrice, 0) > 0 ? number_(p.salePrice, 0) : number_(p.price, 0);
       if (options.minPrice !== undefined && options.minPrice !== '' && price < number_(options.minPrice, 0)) return false;
       if (options.maxPrice !== undefined && options.maxPrice !== '' && price > number_(options.maxPrice, 0)) return false;
       return true;
     });
-    var sort = options.sort || (searchQuery?'relevance':'newest');
+    productPublicMetrics_(rows);
+    var sort = options.sort || 'newest';
     rows.sort(function(a,b) {
       if (sort === 'price_asc') return effectivePrice_(a) - effectivePrice_(b);
       if (sort === 'price_desc') return effectivePrice_(b) - effectivePrice_(a);
       if (sort === 'name') return String(a.name).localeCompare(String(b.name));
       if (sort === 'best_seller') return (number_(b.soldCount,0)-number_(a.soldCount,0)) || (Number(parseBool_(b.bestSeller))-Number(parseBool_(a.bestSeller))) || (new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime());
-      if (sort === 'relevance') return (productSearchRelevance_(b,searchQuery)-productSearchRelevance_(a,searchQuery)) || (new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime());
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
     var total = rows.length, page = Math.max(1, number_(options.page, 1)), pageSize = Math.min(100, Math.max(1, number_(options.pageSize, 24)));
-    rows = rows.slice((page - 1) * pageSize, page * pageSize).map(function(p) { return productWithStock_(p, inventoryForFilter, isAdmin, productLookup); });
+    var inventoryRows = readTable_('Inventory', true);
+    rows = rows.slice((page - 1) * pageSize, page * pageSize).map(function(p) { return productWithStock_(p, inventoryRows, isAdmin); });
     return ok_({ items: rows, total: total, page: page, pageSize: pageSize, pages: Math.ceil(total / pageSize) });
   } catch (e) { return fail_(safeError_(e)); }
 }
 
 function effectivePrice_(p) { return number_(p.salePrice, 0) > 0 ? number_(p.salePrice, 0) : number_(p.price, 0); }
-function productWithStock_(p, inventoryRows, isAdmin, lookup) {
-  lookup=lookup||{};
+function productWithStock_(p, inventoryRows, isAdmin) {
   var out = isAdmin ? JSON.parse(JSON.stringify(p)) : publicProduct_(p);
-  var productId=String(p.id),inv=lookup.baseInventoryByProduct?lookup.baseInventoryByProduct[productId]:safeArray_(inventoryRows).filter(function(x){return String(x.productId)===productId&&!x.variantId;})[0];
-  var child=lookup.variantsByProduct?(lookup.variantsByProduct[productId]||[]):readTable_('ProductVariants',true).filter(function(v){return String(v.productId)===productId&&v.status==='Active';});
+  var inv = safeArray_(inventoryRows).filter(function(x) { return x.productId === p.id && !x.variantId; })[0];
+  var child=readTable_('ProductVariants',true).filter(function(v){return v.productId===p.id&&v.status==='Active';});
   out.hasVariants=child.length>0;
-  if(child.length)out.stock=child.reduce(function(sum,v){var vi=lookup.variantInventoryById?lookup.variantInventoryById[String(v.id)]:safeArray_(inventoryRows).filter(function(z){return String(z.productId)===productId&&String(z.variantId)===String(v.id);})[0];return sum+(vi?Math.max(0,number_(vi.quantity,0)-number_(vi.reserved,0)):number_(v.stock,0));},0);
-  else if(inv)out.stock=Math.max(0,number_(inv.quantity,0)-number_(inv.reserved,0));
-  if(p.sellerId){
-    var store=lookup.storeById?lookup.storeById[String(p.sellerId)]:readTable_('Stores',true).filter(function(x){return x.id===p.sellerId&&x.status==='Active';})[0];
-    if(store){out.storeName=store.shopName;out.storeId=store.id;out.storeLogo=store.logo||'';out.storeAddress=store.address||'';}
-  }
-  var deal=null;
-  if(lookup.flashDealsByProduct){
-    var now=Date.now(),deals=safeArray_(lookup.flashDealsByProduct[productId]);
-    if(p.sellerId&&lookup.storeById&&!lookup.storeById[String(p.sellerId)])deals=[];
-    deals=deals.filter(function(d){return d.status==='Active'&&(!d.startAt||new Date(d.startAt).getTime()<=now)&&(!d.endAt||new Date(d.endAt).getTime()>=now)&&(!number_(d.quota,0)||number_(d.soldCount,0)<number_(d.quota,0));});
-    deals.sort(function(a,b){return number_(a.dealPrice,0)-number_(b.dealPrice,0);});deal=deals[0]||null;
-  }else deal=activeFlashDealForProduct_(p.id);
-  if(deal){out.salePrice=number_(deal.dealPrice,0);out.flashDealId=deal.id;out.flashDealEnd=deal.endAt;}
+  if(child.length)out.stock=child.reduce(function(sum,v){var vi=safeArray_(inventoryRows).filter(function(z){return z.productId===p.id&&z.variantId===v.id;})[0];return sum+(vi?Math.max(0,number_(vi.quantity,0)-number_(vi.reserved,0)):number_(v.stock,0));},0);
+  else if (inv) out.stock = Math.max(0, number_(inv.quantity, 0) - number_(inv.reserved, 0)); 
+  if (p.sellerId) { var store = readTable_('Stores',true).filter(function(x){return x.id===p.sellerId && x.status==='Active';})[0]; if (store) { out.storeName=store.shopName; out.storeId=store.id; out.storeLogo=store.logo||''; out.storeAddress=store.address||''; } }
+  var deal = activeFlashDealForProduct_(p.id); if (deal) { out.salePrice=number_(deal.dealPrice,0); out.flashDealId=deal.id; out.flashDealEnd=deal.endAt; }
   return out;
 }
 function publicProduct_(p) {
@@ -1812,22 +1595,16 @@ function publicProduct_(p) {
 
 function getProductById(id, options) {
   try {
-    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','sizeChart']);
     options = options || {};
     var isAdmin = false;
     if (options.token) { try { requireAdmin_(options.token, 'products.view'); isAdmin = true; } catch (authError) {} }
     var product = readTable_('Products', true).filter(function(p) { return String(p.id) === String(id); })[0];
     if (!product || (product.status !== 'Active' && !isAdmin)) throw new Error('ไม่พบสินค้า');
-    var storeRows=readTable_('Stores',true),activeStore=storeRows.filter(function(st){return st.id===product.sellerId&&st.status==='Active';})[0];
-    if(!isAdmin&&product.sellerId&&!activeStore)throw new Error('ไม่พบสินค้า');
+    if(!isAdmin&&product.sellerId&&!readTable_('Stores',true).some(function(st){return st.id===product.sellerId&&st.status==='Active';})) throw new Error('ไม่พบสินค้า');
     var variants = readTable_('ProductVariants', true).filter(function(v) { return String(v.productId) === String(id) && (v.status === 'Active' || isAdmin); });
-    var inventoryRows = readTable_('Inventory', true),variantInventoryById=Object.create(null),baseInventoryByProduct=Object.create(null),variantsByProduct=Object.create(null),storeById=Object.create(null),flashDealsByProduct=Object.create(null);
-    inventoryRows.forEach(function(inv){if(inv.variantId)variantInventoryById[String(inv.variantId)]=inv;else baseInventoryByProduct[String(inv.productId)]=inv;});
-    variantsByProduct[String(id)]=variants.filter(function(v){return v.status==='Active';});
-    if(activeStore)storeById[String(activeStore.id)]=activeStore;
-    readTable_('FlashDeals',true).forEach(function(deal){if(String(deal.productId)!==String(id))return;if(!flashDealsByProduct[String(id)])flashDealsByProduct[String(id)]=[];flashDealsByProduct[String(id)].push(deal);});
-    var lookup={baseInventoryByProduct:baseInventoryByProduct,variantInventoryById:variantInventoryById,variantsByProduct:variantsByProduct,storeById:storeById,flashDealsByProduct:flashDealsByProduct};
-    var productOut=productWithStock_(product,inventoryRows,isAdmin,lookup);productPublicMetrics_([productOut]);
+    var inventoryRows = readTable_('Inventory', true);
+    var productOut=productWithStock_(product, inventoryRows, isAdmin);productPublicMetrics_([productOut]);
     return ok_({ product: productOut, variants: variants.map(function(v) { var out = isAdmin ? v : publicVariant_(v); var inv = inventoryRows.filter(function(x) { return x.productId === product.id && x.variantId === v.id; })[0]; if (inv) out.stock = Math.max(0, number_(inv.quantity, 0) - number_(inv.reserved, 0)); return out; }) });
   } catch (e) { return fail_(safeError_(e)); }
 }
@@ -1858,7 +1635,7 @@ function getProductVariants(productId, options) {
 /* --------------------------- PRODUCT / CATEGORY CRUD --------------------- */
 function saveProduct(token, data) {
   try {
-    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','sizeChart']);
     var user = requireAdmin_(token, 'products.manage');
     data = data || {};
     var now = now_(), id = text_(data.id, 100) || newId_('PRD');
@@ -1871,10 +1648,8 @@ function saveProduct(token, data) {
       categoryId:text_(data.categoryId,100), brand:text_(data.brand,120), summary:text_(data.summary,500), description:sanitizeHtml_(data.description || ''),
       coverImage:text_(data.coverImage,1000), images:JSON.stringify(data.images === undefined ? safeArray_(safeJson_(old ? old.images : '[]', [])) : safeArray_(data.images)), price:Math.max(0,number_(data.price,0)), salePrice:Math.max(0,number_(data.salePrice,0)),
       costPrice:Math.max(0,number_(data.costPrice,0)), stock:Math.max(0,number_(data.stock,0)), unit:text_(data.unit || 'ชิ้น',30), weight:Math.max(0,number_(data.weight,0)),
-      featured:parseBool_(data.featured), featuredLabel:text_(data.featuredLabel===undefined?(old&&old.featuredLabel!==undefined?old.featuredLabel:'ร้านแนะนำ'):data.featuredLabel,40), bestSeller:parseBool_(data.bestSeller), sellerId:text_(data.sellerId || (old ? old.sellerId : ''),100), tags:JSON.stringify(safeArray_(data.tags || safeJson_(old ? old.tags : '[]',[]))), status:text_(data.status || 'Active',30), quantityPromoEnabled:parseBool_(data.quantityPromoEnabled), quantityPromoQty:parseBool_(data.quantityPromoEnabled)?Math.max(2,Math.floor(number_(data.quantityPromoQty,2))):0, quantityPromoDiscount:parseBool_(data.quantityPromoEnabled)?Math.max(0,number_(data.quantityPromoDiscount,0)):0, mallBadgeEnabled:data.mallBadgeEnabled===undefined?(old?parseBool_(old.mallBadgeEnabled):false):parseBool_(data.mallBadgeEnabled), mallBadgeText:text_(data.mallBadgeText===undefined?(old?old.mallBadgeText:'Mall'):data.mallBadgeText,24)||'Mall', videoUrl:text_(data.videoUrl===undefined?(old?old.videoUrl:''):data.videoUrl,1000), campaignLabel:text_(data.campaignLabel===undefined?(old?old.campaignLabel:''):data.campaignLabel,60), campaignImage:text_(data.campaignImage===undefined?(old?old.campaignImage:''):data.campaignImage,1000), promoTag:text_(data.promoTag===undefined?(old?old.promoTag:''):data.promoTag,120), originProvince:text_(data.originProvince===undefined?(old?old.originProvince:''):data.originProvince,100), freeShippingMinimum:Math.max(0,number_(data.freeShippingMinimum===undefined?(old?old.freeShippingMinimum:0):data.freeShippingMinimum,0)), sizeChart:text_(data.sizeChart===undefined?(old?old.sizeChart:''):data.sizeChart,8000), createdAt:old ? old.createdAt : now, updatedAt:now
+      featured:parseBool_(data.featured), bestSeller:parseBool_(data.bestSeller), sellerId:text_(data.sellerId || (old ? old.sellerId : ''),100), tags:JSON.stringify(safeArray_(data.tags || safeJson_(old ? old.tags : '[]',[]))), status:text_(data.status || 'Active',30), quantityPromoEnabled:parseBool_(data.quantityPromoEnabled), quantityPromoQty:parseBool_(data.quantityPromoEnabled)?Math.max(2,Math.floor(number_(data.quantityPromoQty,2))):0, quantityPromoDiscount:parseBool_(data.quantityPromoEnabled)?Math.max(0,number_(data.quantityPromoDiscount,0)):0, mallBadgeEnabled:data.mallBadgeEnabled===undefined?(old?parseBool_(old.mallBadgeEnabled):false):parseBool_(data.mallBadgeEnabled), sizeChart:text_(data.sizeChart===undefined?(old?old.sizeChart:''):data.sizeChart,8000), createdAt:old ? old.createdAt : now, updatedAt:now
     };
-    product.videoUrl=validateProductVideoReference_(product.videoUrl,'');
-
     if (!product.name || !product.sku) throw new Error('กรุณาระบุชื่อสินค้าและ SKU');
     if(product.quantityPromoEnabled&&(product.quantityPromoQty<2||product.quantityPromoDiscount<=0||product.quantityPromoDiscount>=(number_(product.salePrice,0)>0?number_(product.salePrice,0):product.price)*product.quantityPromoQty))throw new Error('โปรโมชั่นจำนวนชิ้นต้องกำหนดจำนวนอย่างน้อย 2 ชิ้น และส่วนลดต้องมากกว่า 0 แต่ต่ำกว่ามูลค่าสินค้าในชุด');
     var duplicate = readTable_('Products', false).some(function(p) { return p.id !== id && String(p.sku).toLowerCase() === product.sku.toLowerCase(); }) || readTable_('ProductVariants',false).some(function(v) { return String(v.sku).toLowerCase() === product.sku.toLowerCase(); });
@@ -2008,7 +1783,7 @@ function saveCart_(sessionId, customerId, items) {
   upsertById_('Carts',row); return row;
 }
 function cartDetails_(items) {
-  ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+  ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','sizeChart']);
   var products = readTable_('Products',true), variants = readTable_('ProductVariants',true), result = [], subtotal = 0, grossSubtotal = 0, quantityPromoDiscountTotal = 0;
   safeArray_(items).forEach(function(item) {
     var p = products.filter(function(x) { return x.id === item.productId && x.status === 'Active'; })[0];
@@ -2126,7 +1901,7 @@ function shippingFee_(methodId,subtotal,items) {
 
 function createOrder(data) {
   try {
-    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','sizeChart']);
     ensureTableColumns_('Orders',['grossSubtotal','quantityPromoDiscount']);
     ensureTableColumns_('OrderItems',['quantityPromoDiscount']);
     data=data||{};
@@ -2398,36 +2173,8 @@ function saveSimpleEntity_(token,table,data,permission,fields,prefix){
 function deleteSimpleEntity_(token,table,id,permission){try{var user=requireAdmin_(token,permission);deleteRows_(table,function(x){return x.id===id;});log_('Delete '+table,table,id,user.username);return ok_(true,'ลบข้อมูลแล้ว');}catch(e){return fail_(safeError_(e));}}
 
 /* ---------------------------------- BANNERS ------------------------------ */
-
-function getBannerStoreOptions(token) {
-  try {
-    requireAdmin_(token,'settings.manage');
-    var rows=readTable_('Stores',true).filter(function(store){return store&&store.status==='Active';});
-    rows.sort(function(a,b){return String(a.shopName||'').localeCompare(String(b.shopName||''),'th');});
-    return ok_(rows.map(function(store){return {id:String(store.id||''),shopName:String(store.shopName||store.name||'')};}));
-  } catch(e) { return fail_(safeError_(e)); }
-}
-
 function getBanners(options){try{options=options||{};var isAdmin=false;if(options.token){try{requireAdmin_(options.token,'banners.view');isAdmin=true;}catch(authError){}}var rows=readTable_('Banners',true).filter(function(x){if(isAdmin)return true;var n=Date.now();return x.status==='Active'&&(!x.startDate||new Date(x.startDate).getTime()<=n)&&(!x.endDate||new Date(x.endDate).getTime()>=n);});rows.sort(function(a,b){return number_(a.order,0)-number_(b.order,0);});return ok_(rows);}catch(e){return fail_(safeError_(e));}}
-function saveBanner(token,data){
-  try {
-    requireAdmin_(token,'banners.manage');
-    data=data||{};
-    ensureTableColumns_('Banners',['destinationType','destinationStoreId','showDestination','openInNewTab']);
-    var destinationType=text_(data.destinationType||'url',20);
-    if(['url','products','store','none'].indexOf(destinationType)<0)throw new Error('ประเภทปลายทางไม่ถูกต้อง');
-    if(destinationType==='store'){
-      var destinationStoreId=text_(data.destinationStoreId,100);
-      var destinationStore=readTable_('Stores',true).filter(function(store){return String(store.id)===destinationStoreId&&store.status==='Active';})[0];
-      if(!destinationStore)throw new Error('กรุณาเลือกร้านค้าที่เปิดใช้งานเป็นปลายทาง');
-    }
-    data.destinationType=destinationType;
-    data.destinationStoreId=text_(data.destinationStoreId,100);
-    data.showDestination=parseBool_(data.showDestination);
-    data.openInNewTab=parseBool_(data.openInNewTab);
-    return saveSimpleEntity_(token,'Banners',data,'banners.manage',['title','description','image','url','buttonText','position','startDate','endDate','order','status','createdAt','updatedAt','destinationType','destinationStoreId','showDestination','openInNewTab'],'BAN');
-  } catch(e) { return fail_(safeError_(e)); }
-}
+function saveBanner(token,data){return saveSimpleEntity_(token,'Banners',data,'banners.manage',['title','description','image','url','buttonText','position','startDate','endDate','order','status','createdAt','updatedAt'],'BAN');}
 function deleteBanner(token,id){return deleteSimpleEntity_(token,'Banners',id,'banners.manage');}
 
 /* --------------------------------- CUSTOMERS ----------------------------- */
@@ -2545,22 +2292,6 @@ function persistCustomerProfileImage_(customerId, fileId) {
   return url;
 }
 
-function validateProductVideoReference_(value,sellerId){
-  var ref=String(value||'').trim();if(!ref)return '';
-  if(/^https:\/\//i.test(ref))return ref;
-  var match=ref.match(/^drive-private:\/\/([A-Za-z0-9_-]{10,100})$/i);
-  if(!match)throw new Error('URL วิดีโอต้องเป็น https:// หรือไฟล์วิดีโอที่อัปโหลดผ่านระบบ');
-  var file=DriveApp.getFileById(match[1]);
-  if(!file||file.isTrashed()||!isFileInSystemFolder_(file,'Products'))throw new Error('ไม่พบไฟล์วิดีโอในโฟลเดอร์ Products');
-  var mime=String(file.getMimeType()||'').toLowerCase();
-  if(['video/mp4','video/webm','video/quicktime'].indexOf(mime)<0)throw new Error('ชนิดไฟล์วิดีโอไม่รองรับ');
-  var description=String(file.getDescription()||'');
-  if(description.indexOf('EcommerceProductVideo|')!==0)throw new Error('ไฟล์นี้ไม่ใช่วิดีโอสินค้าที่อัปโหลดผ่านระบบ');
-  if(sellerId&&description!=='EcommerceProductVideo|seller|'+String(sellerId))throw new Error('ผู้ขายไม่มีสิทธิ์ใช้ไฟล์วิดีโอนี้');
-  if(file.getSize()>MAX_PRODUCT_VIDEO_BYTES_)throw new Error('วิดีโอมีขนาดเกิน 10 MB');
-  return ref;
-}
-
 function uploadFile(token,payload){
   try{
     payload=payload||{};var account='admin',actor='';
@@ -2580,18 +2311,12 @@ function uploadFile(token,payload){
       var u=requireAdmin_(token,'files.upload');actor=u.username;
     }
     var data=String(payload.base64||payload.data||'');var base=data.indexOf(',')>=0?data.substring(data.indexOf(',')+1):data;
-    var bytes=Utilities.base64Decode(base);
+    var bytes=Utilities.base64Decode(base);if(bytes.length>MAX_UPLOAD_BYTES_)throw new Error('ไฟล์มีขนาดเกิน 5 MB');
     var mime=text_(payload.mimeType||'application/octet-stream',120).toLowerCase();
     var name=text_(payload.filename||payload.name||'upload',180).replace(/[\\/:*?"<>|]/g,'_');
     var folderName=text_(payload.folder||'Products',60);
     var isImage=mime.indexOf('image/')===0;
-    var isProductVideoUpload=String(payload.purpose||'')==='product-video';
     var isFaviconUpload=String(payload.purpose||'')==='favicon';
-    if(bytes.length>(isProductVideoUpload?MAX_PRODUCT_VIDEO_BYTES_:MAX_UPLOAD_BYTES_))throw new Error(isProductVideoUpload?'วิดีโอต้องมีขนาดไม่เกิน 10 MB':'ไฟล์มีขนาดเกิน 5 MB');
-    if(isProductVideoUpload){
-      if((account!=='admin'&&account!=='seller')||folderName!=='Products')throw new Error('อัปโหลดวิดีโอได้เฉพาะผู้ดูแลระบบหรือเจ้าของร้านในหมวด Products');
-      if(['video/mp4','video/webm','video/quicktime'].indexOf(mime)<0)throw new Error('รองรับวิดีโอ MP4, WebM และ MOV เท่านั้น');
-    }
     if(isFaviconUpload){
       if(account!=='admin'||folderName!=='Website'||!isImage)throw new Error('ไอคอนเว็บไซต์อัปโหลดได้เฉพาะผู้ดูแลระบบในหมวด Website');
       var supportedFaviconMime=['image/png','image/jpeg','image/gif','image/bmp'];
@@ -2607,13 +2332,13 @@ function uploadFile(token,payload){
     }
     if((account==='customer'||account==='guest') && (account==='guest' ? folderName!=='Payments' : (['Payments','Reviews','ChatMessages'].indexOf(folderName)<0 && !(folderName==='Customers'&&payload.purpose==='profile')))) throw new Error('บัญชีนี้ไม่มีสิทธิ์อัปโหลดในโฟลเดอร์ที่เลือก');
     if(account==='seller'&&['Products','Banners','ChatMessages'].indexOf(folderName)<0)throw new Error('ผู้ขายอัปโหลดได้เฉพาะรูปสินค้า รูปหน้าร้าน และรูปแชต');
-    if(account==='seller'&&!isImage&&!isProductVideoUpload)throw new Error('ผู้ขายอัปโหลดได้เฉพาะไฟล์รูปภาพและวิดีโอสินค้า');
+    if(account==='seller'&&!isImage)throw new Error('ผู้ขายอัปโหลดได้เฉพาะไฟล์รูปภาพ');
     if(account==='customer'&&folderName==='Payments'){
       var customerOrder=readTable_('Orders',false).filter(function(o){return o.id===payload.orderId&&o.customerId===actor;})[0];
       if(!customerOrder||customerOrder.orderStatus==='Cancelled'||customerOrder.orderStatus==='Refunded'||customerOrder.paymentStatus==='Verified'||['bank_transfer','qr_payment'].indexOf(customerOrder.paymentMethod)<0)throw new Error('ไม่มีสิทธิ์ส่งหลักฐานสำหรับคำสั่งซื้อนี้');
     }
     if((account==='customer'||account==='guest')&&!isImage)throw new Error('กรุณาอัปโหลดไฟล์รูปภาพ');
-    if(!isImage&&!isProductVideoUpload&&(folderName!=='Documents'||account!=='admin'))throw new Error('อนุญาตให้อัปโหลดเฉพาะไฟล์รูปภาพในหมวดนี้');
+    if(!isImage&&(folderName!=='Documents'||account!=='admin'))throw new Error('อนุญาตให้อัปโหลดเฉพาะไฟล์รูปภาพในหมวดนี้');
     var isProfileImage=payload.purpose==='profile'&&folderName==='Customers'&&isImage;
     if(account==='customer'&&folderName==='Customers'&&!isProfileImage)throw new Error('ลูกค้าสามารถอัปโหลดในโฟลเดอร์ Customers ได้เฉพาะรูปโปรไฟล์ของตนเอง');
     var publicFolders=['Products','Categories','Banners','Website'];
@@ -2624,35 +2349,20 @@ function uploadFile(token,payload){
     var isChatImage=folderName==='ChatMessages'&&!!chatThread&&isImage;
     var displayable=isPublicSiteImage||isProfileImage;
     if(displayable||isChatImage)ensureDriveAssetsTable_();
-    // Drive assets are private by default and served through the asset registry.
-    // The only exception is the explicitly configured public Website Favicon,
-    // because browser tabs fetch it directly from its URL outside this app.
+    // All files stay PRIVATE in Google Drive. The website receives image bytes
+    // only through getDriveImageDataBatch(), which enforces the asset registry.
     var root=DriveApp.getFolderById(FOLDER_ID);var folder=getOrCreateFolder_(root,folderName);
     var blob=Utilities.newBlob(bytes,mime,name);var file=folder.createFile(blob);
-    var faviconPublicLink=false;
-    if(isFaviconUpload){
-      // A browser tab requests its favicon directly and cannot call the private
-      // Apps Script image-data API. Make ONLY this branding icon public by link.
-      try{
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);
-        faviconPublicLink=file.getSharingAccess()===DriveApp.Access.ANYONE_WITH_LINK||file.getSharingAccess()===DriveApp.Access.ANYONE;
-        if(!faviconPublicLink)throw new Error('Google Drive ไม่ยืนยันสิทธิ์ Anyone with the link');
-      }catch(faviconShareError){
-        try{file.setTrashed(true);}catch(ignoreTrashFavicon){}
-        throw new Error('อัปโหลด Favicon ไม่สำเร็จ เพราะ Google Drive ไม่อนุญาตให้เปิดอ่านรูปไอคอนแบบ Anyone with the link กรุณาตรวจนโยบายการแชร์ของ Drive: '+String(faviconShareError.message||faviconShareError).substring(0,140));
-      }
-    }
     if(folderName==='Payments'&&(account==='customer'||account==='guest'))file.setDescription('EcommercePaymentProof|'+text_(payload.orderId,100)+'|'+account+'|'+actor);
     if(isProfileImage)file.setDescription('EcommerceCustomerProfile|'+actor);
     if(isPublicSiteImage)file.setDescription('EcommerceSiteImage|'+folderName+'|'+account+'|'+actor+(isFaviconUpload?'|favicon':''));
-    if(isProductVideoUpload)file.setDescription('EcommerceProductVideo|'+account+'|'+actor);
 
     var assetToken='';
     if(displayable||isChatImage){
       assetToken=Utilities.getUuid().replace(/-/g,'')+Utilities.getUuid().replace(/-/g,'').substring(0,8);
       appendRecord_('DriveAssets',{id:assetToken,fileId:file.getId(),mimeType:mime,folder:folderName,access:isPublicSiteImage?'public':(isChatImage?'chat':'owner'),ownerType:account,ownerId:actor,purpose:isChatImage?'chat:'+chatThread.id:(isProfileImage?'profile':text_(payload.purpose||'site-image',60)),status:'Active',createdAt:now_()});
     }
-    var url=isProductVideoUpload?'drive-private://'+file.getId():(isChatImage?'drive-asset://'+assetToken:((isProfileImage||isPublicSiteImage)?driveProfileImageUrl_(file.getId()):'https://drive.google.com/file/d/'+file.getId()+'/view'));
+    var url=isChatImage?'drive-asset://'+assetToken:((isProfileImage||isPublicSiteImage)?driveProfileImageUrl_(file.getId()):'https://drive.google.com/file/d/'+file.getId()+'/view');
     var profileImageSaved = false;
     // Persist customer profile URL immediately after Drive upload. This avoids
     // relying on a separate modal Save click to write Customers.profileImage.
@@ -2663,9 +2373,7 @@ function uploadFile(token,payload){
     var auditWarning='';try{log_('Upload','Drive',folderName+'/'+name,actor);}catch(logError){auditWarning='บันทึกไฟล์สำเร็จ แต่บันทึก Audit Log ไม่สำเร็จ: '+String(logError.message||logError).substring(0,160);}
     var successMessage = displayable ? 'อัปโหลดไฟล์สำเร็จและเก็บต้นฉบับเป็นส่วนตัวใน Google Drive' : 'บันทึกไฟล์เป็นส่วนตัวใน Google Drive สำเร็จ';
     if (profileImageSaved) successMessage = 'อัปโหลดรูปโปรไฟล์และบันทึก URL ลง Customers.profileImage ใน Google Sheets แล้ว';
-    if (isFaviconUpload) successMessage = 'อัปโหลด Favicon สำเร็จ ไฟล์ไอคอนนี้เปิดอ่านแบบ Anyone with the link เพื่อให้ Browser Tab ของผู้เข้าชมโหลดได้ ส่วนไฟล์อื่นยังเป็นส่วนตัว';
-    if (isProductVideoUpload) successMessage = 'อัปโหลดวิดีโอสินค้าสำเร็จและเก็บไฟล์เป็นส่วนตัวใน Google Drive';
-    return ok_({fileId:file.getId(),assetToken:assetToken,name:file.getName(),filename:file.getName(),url:url,profileUrl:isProfileImage?driveProfileImageUrl_(file.getId()):'',profileImageSaved:profileImageSaved,profileImageColumn:profileImageSaved?'Customers.profileImage':'',mimeType:mime,size:bytes.length,public:isPublicSiteImage,displayable:displayable,driveVisibility:faviconPublicLink?'PUBLIC_LINK':'PRIVATE',sharingStatus:faviconPublicLink?'ANYONE_WITH_LINK':'PRIVATE',privateVideo:isProductVideoUpload,warning:auditWarning},successMessage);
+    return ok_({fileId:file.getId(),assetToken:assetToken,name:file.getName(),filename:file.getName(),url:url,profileUrl:isProfileImage?driveProfileImageUrl_(file.getId()):'',profileImageSaved:profileImageSaved,profileImageColumn:profileImageSaved?'Customers.profileImage':'',mimeType:mime,size:bytes.length,public:isPublicSiteImage,displayable:displayable,driveVisibility:'PRIVATE',sharingStatus:'PRIVATE',warning:auditWarning},successMessage);
   }catch(e){return fail_(safeError_(e));}
 }
 
@@ -2683,7 +2391,7 @@ function legacyPublicImageIsReferenced_(fileId,folderName){
   var target=String(fileId||'');
   function matches(v){return extractDriveIdFromAssetValue_(v)===target;}
   if(folderName==='Products'){
-    return readTable_('Products',true).some(function(p){if(matches(p.coverImage)||matches(p.campaignImage))return true;return safeArray_(safeJson_(p.images,[])).some(matches);});
+    return readTable_('Products',true).some(function(p){if(matches(p.coverImage))return true;return safeArray_(safeJson_(p.images,[])).some(matches);});
   }
   if(folderName==='Categories')return readTable_('Categories',true).some(function(r){return matches(r.image);});
   if(folderName==='Banners'){
@@ -2756,32 +2464,6 @@ function getDriveImageDataBatch(token,assetTokens){
       }catch(itemError){output.push({key:key,success:false,message:String(itemError&&itemError.message?itemError.message:'ไม่สามารถเปิดรูปภาพได้').substring(0,180)});}
     });
     return ok_(output,'โหลดรูปภาพแล้ว');
-  }catch(e){return fail_(safeError_(e));}
-}
-
-function getProductVideoData(token,productId){
-  try{
-    var product=readTable_('Products',true).filter(function(p){return String(p.id)===String(productId);})[0];
-    if(!product)throw new Error('ไม่พบสินค้า');
-    var allowedInactive=false;
-    if(token){
-      try{requireAdmin_(token,'products.view');allowedInactive=true;}catch(ignoreAdminVideo){}
-      if(!allowedInactive){
-        try{var seller=requireSeller_(token);if(String(product.sellerId||'')===String(seller.store.id))allowedInactive=true;}catch(ignoreSellerVideo){}
-      }
-    }
-    if(product.status!=='Active'&&!allowedInactive)throw new Error('สินค้านี้ยังไม่เปิดให้เข้าชม');
-    if(product.sellerId&&!readTable_('Stores',true).some(function(st){return st.id===product.sellerId&&st.status==='Active';})&&!allowedInactive)throw new Error('ร้านค้านี้ยังไม่เปิดให้บริการ');
-    var match=String(product.videoUrl||'').match(/^drive-private:\/\/([A-Za-z0-9_-]{10,100})$/i);
-    if(!match)throw new Error('สินค้านี้ไม่มีวิดีโอที่อัปโหลดไว้ในระบบ');
-    var file=DriveApp.getFileById(match[1]);
-    if(!file||file.isTrashed()||!isFileInSystemFolder_(file,'Products'))throw new Error('ไม่พบไฟล์วิดีโอสินค้า');
-    if(String(file.getDescription()||'').indexOf('EcommerceProductVideo|')!==0)throw new Error('ไฟล์วิดีโอไม่ผ่านการตรวจสอบ');
-    var mime=String(file.getMimeType()||'').toLowerCase();
-    if(['video/mp4','video/webm','video/quicktime'].indexOf(mime)<0)throw new Error('ชนิดไฟล์วิดีโอไม่รองรับ');
-    var size=file.getSize();if(size>MAX_PRODUCT_VIDEO_BYTES_)throw new Error('วิดีโอมีขนาดเกิน 10 MB');
-    var blob=file.getBlob(),bytes=blob.getBytes();
-    return ok_({mimeType:mime,base64:Utilities.base64Encode(bytes),filename:file.getName(),size:bytes.length},'โหลดวิดีโอสินค้าแล้ว');
   }catch(e){return fail_(safeError_(e));}
 }
 /**
@@ -2948,85 +2630,14 @@ function notify_(recipientType,recipientId,title,message,type,link) {
 }
 function getMarketplaceStores(options) {
   try {
-    options = options || {};
-    var q = text_(options.search, 100).toLowerCase();
-    var rows = readTable_('Stores', true).filter(function(store) {
-      return store.status === 'Active' && (!q || [store.shopName, store.description].join(' ').toLowerCase().indexOf(q) >= 0);
-    });
-    var follows = readTable_('StoreFollows', true);
-    var products = readTable_('Products', true);
-    var reviews = readTable_('Reviews', true);
-    // Aggregate all public store metrics in one pass instead of filtering Products,
-    // Reviews and StoreFollows separately for every store.
-    var productSellerById = Object.create(null);
-    var storeMetrics = Object.create(null);
-    function metricsForStore_(storeId) {
-      var key = String(storeId || '');
-      if (!storeMetrics[key]) storeMetrics[key] = {followers:0, products:0, ratingTotal:0, reviewCount:0};
-      return storeMetrics[key];
-    }
-    products.forEach(function(product) {
-      if (product.status !== 'Active' || !product.sellerId) return;
-      var storeId = String(product.sellerId);
-      productSellerById[String(product.id)] = storeId;
-      metricsForStore_(storeId).products++;
-    });
-    follows.forEach(function(follow) {
-      metricsForStore_(follow.storeId).followers++;
-    });
-    reviews.forEach(function(review) {
-      if (review.status !== 'Published') return;
-      var storeId = productSellerById[String(review.productId)];
-      if (!storeId) return;
-      var metrics = metricsForStore_(storeId);
-      metrics.ratingTotal += number_(review.rating, 0);
-      metrics.reviewCount++;
-    });
-    rows = rows.map(function(store) {
-      var metrics = storeMetrics[String(store.id)] || {followers:0,products:0,ratingTotal:0,reviewCount:0};
-      var rating = metrics.reviewCount ? metrics.ratingTotal / metrics.reviewCount : 0;
-      return {
-        id:store.id,shopName:store.shopName,slug:store.slug,description:store.description,
-        logo:store.logo,banner:store.banner,rating:Math.round(rating * 10) / 10,
-        followerCount:metrics.followers,productCount:metrics.products
-      };
-    });
-    rows.sort(function(a,b) { return b.followerCount - a.followerCount; });
-    var page = Math.max(1, number_(options.page, 1));
-    var size = Math.min(60, Math.max(1, number_(options.pageSize, 24)));
-    return ok_({items:rows.slice((page - 1) * size, page * size),total:rows.length,page:page,pages:Math.ceil(rows.length / size)});
-  } catch (e) {
-    return fail_(safeError_(e));
-  }
-}
-function getMarketplaceStore(storeId, summaryOnly) {
-  try {
-    var st=readTable_('Stores',false).filter(function(x){return x.id===storeId&&x.status==='Active';})[0];
-    if(!st)throw new Error('ไม่พบร้านค้าหรือร้านค้ายังไม่เปิด');
-    var info=publicStore_(st);
-    var storeProductIds=readTable_('Products',true).filter(function(p){return p.sellerId===storeId&&p.status==='Active';}).map(function(p){return String(p.id);});
-    info.productCount=storeProductIds.length;
-    if(summaryOnly)info.products=[];
-    else{
-      var products=getProducts({storeId:storeId,page:1,pageSize:100});
-      info.products=products.success?products.data.items:[];
-      info.productCount=products.success?number_(products.data.total,info.productCount):info.productCount;
-    }
-    var storeProductMap=Object.create(null);
-    storeProductIds.forEach(function(id){storeProductMap[id]=true;});
-    var storeReviews=readTable_('Reviews',true).filter(function(r){
-      return storeProductMap[String(r.productId||'')]&&['Approved','Active','Published'].indexOf(String(r.status||'Approved'))>=0&&number_(r.rating,0)>0;
-    });
-    info.reviewCount=storeReviews.length;
-    if(storeReviews.length){
-      var ratingTotal=storeReviews.reduce(function(sum,r){return sum+number_(r.rating,0);},0);
-      info.rating=Math.round((ratingTotal/storeReviews.length)*10)/10;
-    }
-    info.followers=readTable_('StoreFollows',true).filter(function(f){return f.storeId===storeId;}).length;
-    if(summaryOnly)return ok_(info);
-    info.vouchers=readTable_('Coupons',true).filter(function(c){return c.sellerId===storeId&&c.status==='Active'&&(!c.startDate||new Date(c.startDate).getTime()<=Date.now())&&(!c.endDate||new Date(c.endDate).getTime()>=Date.now());}).map(function(c){return {id:c.id,code:c.code,title:c.title,discountType:c.discountType,discountValue:c.discountValue,minimumOrder:c.minimumOrder,endDate:c.endDate};});
-    return ok_(info);
+    options=options||{};var q=text_(options.search,100).toLowerCase(),rows=readTable_('Stores',true).filter(function(x){return x.status==='Active'&&(!q||[x.shopName,x.description].join(' ').toLowerCase().indexOf(q)>=0);});
+    var follows=readTable_('StoreFollows',true),products=readTable_('Products',true),reviews=readTable_('Reviews',true);
+    rows=rows.map(function(st){var ids=products.filter(function(p){return p.sellerId===st.id&&p.status==='Active';}).map(function(p){return p.id;});var rr=reviews.filter(function(r){return ids.indexOf(r.productId)>=0&&r.status==='Published';});var rating=rr.length?rr.reduce(function(sum,r){return sum+number_(r.rating,0);},0)/rr.length:0;return {id:st.id,shopName:st.shopName,slug:st.slug,description:st.description,logo:st.logo,banner:st.banner,rating:Math.round(rating*10)/10,followerCount:follows.filter(function(f){return f.storeId===st.id;}).length,productCount:ids.length};});
+    rows.sort(function(a,b){return b.followerCount-a.followerCount;});var page=Math.max(1,number_(options.page,1)),size=Math.min(60,Math.max(1,number_(options.pageSize,24)));return ok_({items:rows.slice((page-1)*size,page*size),total:rows.length,page:page,pages:Math.ceil(rows.length/size)});
   }catch(e){return fail_(safeError_(e));}
+}
+function getMarketplaceStore(storeId) {
+  try {var st=readTable_('Stores',false).filter(function(x){return x.id===storeId&&x.status==='Active';})[0];if(!st)throw new Error('ไม่พบร้านค้าหรือร้านค้ายังไม่เปิด');var info=publicStore_(st);var products=getProducts({storeId:storeId,page:1,pageSize:100});info.products=products.success?products.data.items:[];info.vouchers=readTable_('Coupons',true).filter(function(c){return c.sellerId===storeId&&c.status==='Active'&&(!c.startDate||new Date(c.startDate).getTime()<=Date.now())&&(!c.endDate||new Date(c.endDate).getTime()>=Date.now());}).map(function(c){return {id:c.id,code:c.code,title:c.title,discountType:c.discountType,discountValue:c.discountValue,minimumOrder:c.minimumOrder,endDate:c.endDate};});info.followers=readTable_('StoreFollows',true).filter(function(f){return f.storeId===storeId;}).length;return ok_(info);}catch(e){return fail_(safeError_(e));}
 }
 function applySeller(customerToken,data) {
   try {var c=requireCustomer_(customerToken);data=data||{};if(String(getSettingValue_('sellerRegistrationEnabled'))==='false')throw new Error('ขณะนี้ปิดรับสมัครผู้ขาย');var exists=readTable_('Stores',false).filter(function(x){return x.ownerCustomerId===c.id;})[0];if(exists)return ok_(publicStore_(exists),exists.status==='Pending'?'ใบสมัครกำลังรออนุมัติ':'บัญชีนี้มีร้านค้าอยู่แล้ว');
@@ -3036,25 +2647,7 @@ function applySeller(customerToken,data) {
   }catch(e){return fail_(safeError_(e));}
 }
 function getMyStore(customerToken) {try{var c=requireCustomer_(customerToken),st=findRecordByExactColumn_('Stores','ownerCustomerId',c.id);return ok_(st?publicStore_(st):null);}catch(e){return fail_(safeError_(e));}}
-function adminGetSellers(token,filters) {
-  try {
-    requireAdmin_(token,'sellers.manage');
-    filters=filters||{};
-    var rows=readTable_('Stores',true);
-    if(filters.status)rows=rows.filter(function(x){return x.status===filters.status;});
-    var customers=readTable_('Customers',true),customersById=Object.create(null);
-    customers.forEach(function(customer){customersById[String(customer.id)]=customer;});
-    return ok_(rows.map(function(store){
-      var customer=customersById[String(store.ownerCustomerId)]||{};
-      var result=publicStore_(store);
-      result.ownerName=(customer.firstname||'')+' '+(customer.lastname||'');
-      result.ownerEmail=customer.email||'';
-      result.ownerPhone=customer.phone||'';
-      result.commissionRate=store.commissionRate;
-      return result;
-    }));
-  } catch(e) { return fail_(safeError_(e)); }
-}
+function adminGetSellers(token,filters) {try{requireAdmin_(token,'sellers.manage');filters=filters||{};var rows=readTable_('Stores',false);if(filters.status)rows=rows.filter(function(x){return x.status===filters.status;});var customers=readTable_('Customers',false);return ok_(rows.map(function(x){var c=customers.filter(function(y){return y.id===x.ownerCustomerId;})[0]||{};var o=publicStore_(x);o.ownerName=(c.firstname||'')+' '+(c.lastname||'');o.ownerEmail=c.email||'';o.ownerPhone=c.phone||'';o.commissionRate=x.commissionRate;return o;}));}catch(e){return fail_(safeError_(e));}}
 function adminSetSellerStatus(token,storeId,status,commissionRate,note) {try{var u=requireAdmin_(token,'sellers.manage');if(['Active','Rejected','Suspended','Pending'].indexOf(status)<0)throw new Error('สถานะร้านค้าไม่ถูกต้อง');var st=readTable_('Stores',false).filter(function(x){return x.id===storeId;})[0];if(!st)throw new Error('ไม่พบร้านค้า');updateRecord_('Stores',storeId,{status:status,commissionRate:commissionRate===''?st.commissionRate:Math.max(0,Math.min(50,number_(commissionRate,number_(getSettingValue_('marketplaceCommissionRate'),5)))),approvedAt:status==='Active'?(st.approvedAt||now_()):st.approvedAt,updatedAt:now_()});notify_('customer',st.ownerCustomerId,'อัปเดตสถานะร้านค้า','ร้าน '+st.shopName+' เปลี่ยนสถานะเป็น '+status+' '+text_(note,200),'seller','');log_('Seller Status','Marketplace',storeId+' => '+status,u.username);return ok_(true,'อัปเดตสถานะร้านค้าแล้ว');}catch(e){return fail_(safeError_(e));}}
 function sellerGetStoreProfile(customerToken) {try{var x=requireSeller_(customerToken),s=x.store;return ok_({id:s.id,shopName:s.shopName,slug:s.slug,description:s.description,logo:s.logo,banner:s.banner,email:s.email,phone:s.phone,address:s.address,commissionRate:s.commissionRate,status:s.status,createdAt:s.createdAt});}catch(e){return fail_(safeError_(e));}}
 function sellerSaveStoreProfile(customerToken,data) {try{var x=requireSeller_(customerToken);data=data||{};var name=text_(data.shopName,120),slug=slug_(data.slug||name),logo=text_(data.logo,1000),banner=text_(data.banner,1000);if(!name)throw new Error('กรุณาระบุชื่อร้านค้า');if(readTable_('Stores',false).some(function(v){return v.id!==x.store.id&&v.slug===slug;}))throw new Error('URL ร้านค้านี้ถูกใช้แล้ว');if((logo&&!/^https:\/\//i.test(logo))||(banner&&!/^https:\/\//i.test(banner)))throw new Error('URL รูปภาพต้องขึ้นต้นด้วย https://');updateRecord_('Stores',x.store.id,{shopName:name,slug:slug,description:sanitizeHtml_(data.description||''),logo:logo,banner:banner,email:text_(data.email,160).toLowerCase(),phone:text_(data.phone,40),address:text_(data.address,500),updatedAt:now_()});log_('Seller Store Profile','Marketplace',name,x.customer.username);clearRuntimeCaches_();return ok_(sellerGetStoreProfile(customerToken).data,'บันทึกข้อมูลหน้าร้านแล้ว');}catch(e){return fail_(safeError_(e));}}
@@ -3065,15 +2658,14 @@ function sellerDashboard(customerToken) {try{var x=requireSeller_(customerToken)
 function sellerGetProducts(customerToken,filters) {try{var x=requireSeller_(customerToken);filters=filters||{};var rows=readTable_('Products',false).filter(function(p){return p.sellerId===x.store.id;});if(filters.status)rows=rows.filter(function(p){return p.status===filters.status;});var q=text_(filters.search,100).toLowerCase();if(q)rows=rows.filter(function(p){return [p.name,p.sku].join(' ').toLowerCase().indexOf(q)>=0;});rows.sort(function(a,b){var d=new Date(b.createdAt||0)-new Date(a.createdAt||0);return d||String(b.id||'').localeCompare(String(a.id||''));});return ok_(rows);}catch(e){return fail_(safeError_(e));}}
 function sellerSaveProduct(customerToken,data) {
   try {
-    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','sizeChart']);
     var x=requireSeller_(customerToken);data=data||{};
     var id=text_(data.id,100)||newId_('PRD'),old=readTable_('Products',false).filter(function(p){return p.id===id;})[0];
     if(old&&old.sellerId!==x.store.id)throw new Error('ไม่มีสิทธิ์แก้ไขสินค้าร้านอื่น');
     var stock=Math.max(0,Math.floor(number_(data.stock,0))),now=now_(),sellerSku=text_(data.sku,80)||('SKU-'+Utilities.getUuid().replace(/-/g,'').substring(0,10).toUpperCase()),categoryId=text_(data.categoryId,100);
     if(categoryId&&!readTable_('Categories',false).some(function(c){return String(c.id)===categoryId&&c.status==='Active';}))throw new Error('ไม่พบหมวดหมู่ที่เปิดใช้งาน กรุณาเลือกหมวดหมู่ใหม่');
     var promoEnabled=parseBool_(data.quantityPromoEnabled),promoQty=promoEnabled?Math.max(2,Math.floor(number_(data.quantityPromoQty,2))):0,promoDiscount=promoEnabled?Math.max(0,number_(data.quantityPromoDiscount,0)):0;
-    var row={id:id,sku:sellerSku,barcode:text_(data.barcode,80),name:text_(data.name,200),slug:slug_(data.name),categoryId:categoryId,brand:text_(data.brand,120),summary:text_(data.summary,500),description:sanitizeHtml_(data.description),coverImage:text_(data.coverImage,1000),images:JSON.stringify(safeArray_(data.images)),price:Math.max(0,number_(data.price,0)),salePrice:Math.max(0,number_(data.salePrice,0)),costPrice:0,stock:stock,unit:text_(data.unit||'ชิ้น',30),weight:Math.max(0,number_(data.weight,0)),featured:false,featuredLabel:old?text_(old.featuredLabel||'ร้านแนะนำ',40):'ร้านแนะนำ',bestSeller:false,sellerId:x.store.id,tags:JSON.stringify(safeArray_(data.tags)),status:text_(data.status||'Active',30),quantityPromoEnabled:promoEnabled,quantityPromoQty:promoQty,quantityPromoDiscount:promoDiscount,mallBadgeEnabled:old?parseBool_(old.mallBadgeEnabled):false,mallBadgeText:old?text_(old.mallBadgeText||'Mall',24):'Mall',videoUrl:text_(data.videoUrl===undefined?(old?old.videoUrl:''):data.videoUrl,1000),campaignLabel:text_(data.campaignLabel===undefined?(old?old.campaignLabel:''):data.campaignLabel,60),campaignImage:text_(data.campaignImage===undefined?(old?old.campaignImage:''):data.campaignImage,1000),promoTag:text_(data.promoTag===undefined?(old?old.promoTag:''):data.promoTag,120),originProvince:text_(data.originProvince===undefined?(old?old.originProvince:''):data.originProvince,100),freeShippingMinimum:Math.max(0,number_(data.freeShippingMinimum===undefined?(old?old.freeShippingMinimum:0):data.freeShippingMinimum,0)),sizeChart:text_(data.sizeChart===undefined?(old?old.sizeChart:''):data.sizeChart,8000),createdAt:old?old.createdAt:now,updatedAt:now};
-    row.videoUrl=validateProductVideoReference_(row.videoUrl,x.store.id);
+    var row={id:id,sku:sellerSku,barcode:text_(data.barcode,80),name:text_(data.name,200),slug:slug_(data.name),categoryId:categoryId,brand:text_(data.brand,120),summary:text_(data.summary,500),description:sanitizeHtml_(data.description),coverImage:text_(data.coverImage,1000),images:JSON.stringify(safeArray_(data.images)),price:Math.max(0,number_(data.price,0)),salePrice:Math.max(0,number_(data.salePrice,0)),costPrice:0,stock:stock,unit:text_(data.unit||'ชิ้น',30),weight:Math.max(0,number_(data.weight,0)),featured:false,bestSeller:false,sellerId:x.store.id,tags:JSON.stringify(safeArray_(data.tags)),status:text_(data.status||'Active',30),quantityPromoEnabled:promoEnabled,quantityPromoQty:promoQty,quantityPromoDiscount:promoDiscount,mallBadgeEnabled:old?parseBool_(old.mallBadgeEnabled):false,sizeChart:text_(data.sizeChart===undefined?(old?old.sizeChart:''):data.sizeChart,8000),createdAt:old?old.createdAt:now,updatedAt:now};
     if(promoEnabled&&(promoQty<2||promoDiscount<=0||promoDiscount>=(number_(row.salePrice,0)>0?number_(row.salePrice,0):row.price)*promoQty))throw new Error('โปรโมชั่นจำนวนชิ้นต้องกำหนดจำนวนอย่างน้อย 2 ชิ้น และส่วนลดต้องต่ำกว่ามูลค่าสินค้าในชุด');
     if(!row.name||row.price<=0)throw new Error('กรุณากรอกชื่อสินค้าและราคาที่ถูกต้อง');
     if(readTable_('Products',false).some(function(p){return p.id!==id&&String(p.sku).toLowerCase()===row.sku.toLowerCase();}))throw new Error('SKU นี้ถูกใช้แล้ว');
@@ -3100,7 +2692,7 @@ function getMyVouchers(customerToken) {try{var c=requireCustomer_(customerToken)
 function activeFlashDealForProduct_(productId) {try{var n=Date.now(),p=readTable_('Products',true).filter(function(x){return x.id===productId;})[0];if(!p)return null;if(p.sellerId&&!readTable_('Stores',true).some(function(st){return st.id===p.sellerId&&st.status==='Active';}))return null;var rows=readTable_('FlashDeals',true).filter(function(d){return d.productId===productId&&d.status==='Active'&&(!d.startAt||new Date(d.startAt).getTime()<=n)&&(!d.endAt||new Date(d.endAt).getTime()>=n)&&(!number_(d.quota,0)||number_(d.soldCount,0)<number_(d.quota,0));});rows.sort(function(a,b){return number_(a.dealPrice,0)-number_(b.dealPrice,0);});return rows[0]||null;}catch(e){return null;}}
 function getMarketplaceFlashDeals() {
   try {
-    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
+    ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','sizeChart']);
     var now=Date.now();
     var rows=readTable_('FlashDeals',true).filter(function(d){
       return d.status==='Active'&&(!d.startAt||new Date(d.startAt).getTime()<=now)&&(!d.endAt||new Date(d.endAt).getTime()>=now)&&(!number_(d.quota,0)||number_(d.soldCount,0)<number_(d.quota,0));
@@ -3116,8 +2708,6 @@ function getMarketplaceFlashDeals() {
       out.dealName=d.name;
       out.flashDealId=d.id;
       out.flashDealEnd=d.endAt;
-      out.flashDealQuota=number_(d.quota,0);
-      out.flashDealSold=number_(d.soldCount,0);
       out.storeName=st.shopName||'ร้านค้า';
       out.storeId=st.id||'';
       out.storeLogo=st.logo||'';
@@ -3565,7 +3155,7 @@ function getAdminGridPage(token, moduleName, options) {
     if (!config) throw new Error('ไม่รองรับตารางที่ร้องขอ');
     requireAdmin_(token, config.permission);
 
-    var rows = readTable_(config.table, true).map(function(row, index) {
+    var rows = readTable_(config.table, false).map(function(row, index) {
       var copy = JSON.parse(JSON.stringify(row));
       copy.__gridSourceIndex = index;
       return copy;
@@ -3573,7 +3163,7 @@ function getAdminGridPage(token, moduleName, options) {
 
     // Join display-only fields without exposing password hashes or session data.
     if (moduleName === 'products') {
-      var inventoryRows = readTable_('Inventory', true), variants = readTable_('ProductVariants', true), categories = readTable_('Categories', true), stores = readTable_('Stores', true);
+      var inventoryRows = readTable_('Inventory', false), variants = readTable_('ProductVariants', false), categories = readTable_('Categories', true), stores = readTable_('Stores', true);
       rows.forEach(function(p) {
         var child = variants.filter(function(v) { return String(v.productId) === String(p.id) && v.status === 'Active'; });
         if (child.length) {
@@ -3591,7 +3181,7 @@ function getAdminGridPage(token, moduleName, options) {
         p.shopName = store ? store.shopName : '';
       });
     } else if (moduleName === 'inventory') {
-      var products = readTable_('Products', true), productVariants = readTable_('ProductVariants', true);
+      var products = readTable_('Products', false), productVariants = readTable_('ProductVariants', false);
       rows.forEach(function(x) {
         var p = products.filter(function(v) { return String(v.id) === String(x.productId); })[0] || {};
         var variant = productVariants.filter(function(v) { return String(v.id) === String(x.variantId); })[0] || {};
@@ -3601,22 +3191,37 @@ function getAdminGridPage(token, moduleName, options) {
         x.available = Math.max(0, number_(x.quantity, 0) - number_(x.reserved, 0));
       });
     } else if (moduleName === 'payments') {
-      var orderRows = readTable_('Orders', true);
+      var orderRows = readTable_('Orders', false);
       rows.forEach(function(x) {
         var o = orderRows.filter(function(v) { return String(v.id) === String(x.orderId); })[0] || {};
         x.orderNumber = o.orderNumber || '';
         x.customerName = o.customerName || '';
       });
     } else if (moduleName === 'sellers') {
-      var customers = readTable_('Customers', true);
+      // Marketplace-wide list: one row per Stores record, joined by Store ID.
+      // Do not scope this dataset to the current seller/customer account.
+      var customers = readTable_('Customers', false);
+      var sellerProducts = readTable_('Products', false);
+      var productCountsByStore = {};
+      sellerProducts.forEach(function(product) {
+        var storeId = String(product.sellerId || '').trim();
+        if (!storeId) return;
+        productCountsByStore[storeId] = (productCountsByStore[storeId] || 0) + 1;
+      });
       rows.forEach(function(x) {
         var c = customers.filter(function(v) { return String(v.id) === String(x.ownerCustomerId); })[0] || {};
         x.ownerName = [c.firstname || '', c.lastname || ''].join(' ').trim();
         x.ownerEmail = c.email || '';
         x.ownerPhone = c.phone || '';
+        x.productCount = Number(productCountsByStore[String(x.id)] || 0);
+        x.rating = number_(x.rating, 0);
+        x.followerCount = number_(x.followerCount, 0);
+        // Response metrics remain blank unless the database has real values.
+        x.responseRate = x.responseRate === undefined ? '' : x.responseRate;
+        x.responseTime = x.responseTime === undefined ? '' : x.responseTime;
       });
     } else if (moduleName === 'flashDeals') {
-      var dealProducts = readTable_('Products', true), dealStores = readTable_('Stores', true);
+      var dealProducts = readTable_('Products', false), dealStores = readTable_('Stores', false);
       rows.forEach(function(x) {
         var p = dealProducts.filter(function(v) { return String(v.id) === String(x.productId); })[0] || {};
         var s = dealStores.filter(function(v) { return String(v.id) === String(x.sellerId); })[0] || {};
@@ -3625,13 +3230,13 @@ function getAdminGridPage(token, moduleName, options) {
         x.remaining = number_(x.quota, 0) > 0 ? Math.max(0, number_(x.quota, 0) - number_(x.soldCount, 0)) : '';
       });
     } else if (moduleName === 'marketplacePayouts') {
-      var payoutStores = readTable_('Stores', true);
+      var payoutStores = readTable_('Stores', false);
       rows.forEach(function(x) {
         var s = payoutStores.filter(function(v) { return String(v.id) === String(x.sellerId); })[0] || {};
         x.shopName = s.shopName || '';
       });
     } else if (moduleName === 'reviews') {
-      var reviewProducts = readTable_('Products', true);
+      var reviewProducts = readTable_('Products', false);
       rows.forEach(function(x) {
         var p = reviewProducts.filter(function(v) { return String(v.id) === String(x.productId); })[0] || {};
         x.productName = p.name || '';
