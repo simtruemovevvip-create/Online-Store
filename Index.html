@@ -1953,7 +1953,7 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
       // Load settings and restore the signed-in portal in parallel. Session
       // validation no longer waits for the settings table read to finish.
       apiCall('getSettings',[],function(r){if(r.success){APP.settings=r.data||{};applySettings();refreshVisibleProductCardOffers();var homeRoot=document.getElementById('appRoot');if(homeRoot&&homeRoot.querySelector('.home-marketplace')&&(APP.accessMode==='guest'||APP.accessMode==='customer')&&APP.currentView==='home')renderHome();}},false);
-      APP.sharedProductId=APP.entryPortal?'':getQueryParam('product');if(APP.sharedProductId&&APP.accessMode==='guest'){APP.accessMode='guest';applyAccessMode('guest');viewProduct(APP.sharedProductId);}else restoreAccessPortal();
+      APP.sharedProductId=['owner','seller'].indexOf(APP.entryPortal)>=0?'':getQueryParam('product');if(APP.sharedProductId&&APP.accessMode==='guest'){APP.accessMode='guest';applyAccessMode('guest');viewProduct(APP.sharedProductId);}else restoreAccessPortal();
       if(APP.qrLoginChallenge)setTimeout(function(){if(!APP.customerToken)openCustomerAuth('login');else showQrMobileApproval();},500);
       var reset=getQueryParam('reset');if(reset)setTimeout(function(){showResetPassword(reset);},700);
       window.addEventListener('scroll',function(){var b=document.getElementById('backTop');if(b)b.style.display=window.scrollY>450?'grid':'none';});
@@ -3225,7 +3225,7 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
         var cur=lo===hi?money(lo):money(lo)+' - '+money(hi),old=blo===bhi?money(blo):money(blo)+' - '+money(bhi);
         return '<span class="shopee-price-current">'+cur+'</span>'+(pct>0?'<span class="shopee-price-old">'+old+'</span><span class="shopee-price-discount">-'+pct+'%</span>':'');
       }():detailPriceHtml(price,base);
-      var service='<div class="shopee-service-panel fashion-guarantee-panel"><div class="shopee-service-title"><i class="fa-solid fa-shield-heart"></i> ช้อปปี้การันตี</div><p><i class="fa-solid fa-circle-check"></i> ช้อปปี้ถูกชัวร์ · '+(paymentMethods.indexOf('cod')>=0?'เก็บเงินปลายทางตามพื้นที่ให้บริการ':'ชำระเงินผ่านช่องทางที่ร้านเปิดให้บริการ')+'</p>'+(policy?'<div class="fashion-policy-note">'+sanitizeRichEditorHtml(policy)+'</div>':'')+'</div>';
+      var service='<div class="shopee-service-panel fashion-guarantee-panel"><p><i class="fa-solid fa-shield-heart"></i> ช้อปปี้ถูกชัวร์ · '+(paymentMethods.indexOf('cod')>=0?'เก็บเงินปลายทางตามพื้นที่ให้บริการ':'ชำระเงินผ่านช่องทางที่ร้านเปิดให้บริการ')+'</p>'+(policy?'<div class="fashion-policy-note">'+sanitizeRichEditorHtml(policy)+'</div>':'')+'</div>';
       var stock=Number(p.stock||0);
       var html='<div class="shopee-detail-page fashion-detail-page">'+
         '<div class="shopee-detail-topbar"><div class="breadcrumb fashion-breadcrumb"> '+productCategoryBreadcrumb(p.categoryId)+'</div></div>'+
