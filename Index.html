@@ -1635,6 +1635,7 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
 .fashion-detail-row .shopee-variant-chip{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:4px 10px;border:1px solid #d9d9d9!important;border-radius:2px!important;background:#fff!important;color:#444!important;font-size:12px;cursor:pointer;overflow:hidden}
 .fashion-detail-row .shopee-variant-chip:hover,.fashion-detail-row .shopee-variant-chip.active{border:1px solid #ee4d2d!important;background:#fff!important;color:#ee4d2d!important}
 .fashion-detail-row .shopee-variant-chip.active:after{content:"";position:absolute;right:0;bottom:0;width:0;height:0;border-left:15px solid transparent;border-bottom:15px solid #ee4d2d}
+.fashion-detail-row .shopee-variant-chip.is-unavailable{opacity:.35;cursor:not-allowed;text-decoration:line-through}
 .fashion-detail-row .shopee-variant-chip.active:before{content:"✓";position:absolute;right:1px;bottom:-1px;z-index:1;color:#fff;font-size:8px;font-weight:900}
 .fashion-color-options .shopee-variant-chip{min-height:42px;padding:4px 9px 4px 6px}
 .fashion-color-options .shopee-color-image,.fashion-color-options .shopee-color-dot{width:30px;height:30px;flex:0 0 30px;object-fit:cover;border-radius:2px}
@@ -1678,6 +1679,38 @@ body.dark .fashion-detail-row .shopee-variant-chip,body.dark .fashion-detail-row
   .fashion-meta-sold{font-size:11px}
   .fashion-buy-actions .btn{font-size:12px;padding:0 8px}
 }
+</style>
+
+<style id="variant-matrix-manager">
+.vm-intro{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;margin-bottom:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);text-align:left}
+.vm-intro-icon{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:10px;background:#fff0e9;color:#ee4d2d;font-size:16px}
+.vm-intro-copy{min-width:0}.vm-intro-copy b{display:block;font-size:13px;color:var(--ink)}.vm-intro-copy small{display:block;margin-top:4px;color:var(--muted);font-size:10px;line-height:1.55}
+.vm-section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:16px 0 9px;text-align:left}
+.vm-section-title b{font-size:12px;color:var(--ink)}.vm-section-title small{font-size:10px;color:var(--muted)}
+.vm-group-list{display:grid;gap:8px}
+.vm-group-row{display:grid;grid-template-columns:minmax(130px,.72fr) minmax(0,2fr) 34px;gap:8px;align-items:center;padding:9px;border:1px solid var(--border);border-radius:10px;background:var(--surface);text-align:left}
+.vm-group-row input{width:100%;min-width:0;height:36px;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--ink);font-size:11px}
+.vm-group-row button{width:32px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:#dc4545}
+.vm-default-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.vm-default-field{text-align:left}.vm-default-field label{display:block;margin-bottom:5px;color:var(--muted);font-size:10px}.vm-default-field input{width:100%;height:36px;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--ink);font-size:11px}
+.vm-generate-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:12px 0;text-align:left}
+.vm-generate-row small{color:var(--muted);font-size:10px}
+.vm-matrix-wrap{max-height:380px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+.vm-matrix-table{width:100%;min-width:850px;border-collapse:separate;border-spacing:0;font-size:11px;text-align:left}
+.vm-matrix-table th{position:sticky;top:0;z-index:2;padding:9px;background:var(--surface-2);color:var(--muted);font-size:10px;font-weight:750;white-space:nowrap}
+.vm-matrix-table td{padding:7px;border-top:1px solid var(--border);background:var(--surface);vertical-align:middle}
+.vm-matrix-table input,.vm-matrix-table select{width:100%;min-width:75px;height:32px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);font-size:10px}
+.vm-matrix-table .vm-combination{min-width:145px;font-weight:650;color:var(--ink)}
+.vm-matrix-table .vm-stock-note{display:block;margin-top:3px;color:var(--muted);font-size:9px;white-space:nowrap}
+.vm-row-remove{border:0;background:transparent;color:#dc4545;font-size:11px;cursor:pointer}
+.vm-empty{padding:24px 12px;color:var(--muted);text-align:center;font-size:11px}
+.vm-footer-note{margin-top:10px;color:var(--muted);font-size:10px;line-height:1.6;text-align:left}
+body.dark .vm-intro,body.dark .vm-group-row{background:#202833;border-color:#303b49}
+body.dark .vm-intro-icon{background:#2a1d1a}
+body.dark .vm-group-row input,body.dark .vm-default-field input,body.dark .vm-matrix-table input,body.dark .vm-matrix-table select{background:#0d1117;border-color:#394555;color:#e7ebf2}
+body.dark .vm-matrix-table td{background:#161b22}
+body.dark .vm-matrix-table th{background:#202833}
+@media(max-width:640px){.vm-group-row{grid-template-columns:1fr 34px}.vm-group-row .vm-group-values{grid-column:1/2}.vm-group-row button{grid-column:2;grid-row:1/3}.vm-default-grid{grid-template-columns:1fr}.vm-intro{padding:10px}}
 </style>
 </head>
 <body data-qr-login="<?= qrLoginChallenge ?>" data-portal-entry="<?= portalEntry ?>" data-web-app-url="<?= webAppUrl ?>">
@@ -1954,6 +1987,7 @@ body.dark .fashion-detail-row .shopee-variant-chip,body.dark .fashion-detail-row
         case 'saveCategory': runner.saveCategory(args[0],args[1]); break;
         case 'deleteCategory': runner.deleteCategory(args[0],args[1]); break;
         case 'saveProductVariant': runner.saveProductVariant(args[0],args[1]); break;
+        case 'saveProductVariantMatrix': runner.saveProductVariantMatrix(args[0],args[1]); break;
         case 'deleteProductVariant': runner.deleteProductVariant(args[0],args[1]); break;
         case 'getOrders': runner.getOrders(args[0],args[1]); break;
         case 'getOrderById': runner.getOrderById(args[0],args[1]); break;
@@ -2016,6 +2050,7 @@ body.dark .fashion-detail-row .shopee-variant-chip,body.dark .fashion-detail-row
         case 'sellerSaveStoreProfile': runner.sellerSaveStoreProfile(args[0],args[1]); break;
         case 'sellerGetProductVariants': runner.sellerGetProductVariants(args[0],args[1]); break;
         case 'sellerSaveProductVariant': runner.sellerSaveProductVariant(args[0],args[1]); break;
+        case 'sellerSaveProductVariantMatrix': runner.sellerSaveProductVariantMatrix(args[0],args[1]); break;
         case 'sellerDeleteProductVariant': runner.sellerDeleteProductVariant(args[0],args[1]); break;
         case 'sellerGetProducts': runner.sellerGetProducts(args[0],args[1]); break;
         case 'sellerSaveProduct': runner.sellerSaveProduct(args[0],args[1]); break;
@@ -3252,6 +3287,19 @@ body.dark .fashion-detail-row .shopee-variant-chip,body.dark .fashion-detail-row
         return '<button type="button" class="shopee-variant-chip" data-variant-key="'+esc(g.key)+'" data-variant-value="'+esc(value)+'" onclick="chooseDetailVariantFromButton(this)">'+swatch+esc(value)+'</button>';
       }).join('')+'</div></div></div>';}).join('')+'<div class="shopee-stock" id="detailVariantHint">กรุณาเลือก '+groups.map(function(g){return g.key==='ไซส์'?'ขนาด':g.key;}).join(' และ ')+'</div>';
     }
+    function refreshDetailVariantAvailability(){
+      var selected=APP.selectedVariantAttributes||{};
+      Array.prototype.slice.call(document.querySelectorAll('[data-variant-key][data-variant-value]')).forEach(function(button){
+        var key=button.getAttribute('data-variant-key'),value=button.getAttribute('data-variant-value'),available=false;
+        safeArray(APP.currentVariants).some(function(variant){
+          var attrs=detailVariantAttributes(variant),stock=Number(variant.stock||0);
+          var matches=String(attrs[key]||'')===String(value)&&stock>0&&Object.keys(selected).every(function(otherKey){return otherKey===key||String(attrs[otherKey]||'')===String(selected[otherKey]||'');});
+          if(matches){available=true;return true;}return false;
+        });
+        button.disabled=!available;button.classList.toggle('is-unavailable',!available);
+        button.setAttribute('aria-disabled',available?'false':'true');
+      });
+    }
     function detailMatchingVariants(){
       var selected=APP.selectedVariantAttributes||{};return safeArray(APP.currentVariants).filter(function(v){var attrs=detailVariantAttributes(v);return Object.keys(selected).every(function(k){return String(attrs[k]||'')===String(selected[k]);});});
     }
@@ -3271,6 +3319,7 @@ body.dark .fashion-detail-row .shopee-variant-chip,body.dark .fashion-detail-row
         var addBtn=document.getElementById('detailAddCartBtn'),buyBtn=document.getElementById('detailBuyNowBtn');if(addBtn)addBtn.disabled=true;if(buyBtn)buyBtn.disabled=true;
       }
       document.querySelectorAll('[data-variant-key]').forEach(function(el){el.classList.toggle('active',String(APP.selectedVariantAttributes[el.getAttribute('data-variant-key')]||'')===String(el.getAttribute('data-variant-value')));});
+      refreshDetailVariantAvailability();
     }
     function detailPriceHtml(current,base){var discount=base>current&&base>0?Math.round((base-current)*100/base):0;return '<span class="shopee-price-current">'+money(current)+'</span>'+(discount>0?'<span class="shopee-price-old">'+money(base)+'</span><span class="shopee-price-discount">-'+discount+'%</span>':'');}
     function updateDetailPriceRange(variants){
@@ -3469,6 +3518,7 @@ body.dark .fashion-detail-row .shopee-variant-chip,body.dark .fashion-detail-row
         '<section class="shopee-detail-below fashion-product-description"><h3>รายละเอียดสินค้า</h3><div class="shopee-description-body">'+sanitizeRichEditorHtml(p.description||esc(p.summary||'ไม่มีรายละเอียดเพิ่มเติม'))+'</div><div style="margin-top:15px"><button class="btn btn-outline btn-small" data-product-id="'+esc(p.id)+'" onclick="loadProductReviews(this.dataset.productId)">ดูรีวิวสินค้า</button><div id="productReviews"></div></div></section>'+
         '<section class="related-products shopee-detail-related"><div class="section-head"><div><h2 class="section-title">สินค้าที่คล้ายกัน</h2><div class="section-sub">สินค้าอื่นในหมวดหมู่เดียวกัน</div></div><button class="btn btn-outline btn-small" data-category-id="'+esc(p.categoryId)+'" onclick="filterCategory(this.dataset.categoryId)">ดูทั้งหมด</button></div><div id="relatedProducts"><div class="product-grid">'+[1,2,3,4,5].map(function(){return '<div class="product-card"><div class="product-image skeleton"></div><div class="product-info"><div class="skeleton" style="height:12px;width:75%"></div><div class="skeleton" style="height:14px;width:45%;margin-top:8px"></div></div></div>';}).join('')+'</div></div></section></div>';
       document.getElementById('appRoot').innerHTML=html;
+      refreshDetailVariantAvailability();
       apiCall('getShippingMethods',[{}],function(r){if(!document.getElementById('detailDeliveryInfo'))return;renderProductDelivery(r&&r.success?safeArray(r.data):[]);},false);
       if(!safeArray(APP.categories).length)apiCall('getCategories',[{}],function(cr){if(cr&&cr.success){APP.categories=safeArray(cr.data);var breadcrumb=document.querySelector('.fashion-breadcrumb');if(breadcrumb&&APP.currentProduct&&String(APP.currentProduct.id)===String(p.id))breadcrumb.innerHTML=productCategoryBreadcrumb(p.categoryId);}},false,'',true);
       loadProductShopInfo(p);loadRelatedProducts(p);
@@ -4627,9 +4677,207 @@ body.dark .fashion-detail-row .shopee-variant-chip,body.dark .fashion-detail-row
     }
     function loadInventoryVariantOptions(productId,selectedVariantId){var select=document.getElementById('stockVariant');if(!select)return;select.innerHTML='<option value="">กำลังโหลดตัวเลือก...</option>';if(!productId){select.innerHTML='<option value="">สต็อกสินค้าโดยรวม</option>';return;}apiCall('getProductVariants',[productId,{token:APP.adminToken}],function(r){if(!document.getElementById('stockVariant'))return;var variants=r.success?safeArray(r.data):[];var html=variants.length?'<option value="">เลือกตัวเลือกสินค้า (จำเป็นสำหรับสินค้านี้)</option>':'<option value="">สต็อกสินค้าโดยรวม</option>';variants.forEach(function(v){html+='<option value="'+esc(v.id)+'" '+(String(v.id)===String(selectedVariantId||'')?'selected':'')+'>'+esc(v.variantName||v.sku)+' — '+esc(v.sku||'')+'</option>';});select.innerHTML=html;});}
 
-    function manageVariants(productId){var product=safeArray(APP.adminData).filter(function(x){return String(x.id)===String(productId);})[0]||{};var sku=makeAdminCode('VAR');var html='<div class="admin-editor-intro"><span class="admin-editor-icon"><i class="fa-solid fa-layer-group"></i></span><span><b>'+esc(product.name||'สินค้า')+'</b><small>เพิ่ม SKU และสต็อกแยกตามตัวเลือก</small></span></div><div class="modal-form-grid"><div class="modal-field full"><label>สินค้าแม่</label><input value="'+esc(product.name||productId)+'" readonly><input id="varProduct" type="hidden" value="'+esc(productId)+'"></div><div class="modal-field"><label for="varSku">SKU ตัวเลือก</label><div class="admin-code-field"><input id="varSku" value="'+sku+'" maxlength="80"><button type="button" class="btn btn-outline btn-small" onclick="document.getElementById(\'varSku\').value=makeAdminCode(\'VAR\')"><i class="fa-solid fa-wand-magic-sparkles"></i></button></div></div><div class="modal-field"><label for="varName">ชื่อตัวเลือก</label><input id="varName" placeholder="เช่น สีดำ / XL"></div><div class="modal-field"><label for="varPrice">ราคาปกติ</label><input id="varPrice" type="number" min="0" placeholder="0.00"></div><div class="modal-field"><label for="varSale">ราคาขาย</label><input id="varSale" type="number" min="0" placeholder="0.00"></div><div class="modal-field"><label for="varStock">จำนวนสต็อก</label><input id="varStock" type="number" min="0" placeholder="0"></div><div class="modal-field full"><label for="varAttributes">ข้อมูลตัวเลือก (JSON)</label><textarea id="varAttributes" rows="3" placeholder="ข้อมูลตัวเลือก JSON เช่น สีและไซส์">{}</textarea><small class="modal-help">ตัวอย่าง {"สี":"ชมพู","ไซส์":"M"} เพื่อแยกปุ่มสีและไซส์ในหน้าสินค้า</small></div></div>';
-      Swal.fire({title:'จัดการตัวเลือกสินค้า',html:html,showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึกตัวเลือก',cancelButtonText:'ยกเลิก',allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){var name=document.getElementById('varName').value;if(!name){Swal.showValidationMessage('กรุณาระบุชื่อตัวเลือก');return false;}var attributes={};try{attributes=JSON.parse(document.getElementById('varAttributes').value||'{}');if(!attributes||typeof attributes!=='object'||Array.isArray(attributes))throw new Error('invalid');}catch(e){Swal.showValidationMessage('ข้อมูลตัวเลือกต้องเป็น JSON Object ที่ถูกต้อง');return false;}var data={productId:document.getElementById('varProduct').value,sku:document.getElementById('varSku').value,variantName:name,attributes:attributes,price:Number(document.getElementById('varPrice').value),salePrice:Number(document.getElementById('varSale').value),stock:Number(document.getElementById('varStock').value)};return runAdminModalMutation('products','saveProductVariant',[APP.adminToken,data]);}});
+
+    function variantMatrixNormalizeAttrs(variant){
+      var attrs=detailVariantAttributes(variant||{});
+      var raw=variant&&variant.attributes;
+      if(typeof raw==='string'){try{raw=JSON.parse(raw||'{}');}catch(e){raw={};}}
+      if(raw&&typeof raw==='object'&&!Array.isArray(raw)){
+        var image=raw.imageUrl||raw.image_url||raw.image||'';
+        if(image)attrs.imageUrl=String(image);
+      }
+      return attrs;
     }
+    function variantMatrixKey(attrs){
+      var normalized=detailVariantAttributes({attributes:attrs||{}});
+      var keys=Object.keys(normalized).sort(function(a,b){return a.toLowerCase().localeCompare(b.toLowerCase());});
+      return keys.map(function(k){return k.toLowerCase()+'='+String(normalized[k]||'').trim().toLowerCase();}).join('|');
+    }
+    function variantMatrixParseValues(value){
+      var parts=String(value||'').split(/[,;|\n]+/),seen={},out=[];
+      parts.forEach(function(item){var v=String(item||'').trim();var k=v.toLowerCase();if(v&&!seen[k]){seen[k]=true;out.push(v);}});
+      return out;
+    }
+    function variantMatrixGroupsFromRows(rows){
+      var map=Object.create(null),order=[];
+      safeArray(rows).forEach(function(v){
+        var attrs=detailVariantAttributes(v||{});
+        if(!Object.keys(attrs).length&&String(v&&v.variantName||'').trim())attrs={'ตัวเลือก':String(v.variantName).trim()};
+        Object.keys(attrs).forEach(function(k){
+          if(!map[k]){map[k]=[];order.push(k);}
+          if(map[k].indexOf(attrs[k])<0)map[k].push(attrs[k]);
+        });
+      });
+      order.sort(function(a,b){var rank={'สี':0,'ไซส์':1};return (rank[a]===undefined?2:rank[a])-(rank[b]===undefined?2:rank[b])||a.localeCompare(b);});
+      if(!order.length)return [{name:'สี',values:[]},{name:'ไซส์',values:[]}];
+      return order.map(function(k){return {name:k,values:map[k]};});
+    }
+    function variantMatrixGroupsHtml(){
+      return safeArray(APP.variantMatrixGroups).map(function(g,index){
+        return '<div class="vm-group-row" data-vm-group-index="'+index+'">'+
+          '<input type="text" class="vm-group-name" maxlength="40" value="'+esc(g.name||'')+'" placeholder="ชื่อกลุ่ม เช่น สี" aria-label="ชื่อกลุ่มตัวเลือก">'+
+          '<input type="text" class="vm-group-values" value="'+esc(safeArray(g.values).join(', '))+'" placeholder="ค่าตัวเลือก คั่นด้วยเครื่องหมายจุลภาค เช่น ดำ, เทา, ชมพู" aria-label="ค่าตัวเลือก">'+
+          '<button type="button" title="ลบกลุ่มนี้" onclick="variantMatrixRemoveGroup('+index+')"><i class="fa-solid fa-xmark"></i></button>'+
+        '</div>';
+      }).join('');
+    }
+    function variantMatrixReadGroups(){
+      var rows=Array.prototype.slice.call(document.querySelectorAll('#vmGroupList .vm-group-row')),groups=[],seen={};
+      rows.forEach(function(row){
+        var name=String((row.querySelector('.vm-group-name')||{}).value||'').trim();
+        var values=variantMatrixParseValues((row.querySelector('.vm-group-values')||{}).value||'');
+        if(!name)throw new Error('กรุณาระบุชื่อกลุ่มตัวเลือกทุกกลุ่ม');
+        var key=name.toLowerCase();if(seen[key])throw new Error('ชื่อกลุ่มตัวเลือกซ้ำกัน: '+name);seen[key]=true;
+        if(!values.length)throw new Error('กรุณาระบุค่าตัวเลือกของกลุ่ม '+name);
+        if(values.length>50)throw new Error('กลุ่ม '+name+' มีตัวเลือกได้ไม่เกิน 50 ค่า');
+        groups.push({name:name,values:values});
+      });
+      if(!groups.length)throw new Error('กรุณาเพิ่มกลุ่มตัวเลือกอย่างน้อย 1 กลุ่ม');
+      if(groups.length>3)throw new Error('สินค้าหนึ่งรายการรองรับได้สูงสุด 3 กลุ่มตัวเลือก');
+      return groups;
+    }
+    function variantMatrixCaptureRows(){
+      var host=document.getElementById('vmMatrixBody');if(!host)return;
+      Array.prototype.slice.call(host.querySelectorAll('tr[data-vm-index]')).forEach(function(tr){
+        var index=Number(tr.getAttribute('data-vm-index')),row=APP.variantMatrixRows[index];if(!row)return;
+        tr.querySelectorAll('[data-vm-field]').forEach(function(input){var field=input.getAttribute('data-vm-field');row[field]=input.value;});
+      });
+    }
+    function variantMatrixRenderRows(){
+      var body=document.getElementById('vmMatrixBody'),count=document.getElementById('vmMatrixCount');if(!body)return;
+      var rows=safeArray(APP.variantMatrixRows);
+      if(count)count.textContent='สร้างแล้ว '+rows.length+' SKU';
+      if(!rows.length){body.innerHTML='<tr><td colspan="7"><div class="vm-empty">กรอกกลุ่มตัวเลือก แล้วกด “สร้างชุดตัวเลือก”</div></td></tr>';return;}
+      body.innerHTML=rows.map(function(row,index){
+        var attrs=Object.keys(row.attributes||{}).filter(function(k){return k!=='imageUrl';}).map(function(k){return esc(k)+': '+esc(row.attributes[k]);}).join(' / ');
+        var availability='<small class="vm-stock-note">พร้อมขาย '+Number(row.available!==undefined?row.available:row.stock||0)+' · จอง '+Number(row.reserved||0)+'</small>';
+        return '<tr data-vm-index="'+index+'">'+
+          '<td class="vm-combination">'+attrs+availability+'</td>'+
+          '<td><input type="text" data-vm-field="sku" maxlength="80" value="'+esc(row.sku||'')+'" aria-label="SKU"></td>'+
+          '<td><input type="number" data-vm-field="price" min="0.01" step="0.01" value="'+esc(row.price||'')+'" aria-label="ราคาปกติ"></td>'+
+          '<td><input type="number" data-vm-field="salePrice" min="0" step="0.01" value="'+esc(row.salePrice||0)+'" aria-label="ราคาขาย"></td>'+
+          '<td><input type="number" data-vm-field="stock" min="0" step="1" value="'+esc(row.stock===undefined?0:row.stock)+'" aria-label="สต็อก"></td>'+
+          '<td><select data-vm-field="status" aria-label="สถานะ"><option value="Active" '+(String(row.status||'Active')==='Active'?'selected':'')+'>เปิดขาย</option><option value="Inactive" '+(String(row.status)==='Inactive'?'selected':'')+'>ปิดขาย</option></select></td>'+
+          '<td><button type="button" class="vm-row-remove" onclick="variantMatrixRemoveRow('+index+')"><i class="fa-regular fa-trash-can"></i> ลบ</button></td>'+
+        '</tr>';
+      }).join('');
+    }
+    function variantMatrixRemoveRow(index){
+      variantMatrixCaptureRows();APP.variantMatrixRows.splice(Number(index),1);variantMatrixRenderRows();
+    }
+    function variantMatrixAddGroup(){
+      var rows=Array.prototype.slice.call(document.querySelectorAll('#vmGroupList .vm-group-row'));
+      if(rows.length>=3){toast('เพิ่มกลุ่มตัวเลือกได้สูงสุด 3 กลุ่ม','info');return;}
+      var groups=rows.map(function(row){return {name:(row.querySelector('.vm-group-name')||{}).value||'',values:variantMatrixParseValues((row.querySelector('.vm-group-values')||{}).value||'')};});
+      groups.push({name:'',values:[]});APP.variantMatrixGroups=groups;
+      var host=document.getElementById('vmGroupList');if(host)host.innerHTML=variantMatrixGroupsHtml();
+    }
+    function variantMatrixRemoveGroup(index){
+      var rows=Array.prototype.slice.call(document.querySelectorAll('#vmGroupList .vm-group-row'));
+      APP.variantMatrixGroups=rows.map(function(row){return {name:(row.querySelector('.vm-group-name')||{}).value||'',values:variantMatrixParseValues((row.querySelector('.vm-group-values')||{}).value||'')};});
+      APP.variantMatrixGroups.splice(Number(index),1);
+      var host=document.getElementById('vmGroupList');if(host)host.innerHTML=variantMatrixGroupsHtml();
+    }
+    function variantMatrixBuild(){
+      try{
+        variantMatrixCaptureRows();
+        var groups=variantMatrixReadGroups(),combinationCount=groups.reduce(function(total,g){return total*g.values.length;},1);
+        if(combinationCount>200){Swal.showValidationMessage('ชุดตัวเลือกทั้งหมด '+combinationCount+' SKU เกินขีดจำกัด 200 SKU กรุณาลดจำนวนค่าตัวเลือก');return;}
+        var prior=safeArray(APP.variantMatrixRows).slice(),original=safeArray(APP.variantMatrixOriginalRows).slice(),priceDefault=Number((document.getElementById('vmDefaultPrice')||{}).value||0),saleDefault=Number((document.getElementById('vmDefaultSale')||{}).value||0);
+        var oldByKey=Object.create(null),originalByKey=Object.create(null);
+        prior.forEach(function(v){var key=variantMatrixKey(v.attributes||{});if(key)oldByKey[key]=v;});
+        original.forEach(function(v){var key=variantMatrixKey(variantMatrixNormalizeAttrs(v));if(key)originalByKey[key]=v;});
+        var combos=[];
+        function walk(depth,attrs){
+          if(depth>=groups.length){combos.push(attrs);return;}
+          var group=groups[depth];group.values.forEach(function(value){var next={};Object.keys(attrs).forEach(function(k){next[k]=attrs[k];});next[group.name]=value;walk(depth+1,next);});
+        }
+        walk(0,{});
+        var nextRows=combos.map(function(attrs,index){
+          var label=groups.map(function(g){return g.name+': '+attrs[g.name];}).join(' / '),key=variantMatrixKey(attrs);
+          var existing=oldByKey[key]||originalByKey[key]||null;
+          if(!existing)existing=original.filter(function(v){return !Object.keys(variantMatrixNormalizeAttrs(v)).length&&String(v.variantName||'')===label;})[0]||prior.filter(function(v){return String(v.variantName||'')===label;})[0]||null;
+          var oldAttrs=existing?variantMatrixNormalizeAttrs(existing):{};
+          if(oldAttrs.imageUrl)attrs.imageUrl=oldAttrs.imageUrl;
+          return {
+            id:existing?existing.id:'',
+            sku:existing&&existing.sku?existing.sku:makeAdminCode('VAR'),
+            variantName:label,attributes:attrs,
+            price:existing?Number(existing.price||0):(priceDefault>0?priceDefault:Number(APP.variantMatrixProduct&&APP.variantMatrixProduct.price||0)),
+            salePrice:existing?Number(existing.salePrice||0):saleDefault,
+            stock:existing?Number(existing.stock||0):0,
+            available:existing&&existing.available!==undefined?Number(existing.available):Number(existing&&existing.stock||0),
+            reserved:existing?Number(existing.reserved||0):0,
+            status:existing&&existing.status==='Inactive'?'Inactive':'Active'
+          };
+        });
+        APP.variantMatrixGroups=groups;APP.variantMatrixRows=nextRows;
+        var groupHost=document.getElementById('vmGroupList');if(groupHost)groupHost.innerHTML=variantMatrixGroupsHtml();
+        variantMatrixRenderRows();
+        var hint=document.getElementById('vmMatrixHint');if(hint)hint.textContent='สร้าง '+nextRows.length+' SKU จาก '+groups.map(function(g){return g.name+' '+g.values.length+' ค่า';}).join(' × ')+'. ตรวจสอบราคา SKU และสต็อกแต่ละรายการก่อนบันทึก';
+      }catch(e){Swal.showValidationMessage(e.message||'ไม่สามารถสร้างชุดตัวเลือกได้');}
+    }
+    function variantMatrixSave(mode,productId){
+      try{
+        variantMatrixCaptureRows();
+        var groups=variantMatrixReadGroups(),rows=safeArray(APP.variantMatrixRows);
+        if(!rows.length)throw new Error('กรุณาสร้างชุดตัวเลือกอย่างน้อย 1 SKU');
+        var groupNames=groups.map(function(g){return g.name;});
+        var payloadRows=rows.map(function(row,index){
+          var attrs={};
+          groupNames.forEach(function(name){if(row.attributes&&row.attributes[name]!==undefined)attrs[name]=String(row.attributes[name]);});
+          if(row.attributes&&row.attributes.imageUrl)attrs.imageUrl=row.attributes.imageUrl;
+          if(Object.keys(attrs).filter(function(k){return k!=='imageUrl';}).length!==groups.length)throw new Error('กลุ่มตัวเลือกมีการเปลี่ยนแปลง กรุณากด “สร้างชุดตัวเลือก” อีกครั้ง');
+          var sku=String(row.sku||'').trim(),price=Number(row.price),sale=Number(row.salePrice||0),stock=Number(row.stock);
+          if(!sku)throw new Error('กรุณาระบุ SKU ในแถวที่ '+(index+1));
+          if(!isFinite(price)||price<=0)throw new Error('ราคาปกติในแถวที่ '+(index+1)+' ต้องมากกว่า 0');
+          if(!isFinite(sale)||sale<0||(sale>0&&sale>=price))throw new Error('ราคาขายในแถวที่ '+(index+1)+' ต้องน้อยกว่าราคาปกติ');
+          if(!isFinite(stock)||stock<0||Math.floor(stock)!==stock)throw new Error('สต็อกในแถวที่ '+(index+1)+' ต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป');
+          return {id:row.id||'',sku:sku,variantName:row.variantName,attributes:attrs,price:price,salePrice:sale,stock:stock,status:row.status||'Active'};
+        });
+        var unique={};payloadRows.forEach(function(row){var key=variantMatrixKey(row.attributes);if(unique[key])throw new Error('มีชุดตัวเลือกซ้ำกัน: '+row.variantName);unique[key]=true;});
+        var data={productId:productId,variants:payloadRows,removeMissing:true};
+        if(mode==='admin')return runAdminModalMutation('products','saveProductVariantMatrix',[APP.adminToken,data]);
+        return runSellerModalMutation('sellerSaveProductVariantMatrix',[APP.customerToken,data],'products');
+      }catch(e){Swal.showValidationMessage(e.message||'กรุณาตรวจสอบข้อมูลตัวเลือก');return false;}
+    }
+    function variantMatrixOpen(productId,mode){
+      var api=mode==='admin'?'getProductVariants':'sellerGetProductVariants';
+      var args=mode==='admin'?[productId,{token:APP.adminToken}]:[APP.customerToken,productId];
+      apiCall(api,args,function(result){
+        if(!result||!result.success){alertError(result&&result.message||'โหลดตัวเลือกสินค้าไม่สำเร็จ');return;}
+        var product=mode==='admin'?safeArray(APP.adminData).filter(function(p){return String(p.id)===String(productId);})[0]||{}:safeArray(APP.sellerProducts).filter(function(p){return String(p.id)===String(productId);})[0]||{};
+        var rows=safeArray(result.data).filter(function(v){return String(v.status||'Active')!=='Archived';});
+        APP.variantMatrixProduct=product;APP.variantMatrixMode=mode;APP.variantMatrixProductId=productId;
+        APP.variantMatrixOriginalRows=rows.map(function(v){var copy={};Object.keys(v).forEach(function(k){copy[k]=v[k];});copy.attributes=variantMatrixNormalizeAttrs(v);return copy;});
+        APP.variantMatrixRows=APP.variantMatrixOriginalRows.map(function(v){var copy={};Object.keys(v).forEach(function(k){copy[k]=v[k];});return copy;});
+        APP.variantMatrixGroups=variantMatrixGroupsFromRows(rows);
+        var name=product.name||'สินค้า '+productId,sku=product.sku||'';
+        var html='<div class="vm-intro"><span class="vm-intro-icon"><i class="fa-solid fa-layer-group"></i></span><div class="vm-intro-copy"><b>'+esc(name)+'</b><small>กำหนดกลุ่มตัวเลือก เช่น สี / ไซส์ / รุ่น แล้วสร้างชุด SKU อัตโนมัติ แต่ละชุดมี SKU ราคา ราคาลด และสต็อกแยกกัน<br>SKU ที่เคยถูกใช้ในคำสั่งซื้อหรือมีประวัติสต็อกจะถูกเก็บเป็น Archived เมื่อเอาออกจากชุดตัวเลือก</small></div></div>'+
+          '<div class="vm-section-title"><b>1. กลุ่มตัวเลือก</b><small>สูงสุด 3 กลุ่ม · 200 SKU ต่อสินค้า</small></div>'+
+          '<div id="vmGroupList" class="vm-group-list">'+variantMatrixGroupsHtml()+'</div>'+
+          '<div style="margin-top:8px;text-align:left"><button type="button" class="btn btn-outline btn-small" onclick="variantMatrixAddGroup()"><i class="fa-solid fa-plus"></i> เพิ่มกลุ่มตัวเลือก</button></div>'+
+          '<div class="vm-section-title"><b>2. ค่าเริ่มต้นสำหรับชุดใหม่</b><small>ใช้เฉพาะ SKU ที่เพิ่งสร้าง</small></div>'+
+          '<div class="vm-default-grid">'+
+            '<div class="vm-default-field"><label for="vmDefaultPrice">ราคาปกติเริ่มต้น</label><input type="number" id="vmDefaultPrice" min="0" step="0.01" value="'+esc(product.price||'')+'"></div>'+
+            '<div class="vm-default-field"><label for="vmDefaultSale">ราคาขายเริ่มต้น (0 = ไม่ลด)</label><input type="number" id="vmDefaultSale" min="0" step="0.01" value="'+esc(product.salePrice||0)+'"></div>'+
+            '<div class="vm-default-field"><label>สต็อกเริ่มต้น</label><input type="number" value="0" readonly><small class="vm-stock-note">SKU ใหม่เริ่มที่ 0 เพื่อไม่คัดลอกสต็อกสินค้าหลักซ้ำทุกตัวเลือก</small></div>'+
+          '</div>'+
+          '<div class="vm-generate-row"><button type="button" class="btn btn-primary btn-small" onclick="variantMatrixBuild()"><i class="fa-solid fa-wand-magic-sparkles"></i> สร้างชุดตัวเลือก</button><small id="vmMatrixCount">กำลังโหลด '+rows.length+' SKU</small></div>'+
+          '<div class="vm-section-title"><b>3. จัดการ SKU แต่ละชุด</b><small>แก้ไขได้รายตัว และลบชุดที่ไม่ต้องการ</small></div>'+
+          '<div class="vm-matrix-wrap"><table class="vm-matrix-table"><thead><tr><th>ชุดตัวเลือก</th><th>SKU</th><th>ราคาปกติ</th><th>ราคาขาย</th><th>สต็อกทั้งหมด</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="vmMatrixBody"></tbody></table></div>'+
+          '<div id="vmMatrixHint" class="vm-footer-note">แก้ไขราคาและสต็อกแยกตาม SKU ได้ สต็อกทั้งหมดต้องไม่น้อยกว่าจำนวนที่ถูกจองไว้ หากเปลี่ยนค่ากลุ่มตัวเลือกให้กดสร้างชุดตัวเลือกอีกครั้ง</div>';
+        Swal.fire({
+          title:'จัดการตัวเลือกสินค้า / SKU',
+          html:html,width:'min(96vw,1120px)',showCancelButton:true,showLoaderOnConfirm:true,
+          confirmButtonText:'บันทึกตัวเลือกทั้งหมด',cancelButtonText:'ปิด',focusConfirm:false,
+          allowOutsideClick:function(){return !Swal.isLoading();},
+          didOpen:function(){variantMatrixRenderRows();},
+          preConfirm:function(){return variantMatrixSave(mode,productId);}
+        });
+      },false);
+    }
+    function manageVariants(productId){variantMatrixOpen(productId,'admin');}
     function loadShippingAdmin(){adminGridLoad('shipping',null,null,false);}
     function renderAdminSettingImage(key,label,value,folder){
       var id='setting_'+key,preview='setting_preview_'+key,file='setting_file_'+key;
@@ -5219,13 +5467,7 @@ body.dark .fashion-detail-row .shopee-variant-chip,body.dark .fashion-detail-row
         if(d.coverImage&&String(d.coverImage).toLowerCase().indexOf('https://')!==0){Swal.showValidationMessage('URL รูปปกสินค้าต้องขึ้นต้นด้วย https://');return false;}return runSellerModalMutation('sellerSaveProduct',[APP.customerToken,d],'products');
       }});
     }
-    function sellerManageVariants(productId){apiCall('sellerGetProductVariants',[APP.customerToken,productId],function(r){if(!r.success){alertError(r.message);return;}var rows=safeArray(r.data);var html='<div style="text-align:right;margin-bottom:12px"><button class="btn btn-primary btn-small" onclick="sellerVariantDialog(\''+esc(productId)+'\',null)">เพิ่มตัวเลือกสินค้า</button></div><div class="table-scroll"><table class="market-table"><thead><tr><th>Variant</th><th>SKU</th><th>ราคา</th><th>คงเหลือ</th><th>จัดการ</th></tr></thead><tbody>'+(rows.length?rows.map(function(v){return '<tr><td>'+esc(v.variantName)+'</td><td>'+esc(v.sku)+'</td><td>'+money(v.salePrice>0?v.salePrice:v.price)+'</td><td>'+esc(v.available)+'</td><td><button class="btn btn-outline btn-small" onclick="sellerVariantDialog(\''+esc(productId)+'\',\''+esc(v.id)+'\')">แก้ไข</button> <button class="btn btn-outline btn-small" onclick="sellerDeleteVariantAction(\''+esc(productId)+'\',\''+esc(v.id)+'\')">ลบ</button></td></tr>';}).join(''):'<tr><td colspan="5">ยังไม่มีตัวเลือกสินค้า</td></tr>')+'</tbody></table></div>';Swal.fire({title:'ตัวเลือกสินค้า / SKU',html:html,width:760,showConfirmButton:false,showCloseButton:true});});}
-    function sellerVariantDialog(productId,variantId){
-      apiCall('sellerGetProductVariants',[APP.customerToken,productId],function(r){if(!r.success){alertError(r.message);return;}var v=variantId?safeArray(r.data).filter(function(z){return z.id===variantId;})[0]||{}:{};
-        var html='<div class="modal-form-grid"><div class="modal-field"><label>ชื่อ Variant</label><input id="svName" value="'+esc(v.variantName||'')+'" placeholder="เช่น สีดำ / ไซซ์ M"></div><div class="modal-field"><label>SKU</label><input id="svSku" value="'+esc(v.sku||makeAdminCode('VAR'))+'"></div><div class="modal-field"><label>ราคา</label><input id="svPrice" type="number" min="1" value="'+esc(v.price||'')+'"></div><div class="modal-field"><label>ราคาลด</label><input id="svSale" type="number" min="0" value="'+esc(v.salePrice||0)+'"></div><div class="modal-field"><label>สต็อก</label><input id="svStock" type="number" min="0" value="'+esc(v.stock||0)+'"></div><div class="modal-field"><label>สถานะ</label><select id="svStatus"><option value="Active">เปิดขาย</option><option value="Inactive" '+(v.status==='Inactive'?'selected':'')+'>ปิดขาย</option></select></div><div class="modal-field full"><label for="svAttributes">ข้อมูลตัวเลือก (JSON)</label><textarea id="svAttributes" rows="3" placeholder="ข้อมูลตัวเลือก JSON เช่น สีและไซส์"> '+esc(typeof v.attributes==='string'?v.attributes:JSON.stringify(v.attributes||{},null,2))+'</textarea><small class="modal-help">ตัวอย่าง {\"สี\":\"ชมพู\",\"ไซส์\":\"M\"} เพื่อแยกปุ่มสีและไซส์ในหน้ารายละเอียดสินค้า</small></div></div>';
-        Swal.fire({title:variantId?'แก้ไข Variant':'เพิ่ม Variant',html:html,showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึก Variant',cancelButtonText:'ยกเลิก',allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){var attributes={};try{attributes=JSON.parse(document.getElementById('svAttributes').value||'{}');if(!attributes||typeof attributes!=='object'||Array.isArray(attributes))throw new Error('invalid');}catch(e){Swal.showValidationMessage('ข้อมูลตัวเลือกต้องเป็น JSON Object ที่ถูกต้อง');return false;}var d={id:variantId||'',productId:productId,variantName:document.getElementById('svName').value,sku:document.getElementById('svSku').value,attributes:attributes,price:Number(document.getElementById('svPrice').value),salePrice:Number(document.getElementById('svSale').value),stock:Number(document.getElementById('svStock').value),status:document.getElementById('svStatus').value};if(!d.variantName||!d.sku||d.price<=0){Swal.showValidationMessage('กรุณากรอกชื่อ Variant, SKU และราคา');return false;}return runSellerModalMutation('sellerSaveProductVariant',[APP.customerToken,d],'products');}});
-      },false);
-    }
+    function sellerManageVariants(productId){variantMatrixOpen(productId,'seller');}
     function sellerDeleteVariantAction(productId,variantId){Swal.fire({title:'ลบ Variant นี้?',text:'หากเคยมีคำสั่งซื้อ ระบบจะเก็บเข้าคลังแทน',showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'ยืนยันลบ',cancelButtonText:'ยกเลิก',allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){return runSellerModalMutation('sellerDeleteProductVariant',[APP.customerToken,variantId],'products');}});}
     function sellerDeleteProductAction(id){Swal.fire({title:'ลบสินค้า?',text:'หากสินค้ามีประวัติคำสั่งซื้อ ระบบจะเก็บเข้าคลังแทนการลบถาวร',showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'ยืนยันลบ',cancelButtonText:'ยกเลิก',allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){return runSellerModalMutation('sellerDeleteProduct',[APP.customerToken,id],'products');}});}
     function renderSellerOrders(rows){document.getElementById('sellerContent').innerHTML='<h2>คำสั่งซื้อร้านค้า</h2><div class="table-scroll"><table class="market-table"><thead><tr><th>Order</th><th>ผู้รับ</th><th>รายการ</th><th>ยอดสินค้า</th><th>ชำระเงิน</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody>'+(rows.length?rows.map(function(o){var next=o.status==='Processing'?'Packed':(o.status==='Packed'?'Shipped':(o.status==='Shipped'?'Delivered':''));return '<tr><td>'+esc(o.orderNumber)+'<small class="muted" style="display:block">'+esc(formatThaiChatTime(o.createdAt,true))+'</small></td><td>'+esc(o.customerName)+'<small class="muted" style="display:block">'+esc(o.phone)+'</small></td><td>'+safeArray(o.items).map(function(i){return esc(i.productName)+' × '+i.quantity;}).join('<br>')+'</td><td>'+money(o.subtotal)+'</td><td>'+esc(o.paymentStatus)+'</td><td>'+esc(o.status)+'</td><td>'+(next?'<button class="btn btn-primary btn-small" onclick="sellerAdvanceOrder(\''+esc(o.id)+'\',\''+next+'\')">'+(next==='Packed'?'แพ็กสินค้า':(next==='Shipped'?'จัดส่ง':'ส่งสำเร็จ'))+'</button>':'—')+'</td></tr>';}).join(''):'<tr><td colspan="7">ยังไม่มีคำสั่งซื้อ</td></tr>')+'</tbody></table></div>';}
