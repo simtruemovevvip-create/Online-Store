@@ -1968,7 +1968,8 @@ function variantMatrixParseAttributes_(value) {
     var val=String(raw).trim();
     if(!val)return;
     if(/^(image|imageurl|image_url|hex|colorhex|color_hex|รูป)$/i.test(name)){if(name.toLowerCase()==='imageurl'||name.toLowerCase()==='image_url'||name.toLowerCase()==='image')result.imageUrl=text_(val,1000);return;}
-    result[name]=text_(val,100);
+    var normalizedName=/color|colour|สี/i.test(name)?'สี':(/size|ไซส์|ไซซ์|ขนาด/i.test(name)?'ไซส์':name);
+    result[normalizedName]=text_(val,100);
   });
   return result;
 }
@@ -1999,7 +2000,7 @@ function saveProductVariantMatrixCore_(data,storeId,actorName) {
     var orderItems=readTable_('OrderItems',false),movements=readTable_('InventoryMovements',false),inventory=readTable_('Inventory',false);
     var usedIds=Object.create(null),combinationSeen=Object.create(null),skuSeen=Object.create(null);
     var productSkus=readTable_('Products',false),otherVariantSkus=allVariants.filter(function(v){return String(v.productId)!==productId;});
-    var prepared=[];
+    var prepared=[],dimensionSignature='';
     incoming.forEach(function(input,index){
       input=input||{};
       var attrs=variantMatrixParseAttributes_(input.attributes),key=variantMatrixCombinationKey_(attrs);
@@ -2033,6 +2034,9 @@ function saveProductVariantMatrixCore_(data,storeId,actorName) {
       }
       var optionNames=Object.keys(attrs).filter(function(k){return k!=='imageUrl';});
       if(optionNames.length>3)throw new Error('รองรับกลุ่มตัวเลือกได้สูงสุด 3 กลุ่มต่อสินค้า');
+      var signature=optionNames.slice().sort(function(a,b){return a.toLowerCase().localeCompare(b.toLowerCase());}).map(function(k){return k.toLowerCase();}).join('|');
+      if(dimensionSignature&&dimensionSignature!==signature)throw new Error('ทุก SKU ต้องใช้ชื่อกลุ่มตัวเลือกชุดเดียวกัน เช่น สี และ ไซส์');
+      dimensionSignature=signature;
       var variantName=text_(input.variantName,160)||optionNames.map(function(k){return k+': '+attrs[k];}).join(' / ');
       if(!variantName)throw new Error('กรุณาระบุชื่อชุดตัวเลือก');
       var now=now_();
