@@ -1994,7 +1994,7 @@ function saveProductVariantMatrixCore_(data,storeId,actorName) {
       currentById[String(v.id)]=v;
       var a={};try{a=variantMatrixParseAttributes_(v.attributes);}catch(e){}
       var key=variantMatrixCombinationKey_(a);
-      if(key&&!currentByKey[key])currentByKey[key]=v;
+      if(String(v.status)!=='Archived'&&key&&!currentByKey[key])currentByKey[key]=v;
     });
     var orderItems=readTable_('OrderItems',false),movements=readTable_('InventoryMovements',false),inventory=readTable_('Inventory',false);
     var usedIds=Object.create(null),combinationSeen=Object.create(null),skuSeen=Object.create(null);
@@ -2007,7 +2007,7 @@ function saveProductVariantMatrixCore_(data,storeId,actorName) {
       if(combinationSeen[key])throw new Error('พบชุดตัวเลือกซ้ำกัน: '+key);
       combinationSeen[key]=true;
       var id=text_(input.id,100),old=id?currentById[id]:currentByKey[key];
-      if(id&&(!old||String(old.productId)!==productId))throw new Error('พบ SKU ที่ไม่ได้เป็นของสินค้านี้');
+      if(id&&(!old||String(old.productId)!==productId||String(old.status)==='Archived'))throw new Error('พบ SKU ที่ไม่ได้เป็นของสินค้านี้หรือถูกเก็บเข้าคลังแล้ว');
       if(old&&usedIds[String(old.id)])throw new Error('พบการอ้างอิง SKU เดิมซ้ำกัน');
       if(old)usedIds[String(old.id)]=true;
       var sku=text_(input.sku,80).toUpperCase();
@@ -2022,8 +2022,7 @@ function saveProductVariantMatrixCore_(data,storeId,actorName) {
       if(!isFinite(salePrice)||salePrice<0||(salePrice>0&&salePrice>=price))throw new Error('ราคาขายของ SKU '+sku+' ต้องน้อยกว่าราคาปกติ');
       if(!isFinite(stock)||stock<0||Math.floor(stock)!==stock)throw new Error('สต็อกของ SKU '+sku+' ต้องเป็นเลขจำนวนเต็มตั้งแต่ 0 ขึ้นไป');
       if(!['Active','Inactive'].includes(String(input.status||'Active')))throw new Error('สถานะ SKU ไม่ถูกต้อง');
-      var inv=inventory.filter(function(row){return String(row.productId)===productId&&String(row.variantId)===String(old?old.id:id||'');})[0]||null;
-      if(old&&!inv)inv=inventory.filter(function(row){return String(row.productId)===productId&&String(row.variantId)===String(old.id);})[0]||null;
+      var inv=old?inventory.filter(function(row){return String(row.productId)===productId&&String(row.variantId)===String(old.id);})[0]||null:null;
       if(inv&&stock<number_(inv.reserved,0))throw new Error('SKU '+sku+' มีสต็อกที่ถูกจอง '+number_(inv.reserved,0)+' ชิ้น จึงไม่สามารถลดสต็อกต่ำกว่านี้ได้');
       if(!inv&&old){
         inv=inventory.filter(function(row){return String(row.productId)===productId&&String(row.variantId)===String(old.id);})[0]||null;
@@ -2063,7 +2062,7 @@ function saveProductVariantMatrixCore_(data,storeId,actorName) {
       }
     });
     current.forEach(function(old){
-      if(savedIds[String(old.id)])return;
+      if(savedIds[String(old.id)]||String(old.status)==='Archived')return;
       var inv=inventory.filter(function(row){return String(row.productId)===productId&&String(row.variantId)===String(old.id);})[0]||null;
       var hasOrder=orderItems.some(function(item){return String(item.variantId)===String(old.id);});
       var hasMovement=movements.some(function(item){return String(item.variantId)===String(old.id);});
