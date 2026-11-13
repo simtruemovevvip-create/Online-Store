@@ -2975,7 +2975,28 @@ function getMarketplaceStores(options) {
   }
 }
 function getMarketplaceStore(storeId) {
-  try {var st=readTable_('Stores',false).filter(function(x){return x.id===storeId&&x.status==='Active';})[0];if(!st)throw new Error('ไม่พบร้านค้าหรือร้านค้ายังไม่เปิด');var info=publicStore_(st);var products=getProducts({storeId:storeId,page:1,pageSize:100});info.products=products.success?products.data.items:[];info.vouchers=readTable_('Coupons',true).filter(function(c){return c.sellerId===storeId&&c.status==='Active'&&(!c.startDate||new Date(c.startDate).getTime()<=Date.now())&&(!c.endDate||new Date(c.endDate).getTime()>=Date.now());}).map(function(c){return {id:c.id,code:c.code,title:c.title,discountType:c.discountType,discountValue:c.discountValue,minimumOrder:c.minimumOrder,endDate:c.endDate};});info.followers=readTable_('StoreFollows',true).filter(function(f){return f.storeId===storeId;}).length;return ok_(info);}catch(e){return fail_(safeError_(e));}
+  try {
+    var st=readTable_('Stores',false).filter(function(x){return x.id===storeId&&x.status==='Active';})[0];
+    if(!st)throw new Error('ไม่พบร้านค้าหรือร้านค้ายังไม่เปิด');
+    var info=publicStore_(st);
+    var products=getProducts({storeId:storeId,page:1,pageSize:100});
+    info.products=products.success?products.data.items:[];
+    info.productCount=products.success?number_(products.data.total,info.products.length):info.products.length;
+    var storeProductIds=readTable_('Products',true).filter(function(p){return p.sellerId===storeId&&p.status==='Active';}).map(function(p){return String(p.id);});
+    var storeProductMap=Object.create(null);
+    storeProductIds.forEach(function(id){storeProductMap[id]=true;});
+    var storeReviews=readTable_('Reviews',true).filter(function(r){
+      return storeProductMap[String(r.productId||'')]&&['Approved','Active','Published'].indexOf(String(r.status||'Approved'))>=0&&number_(r.rating,0)>0;
+    });
+    info.reviewCount=storeReviews.length;
+    if(storeReviews.length){
+      var ratingTotal=storeReviews.reduce(function(sum,r){return sum+number_(r.rating,0);},0);
+      info.rating=Math.round((ratingTotal/storeReviews.length)*10)/10;
+    }
+    info.vouchers=readTable_('Coupons',true).filter(function(c){return c.sellerId===storeId&&c.status==='Active'&&(!c.startDate||new Date(c.startDate).getTime()<=Date.now())&&(!c.endDate||new Date(c.endDate).getTime()>=Date.now());}).map(function(c){return {id:c.id,code:c.code,title:c.title,discountType:c.discountType,discountValue:c.discountValue,minimumOrder:c.minimumOrder,endDate:c.endDate};});
+    info.followers=readTable_('StoreFollows',true).filter(function(f){return f.storeId===storeId;}).length;
+    return ok_(info);
+  }catch(e){return fail_(safeError_(e));}
 }
 function applySeller(customerToken,data) {
   try {var c=requireCustomer_(customerToken);data=data||{};if(String(getSettingValue_('sellerRegistrationEnabled'))==='false')throw new Error('ขณะนี้ปิดรับสมัครผู้ขาย');var exists=readTable_('Stores',false).filter(function(x){return x.ownerCustomerId===c.id;})[0];if(exists)return ok_(publicStore_(exists),exists.status==='Pending'?'ใบสมัครกำลังรออนุมัติ':'บัญชีนี้มีร้านค้าอยู่แล้ว');
