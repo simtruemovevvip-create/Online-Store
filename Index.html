@@ -4853,13 +4853,34 @@ body.dark .vm-matrix-table th{background:#202833}
       APP.variantMatrixGroups.splice(Number(index),1);
       var host=document.getElementById('vmGroupList');if(host)host.innerHTML=variantMatrixGroupsHtml();
     }
+    function variantMatrixGenerateSku(baseSku,attrs,usedSkus){
+      var base=String(baseSku||'').trim().toUpperCase().replace(/\\s+/g,'-').replace(/[^A-Z0-9_-]/g,'-').replace(/[-_]{2,}/g,'-').replace(/^[-_]+|[-_]+$/g,'').substring(0,60);
+      if(!base)throw new Error('ไม่พบ SKU หลักของสินค้า กรุณาบันทึก SKU สินค้าก่อนสร้างชุดตัวเลือก');
+      var source=String(variantMatrixKey(attrs)||JSON.stringify(attrs||{})),hash=5381;
+      for(var i=0;i<source.length;i++)hash=((hash<<5)+hash)^source.charCodeAt(i);
+      var suffix=(hash>>>0).toString(36).toUpperCase();while(suffix.length<6)suffix='0'+suffix;suffix=suffix.slice(-6);
+      var stem=base+'-'+suffix,sku=stem,counter=2;
+      while(usedSkus&&usedSkus[sku.toUpperCase()]){
+        var tail='-'+counter++;sku=stem.substring(0,80-tail.length)+tail;
+      }
+      if(usedSkus)usedSkus[sku.toUpperCase()]=true;
+      return sku;
+    }
+    function variantMatrixShowBuildError(message){
+      var hint=document.getElementById('vmMatrixHint');
+      if(hint)hint.textContent=message;
+      if(Swal&&typeof Swal.showValidationMessage==='function')Swal.showValidationMessage(message);
+    }
     function variantMatrixBuild(){
       try{
         variantMatrixCaptureRows();
+        var baseSku=String(APP.variantMatrixProduct&&APP.variantMatrixProduct.sku||'').trim();
+        if(!baseSku)throw new Error('ไม่พบ SKU หลักของสินค้า กรุณาโหลดข้อมูลสินค้าอีกครั้งก่อนสร้างชุดตัวเลือก');
         var groups=variantMatrixReadGroups(),combinationCount=groups.reduce(function(total,g){return total*g.values.length;},1);
-        if(combinationCount>200){Swal.showValidationMessage('ชุดตัวเลือกทั้งหมด '+combinationCount+' SKU เกินขีดจำกัด 200 SKU กรุณาลดจำนวนค่าตัวเลือก');return;}
+        if(!isFinite(combinationCount)||combinationCount>200){variantMatrixShowBuildError('ชุดตัวเลือกทั้งหมด '+combinationCount+' SKU เกินขีดจำกัด 200 SKU กรุณาลดจำนวนค่าตัวเลือก');return false;}
         var prior=safeArray(APP.variantMatrixRows).slice(),original=safeArray(APP.variantMatrixOriginalRows).slice(),priceDefault=Number((document.getElementById('vmDefaultPrice')||{}).value||0),saleDefault=Number((document.getElementById('vmDefaultSale')||{}).value||0);
-        var oldByKey=Object.create(null),originalByKey=Object.create(null);
+        var oldByKey=Object.create(null),originalByKey=Object.create(null),usedSkus=Object.create(null);
+        usedSkus[baseSku.toUpperCase()]=true;
         prior.forEach(function(v){var key=variantMatrixKey(v.attributes||{});if(key)oldByKey[key]=v;});
         original.forEach(function(v){var key=variantMatrixKey(variantMatrixNormalizeAttrs(v));if(key)originalByKey[key]=v;});
         var combos=[];
@@ -4868,15 +4889,17 @@ body.dark .vm-matrix-table th{background:#202833}
           var group=groups[depth];group.values.forEach(function(value){var next={};Object.keys(attrs).forEach(function(k){next[k]=attrs[k];});next[group.name]=value;walk(depth+1,next);});
         }
         walk(0,{});
-        var nextRows=combos.map(function(attrs,index){
+        var nextRows=combos.map(function(attrs){
           var label=groups.map(function(g){return g.name+': '+attrs[g.name];}).join(' / '),key=variantMatrixKey(attrs);
           var existing=oldByKey[key]||originalByKey[key]||null;
           if(!existing)existing=original.filter(function(v){return !Object.keys(variantMatrixNormalizeAttrs(v)).length&&String(v.variantName||'')===label;})[0]||prior.filter(function(v){return String(v.variantName||'')===label;})[0]||null;
           var oldAttrs=existing?variantMatrixNormalizeAttrs(existing):{},imageUrl=existing&&existing.imageUrl?String(existing.imageUrl):oldAttrs.imageUrl||'';
           if(imageUrl)attrs.imageUrl=imageUrl;
+          var sku=existing&&existing.sku?String(existing.sku):variantMatrixGenerateSku(baseSku,attrs,usedSkus);
+          usedSkus[sku.toUpperCase()]=true;
           return {
             id:existing?existing.id:'',
-            sku:existing&&existing.sku?existing.sku:makeAdminCode('VAR'),
+            sku:sku,
             imageUrl:imageUrl,
             variantName:label,attributes:attrs,
             price:existing?Number(existing.price||0):(priceDefault>0?priceDefault:Number(APP.variantMatrixProduct&&APP.variantMatrixProduct.price||0)),
@@ -4890,8 +4913,9 @@ body.dark .vm-matrix-table th{background:#202833}
         APP.variantMatrixGroups=groups;APP.variantMatrixRows=nextRows;APP.variantMatrixBuiltSignature=variantMatrixGroupsSignature(groups);
         var groupHost=document.getElementById('vmGroupList');if(groupHost)groupHost.innerHTML=variantMatrixGroupsHtml();
         variantMatrixRenderRows();
-        var hint=document.getElementById('vmMatrixHint');if(hint)hint.textContent='สร้าง '+nextRows.length+' SKU จาก '+groups.map(function(g){return g.name+' '+g.values.length+' ค่า';}).join(' × ')+'. ตรวจสอบราคา SKU และสต็อกแต่ละรายการก่อนบันทึก';
-      }catch(e){Swal.showValidationMessage(e.message||'ไม่สามารถสร้างชุดตัวเลือกได้');}
+        var hint=document.getElementById('vmMatrixHint');if(hint)hint.textContent='สร้าง '+nextRows.length+' SKU สำเร็จ โดยใช้ SKU หลัก '+baseSku+' เป็นรหัสนำหน้า · '+groups.map(function(g){return g.name+' '+g.values.length+' ค่า';}).join(' × ')+'. ตรวจสอบราคาและสต็อกแต่ละรายการก่อนบันทึก';
+        return true;
+      }catch(e){variantMatrixShowBuildError(e.message||'ไม่สามารถสร้างชุดตัวเลือกได้');return false;}
     }
     function variantMatrixSave(mode,productId){
       try{
@@ -4919,47 +4943,64 @@ body.dark .vm-matrix-table th{background:#202833}
         return runSellerModalMutation('sellerSaveProductVariantMatrix',[APP.customerToken,data],'products');
       }catch(e){Swal.showValidationMessage(e.message||'กรุณาตรวจสอบข้อมูลตัวเลือก');return false;}
     }
-    function variantMatrixOpen(productId,mode){
-      var api=mode==='admin'?'getProductVariants':'sellerGetProductVariants';
-      var args=mode==='admin'?[productId,{token:APP.adminToken}]:[APP.customerToken,productId];
-      apiCall(api,args,function(result){
-        if(!result||!result.success){alertError(result&&result.message||'โหลดตัวเลือกสินค้าไม่สำเร็จ');return;}
-        var product=mode==='admin'?safeArray(APP.adminData).filter(function(p){return String(p.id)===String(productId);})[0]||{}:safeArray(APP.sellerProducts).filter(function(p){return String(p.id)===String(productId);})[0]||{};
-        var rows=safeArray(result.data).filter(function(v){return String(v.status||'Active')!=='Archived';});
-        APP.variantMatrixProduct=product;APP.variantMatrixMode=mode;APP.variantMatrixProductId=productId;
-        APP.variantMatrixOriginalRows=rows.map(function(v){
-          var copy={};Object.keys(v).forEach(function(k){copy[k]=v[k];});
-          copy.attributes=variantMatrixNormalizeAttrs(v);
-          if(!Object.keys(copy.attributes).some(function(k){return k!=='imageUrl';})&&String(v.variantName||'').trim())copy.attributes['ตัวเลือก']=String(v.variantName).trim();
-          return copy;
-        });
-        APP.variantMatrixRows=APP.variantMatrixOriginalRows.map(function(v){var copy={};Object.keys(v).forEach(function(k){copy[k]=v[k];});return copy;});
-        APP.variantMatrixGroups=variantMatrixGroupsFromRows(rows);
-        APP.variantMatrixBuiltSignature=rows.length?variantMatrixGroupsSignature(APP.variantMatrixGroups):'';
-        var name=product.name||'สินค้า '+productId,sku=product.sku||'';
-        var html='<div class="vm-intro"><span class="vm-intro-icon"><i class="fa-solid fa-layer-group"></i></span><div class="vm-intro-copy"><b>'+esc(name)+'</b><small>กำหนดกลุ่มตัวเลือก เช่น สี / ไซส์ / รุ่น แล้วสร้างชุด SKU อัตโนมัติ แต่ละชุดมี SKU ราคา ราคาลด และสต็อกแยกกัน<br>SKU ใหม่เริ่มสต็อก 0 เพื่อป้องกันการคัดลอกสต็อกสินค้าหลักซ้ำ ต้องกำหนดสต็อกให้แต่ละ SKU ก่อนเปิดขาย<br>SKU ที่เคยถูกใช้ในคำสั่งซื้อหรือมีประวัติสต็อกจะถูกเก็บเป็น Archived เมื่อเอาออกจากชุดตัวเลือก</small></div></div>'+
-          '<div class="vm-section-title"><b>1. กลุ่มตัวเลือก</b><small>ไม่จำกัดจำนวนกลุ่ม · สร้างได้สูงสุด 200 SKU ต่อสินค้า</small></div>'+
-          '<div id="vmGroupList" class="vm-group-list">'+variantMatrixGroupsHtml()+'</div>'+
-          '<div style="margin-top:8px;text-align:left"><button type="button" class="btn btn-outline btn-small" onclick="variantMatrixAddGroup()"><i class="fa-solid fa-plus"></i> เพิ่มกลุ่มตัวเลือก</button></div>'+
-          '<div class="vm-section-title"><b>2. ค่าเริ่มต้นสำหรับชุดใหม่</b><small>ใช้เฉพาะ SKU ที่เพิ่งสร้าง</small></div>'+
-          '<div class="vm-default-grid">'+
-            '<div class="vm-default-field"><label for="vmDefaultPrice">ราคาปกติเริ่มต้น</label><input type="number" id="vmDefaultPrice" min="0" step="0.01" value="'+esc(product.price||'')+'"></div>'+
-            '<div class="vm-default-field"><label for="vmDefaultSale">ราคาขายเริ่มต้น (0 = ไม่ลด)</label><input type="number" id="vmDefaultSale" min="0" step="0.01" value="'+esc(product.salePrice||0)+'"></div>'+
-            '<div class="vm-default-field"><label>สต็อกเริ่มต้น</label><input type="number" value="0" readonly><small class="vm-stock-note">SKU ใหม่เริ่มที่ 0 เพื่อไม่คัดลอกสต็อกสินค้าหลักซ้ำทุกตัวเลือก</small></div>'+
-          '</div>'+
-          '<div class="vm-generate-row"><button type="button" class="btn btn-primary btn-small" onclick="variantMatrixBuild()"><i class="fa-solid fa-wand-magic-sparkles"></i> สร้างชุดตัวเลือก</button><small id="vmMatrixCount">กำลังโหลด '+rows.length+' SKU</small></div>'+
-          '<div class="vm-section-title"><b>3. จัดการ SKU แต่ละชุด</b><small>แก้ไขได้รายตัว และลบชุดที่ไม่ต้องการ</small></div>'+
-          '<div class="vm-matrix-wrap"><table class="vm-matrix-table"><thead><tr><th>ชุดตัวเลือก</th><th>SKU</th><th>รูปตัวเลือก (URL)</th><th>ราคาปกติ</th><th>ราคาขาย</th><th>สต็อกทั้งหมด</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="vmMatrixBody"></tbody></table></div>'+
-          '<div id="vmMatrixHint" class="vm-footer-note">แก้ไขราคาและสต็อกแยกตาม SKU ได้ สต็อกทั้งหมดต้องไม่น้อยกว่าจำนวนที่ถูกจองไว้ หากเปลี่ยนค่ากลุ่มตัวเลือกให้กดสร้างชุดตัวเลือกอีกครั้ง</div>';
-        Swal.fire({
-          title:'จัดการตัวเลือกสินค้า / SKU',
-          html:html,width:'min(96vw,1120px)',showCancelButton:true,showLoaderOnConfirm:true,
-          confirmButtonText:'บันทึกตัวเลือกทั้งหมด',cancelButtonText:'ปิด',focusConfirm:false,
-          allowOutsideClick:function(){return !Swal.isLoading();},
-          didOpen:function(){variantMatrixRenderRows();},
-          preConfirm:function(){return variantMatrixSave(mode,productId);}
-        });
+    function variantMatrixResolveProduct(productId,mode,callback){
+      var sources=mode==='admin'?[APP.adminData,APP.adminProducts]:[APP.sellerProducts],cached=null;
+      sources.forEach(function(list){if(cached)return;cached=safeArray(list).filter(function(p){return String(p.id)===String(productId);})[0]||null;});
+      if(cached&&String(cached.sku||'').trim()){callback(cached);return;}
+      var api=mode==='admin'?'getProductsAdmin':'sellerGetProducts';
+      var args=mode==='admin'?[{token:APP.adminToken,page:1,pageSize:500}]:[APP.customerToken,{}];
+      apiCall(api,args,function(r){
+        if(!r||!r.success){alertError(r&&r.message||'โหลดข้อมูล SKU หลักของสินค้าไม่สำเร็จ');return;}
+        var payload=r.data||{},list=mode==='admin'?safeArray(payload.items||payload):safeArray(payload);
+        var loaded=list.filter(function(p){return String(p.id)===String(productId);})[0]||cached;
+        if(!loaded){alertError('ไม่พบข้อมูลสินค้าที่ต้องการจัดการ');return;}
+        if(cached){Object.keys(cached).forEach(function(k){if(loaded[k]===undefined||loaded[k]===null||loaded[k]==='')loaded[k]=cached[k];});}
+        if(!String(loaded.sku||'').trim()){alertError('สินค้านี้ยังไม่มี SKU หลัก กรุณาแก้ไขสินค้าและบันทึก SKU ก่อนสร้างชุดตัวเลือก');return;}
+        callback(loaded);
       },false);
+    }
+    function variantMatrixOpen(productId,mode){
+      variantMatrixResolveProduct(productId,mode,function(product){
+        var api=mode==='admin'?'getProductVariants':'sellerGetProductVariants';
+        var args=mode==='admin'?[productId,{token:APP.adminToken}]:[APP.customerToken,productId];
+        apiCall(api,args,function(result){
+          if(!result||!result.success){alertError(result&&result.message||'โหลดตัวเลือกสินค้าไม่สำเร็จ');return;}
+          var rows=safeArray(result.data).filter(function(v){return String(v.status||'Active')!=='Archived';});
+          APP.variantMatrixProduct=product;APP.variantMatrixMode=mode;APP.variantMatrixProductId=productId;
+          APP.variantMatrixOriginalRows=rows.map(function(v){
+            var copy={};Object.keys(v).forEach(function(k){copy[k]=v[k];});
+            copy.attributes=variantMatrixNormalizeAttrs(v);
+            if(!Object.keys(copy.attributes).some(function(k){return k!=='imageUrl';})&&String(v.variantName||'').trim())copy.attributes['ตัวเลือก']=String(v.variantName).trim();
+            return copy;
+          });
+          APP.variantMatrixRows=APP.variantMatrixOriginalRows.map(function(v){var copy={};Object.keys(v).forEach(function(k){copy[k]=v[k];});return copy;});
+          APP.variantMatrixGroups=variantMatrixGroupsFromRows(rows);
+          APP.variantMatrixBuiltSignature=rows.length?variantMatrixGroupsSignature(APP.variantMatrixGroups):'';
+          var name=product.name||'สินค้า '+productId,sku=String(product.sku||'').trim();
+          var html='<div class="vm-intro"><span class="vm-intro-icon"><i class="fa-solid fa-layer-group"></i></span><div class="vm-intro-copy"><b>'+esc(name)+'</b><small>กำหนดกลุ่มตัวเลือก เช่น สี / ไซส์ / รุ่น แล้วสร้างชุด SKU อัตโนมัติ แต่ละชุดมี SKU ราคา ราคาลด และสต็อกแยกกัน<br><b>SKU หลักของสินค้า: '+esc(sku)+'</b> · SKU ใหม่จะใช้รหัสสินค้านี้เป็นรหัสนำหน้า<br>SKU ใหม่เริ่มสต็อก 0 เพื่อป้องกันการคัดลอกสต็อกสินค้าหลักซ้ำ ต้องกำหนดสต็อกให้แต่ละ SKU ก่อนเปิดขาย<br>SKU ที่เคยถูกใช้ในคำสั่งซื้อหรือมีประวัติสต็อกจะถูกเก็บเป็น Archived เมื่อเอาออกจากชุดตัวเลือก</small></div></div>'+
+            '<div class="vm-section-title"><b>1. กลุ่มตัวเลือก</b><small>ไม่จำกัดจำนวนกลุ่ม · สร้างได้สูงสุด 200 SKU ต่อสินค้า</small></div>'+
+            '<div id="vmGroupList" class="vm-group-list">'+variantMatrixGroupsHtml()+'</div>'+
+            '<div style="margin-top:8px;text-align:left"><button type="button" class="btn btn-outline btn-small" onclick="variantMatrixAddGroup()"><i class="fa-solid fa-plus"></i> เพิ่มกลุ่มตัวเลือก</button></div>'+
+            '<div class="vm-section-title"><b>2. ค่าเริ่มต้นสำหรับชุดใหม่</b><small>ใช้เฉพาะ SKU ที่เพิ่งสร้าง</small></div>'+
+            '<div class="vm-default-grid">'+
+              '<div class="vm-default-field"><label for="vmDefaultPrice">ราคาปกติเริ่มต้น</label><input type="number" id="vmDefaultPrice" min="0" step="0.01" value="'+esc(product.price||'')+'"></div>'+
+              '<div class="vm-default-field"><label for="vmDefaultSale">ราคาขายเริ่มต้น (0 = ไม่ลด)</label><input type="number" id="vmDefaultSale" min="0" step="0.01" value="'+esc(product.salePrice||0)+'"></div>'+
+              '<div class="vm-default-field"><label>สต็อกเริ่มต้น</label><input type="number" value="0" readonly><small class="vm-stock-note">SKU ใหม่เริ่มที่ 0 เพื่อไม่คัดลอกสต็อกสินค้าหลักซ้ำทุกตัวเลือก</small></div>'+
+            '</div>'+
+            '<div class="vm-generate-row"><button type="button" class="btn btn-primary btn-small" onclick="variantMatrixBuild()"><i class="fa-solid fa-wand-magic-sparkles"></i> สร้างชุดตัวเลือก</button><small id="vmMatrixCount">กำลังโหลด '+rows.length+' SKU</small></div>'+
+            '<div class="vm-section-title"><b>3. จัดการ SKU แต่ละชุด</b><small>แก้ไขได้รายตัว และลบชุดที่ไม่ต้องการ</small></div>'+
+            '<div class="vm-matrix-wrap"><table class="vm-matrix-table"><thead><tr><th>ชุดตัวเลือก</th><th>SKU</th><th>รูปตัวเลือก (URL)</th><th>ราคาปกติ</th><th>ราคาขาย</th><th>สต็อกทั้งหมด</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="vmMatrixBody"></tbody></table></div>'+
+            '<div id="vmMatrixHint" class="vm-footer-note">ระบบจะสร้าง SKU ตัวเลือกจาก SKU หลักของสินค้าโดยอัตโนมัติ · แก้ไขราคาและสต็อกแยกตาม SKU ได้</div>';
+          Swal.fire({
+            title:'จัดการตัวเลือกสินค้า / SKU',
+            html:html,width:'min(96vw,1120px)',showCancelButton:true,showLoaderOnConfirm:true,
+            confirmButtonText:'บันทึกตัวเลือกทั้งหมด',cancelButtonText:'ปิด',focusConfirm:false,
+            allowOutsideClick:function(){return !Swal.isLoading();},
+            didOpen:function(){variantMatrixRenderRows();},
+            preConfirm:function(){return variantMatrixSave(mode,productId);}
+          });
+        },false);
+      });
     }
     function manageVariants(productId){variantMatrixOpen(productId,'admin');}
     function loadShippingAdmin(){adminGridLoad('shipping',null,null,false);}
