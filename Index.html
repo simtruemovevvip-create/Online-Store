@@ -1755,11 +1755,11 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
         requestTimer=setTimeout(function(){
           if(!finishRequest())return;
           if(isStaleAdminPage())return;
-          var timeoutMessage='เซิร์ฟเวอร์ใช้เวลานานเกิน 45 วินาที กรุณาลองโหลดหน้านี้ใหม่อีกครั้ง';
+          var timeoutMessage='เซิร์ฟเวอร์ใช้เวลานานเกิน 30 วินาที กรุณาลองโหลดหน้านี้ใหม่อีกครั้ง';
           if(!silentError)alertError(timeoutMessage);
           deliverApiResult({success:false,message:timeoutMessage,timeout:true});
           finishPortalSkeleton();
-        },45000);
+        },30000);
       }
       var runner;
       try{
