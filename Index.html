@@ -1747,7 +1747,43 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
       var requestAdminId=guardAdminPage?Number(APP.adminRequestId||0):0;
       var isStaleAdminPage=function(){return guardAdminPage&&(APP.currentView!=='admin'||APP.adminPage!==requestAdminPage||Number(APP.adminRequestId||0)!==requestAdminId);};
       var loadHandle=(!guardAdminPage&&(showLoading||pendingNavigation))?beginApiLoading(loadingText||(pendingNavigation?'กำลังเปิดหน้า...':'กำลังประมวลผล...')):null;
-      var runner=google.script.run.withSuccessHandler(function(result){endApiLoading(loadHandle);if(!isStaleAdminPage()){done(result||{success:false,message:'ไม่ได้รับข้อมูลจากเซิร์ฟเวอร์'});if(portalSkeletonRequest)customerPortalFinishSkeleton(portalSkeletonRequest);}}).withFailureHandler(function(error){endApiLoading(loadHandle);if(isStaleAdminPage())return;var msg=error&&error.message?error.message:'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ';if(!silentError)alertError(msg);done({success:false,message:msg});if(portalSkeletonRequest)customerPortalFinishSkeleton(portalSkeletonRequest);});
+      var requestFinished=false,requestTimer=null;
+      function finishRequest(){if(requestFinished)return false;requestFinished=true;if(requestTimer)clearTimeout(requestTimer);endApiLoading(loadHandle);return true;}
+      function deliverApiResult(result){try{done(result);}catch(callbackError){console.error('API callback failed: '+name,callbackError);if(!silentError)alertError('เกิดข้อผิดพลาดขณะเปิดหน้า กรุณาลองใหม่อีกครั้ง');}}
+      function finishPortalSkeleton(){if(portalSkeletonRequest){try{customerPortalFinishSkeleton(portalSkeletonRequest);}catch(skeletonError){console.warn('Portal skeleton cleanup failed',skeletonError);}}}
+      if(loadHandle&&loadHandle.type!=='none'){
+        requestTimer=setTimeout(function(){
+          if(!finishRequest())return;
+          if(isStaleAdminPage())return;
+          var timeoutMessage='เซิร์ฟเวอร์ใช้เวลานานเกิน 45 วินาที กรุณาลองโหลดหน้านี้ใหม่อีกครั้ง';
+          if(!silentError)alertError(timeoutMessage);
+          deliverApiResult({success:false,message:timeoutMessage,timeout:true});
+          finishPortalSkeleton();
+        },45000);
+      }
+      var runner;
+      try{
+        runner=google.script.run.withSuccessHandler(function(result){
+          if(!finishRequest())return;
+          if(!isStaleAdminPage()){deliverApiResult(result||{success:false,message:'ไม่ได้รับข้อมูลจากเซิร์ฟเวอร์'});finishPortalSkeleton();}
+        }).withFailureHandler(function(error){
+          if(!finishRequest())return;
+          if(isStaleAdminPage())return;
+          var msg=error&&error.message?error.message:'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ';
+          if(!silentError)alertError(msg);
+          deliverApiResult({success:false,message:msg});
+          finishPortalSkeleton();
+        });
+      }catch(runnerError){
+        if(finishRequest()){
+          var runnerMessage=runnerError&&runnerError.message?runnerError.message:'ไม่สามารถเริ่มการเชื่อมต่อเซิร์ฟเวอร์ได้';
+          if(!silentError)alertError(runnerMessage);
+          deliverApiResult({success:false,message:runnerMessage});
+          finishPortalSkeleton();
+        }
+        return;
+      }
+      try{
       switch(name){
         case 'getSettings': runner.getSettings(); break;
         case 'getDriveImageDataBatch': runner.getDriveImageDataBatch(args[0],args[1]); break;
@@ -1930,7 +1966,16 @@ body.dark .fashion-shop-chat{background:#2a1d1a!important}
         case 'confirmOrderReceived': runner.confirmOrderReceived(args[0],args[1]); break;
         case 'adminGetFlashDeals': runner.adminGetFlashDeals(args[0]); break;
         case 'adminSetFlashDealStatus': runner.adminSetFlashDealStatus(args[0],args[1],args[2]); break;
-        default: endApiLoading(loadHandle); alertError('ไม่พบ API: '+name); done({success:false,message:'ไม่พบ API'}); if(portalSkeletonRequest)customerPortalFinishSkeleton(portalSkeletonRequest); break;
+        default: finishRequest(); alertError('ไม่พบ API: '+name); deliverApiResult({success:false,message:'ไม่พบ API'}); finishPortalSkeleton(); break;
+      }
+      }catch(dispatchError){
+        if(finishRequest()){
+          var dispatchMessage=dispatchError&&dispatchError.message?dispatchError.message:'ไม่สามารถเรียก API ได้';
+          console.error('API dispatch failed: '+name,dispatchError);
+          if(!silentError)alertError(dispatchMessage);
+          deliverApiResult({success:false,message:dispatchMessage});
+          finishPortalSkeleton();
+        }
       }
     }
 
