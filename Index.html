@@ -3260,7 +3260,23 @@ body.dark .vm-matrix-table th{background:#202833}
     function showContact(){document.getElementById('appRoot').innerHTML='<div class="panel"><h1 class="section-title">ติดต่อเรา</h1><p><i class="fa-solid fa-phone"></i> '+esc(APP.settings.phone||'ไม่ระบุ')+'</p><p><i class="fa-solid fa-envelope"></i> '+esc(APP.settings.email||'ไม่ระบุ')+'</p><p><i class="fa-solid fa-location-dot"></i> '+esc(APP.settings.address||'ไม่ระบุ')+'</p>'+(APP.settings.googleMaps?'<a class="btn btn-primary" href="'+esc(APP.settings.googleMaps)+'" target="_blank">เปิด Google Maps</a>':'')+'</div>';}
     function showPolicy(key){document.getElementById('appRoot').innerHTML='<div class="panel"><h1 class="section-title">ข้อมูลร้านค้า</h1><div class="rich-content-display">'+sanitizeRichEditorHtml(APP.settings[key]||'ร้านค้ายังไม่ได้กำหนดข้อมูลส่วนนี้')+'</div></div>';}
     
-    function selectDetailImage(url,button){var main=document.getElementById('detailImage');if(!main)return;main.src=imageUrl(url);var thumbs=document.querySelectorAll('.detail-thumb');for(var i=0;i<thumbs.length;i++)thumbs[i].classList.remove('active');if(button)button.classList.add('active');}
+    function updateDetailThumbnailControls(){
+      var track=document.getElementById('detailThumbTrack');
+      var prev=document.getElementById('detailThumbPrev'),next=document.getElementById('detailThumbNext');
+      if(!track)return;
+      var max=Math.max(0,track.scrollWidth-track.clientWidth),left=track.scrollLeft;
+      var canScroll=max>3;
+      if(prev){prev.disabled=!canScroll||left<=2;prev.classList.toggle('is-disabled',prev.disabled);}
+      if(next){next.disabled=!canScroll||left>=max-2;next.classList.toggle('is-disabled',next.disabled);}
+    }
+    function scrollDetailThumbs(direction){
+      var track=document.getElementById('detailThumbTrack');if(!track)return;
+      var distance=Math.max(160,Math.floor(track.clientWidth*.78))*Number(direction||1);
+      if(typeof track.scrollBy==='function')track.scrollBy({left:distance,behavior:'smooth'});
+      else track.scrollLeft+=distance;
+      window.setTimeout(updateDetailThumbnailControls,220);
+    }
+    function selectDetailImage(url,button){var main=document.getElementById('detailImage');if(!main)return;main.src=imageUrl(url);var thumbs=document.querySelectorAll('.detail-thumb');for(var i=0;i<thumbs.length;i++)thumbs[i].classList.remove('active');if(button){button.classList.add('active');button.setAttribute('aria-pressed','true');var track=document.getElementById('detailThumbTrack');if(track){var left=button.offsetLeft-track.offsetLeft,right=left+button.offsetWidth;if(left<track.scrollLeft)track.scrollTo({left:left,behavior:'smooth'});else if(right>track.scrollLeft+track.clientWidth)track.scrollTo({left:right-track.clientWidth,behavior:'smooth'});}}updateDetailThumbnailControls();}
     function loadRelatedProducts(product){var host=document.getElementById('relatedProducts');if(!host||!product)return;var cached=APP.products.filter(function(x){return String(x.categoryId)===String(product.categoryId)&&String(x.id)!==String(product.id);}).slice(0,5);if(cached.length)host.innerHTML=renderProductGrid(cached);apiCall('getProducts',[{categoryId:product.categoryId,page:1,pageSize:10,available:true,sort:'best_seller'}],function(r){var target=document.getElementById('relatedProducts');if(!target||!APP.currentProduct||String(APP.currentProduct.id)!==String(product.id))return;if(r&&r.success){var rows=safeArray(r.data&&r.data.items?r.data.items:r.data).filter(function(x){return String(x.id)!==String(product.id);}).slice(0,5);target.innerHTML=rows.length?renderProductGrid(rows):'<div class="muted">ยังไม่มีสินค้าอื่นในหมวดหมู่นี้</div>'; }else if(!cached.length)target.innerHTML='<div class="muted">ไม่สามารถโหลดสินค้าที่คล้ายกันได้</div>';},false);}
     function detailVariantAttributes(variant){
       var raw=variant&&variant.attributes,attrs={};
@@ -3541,7 +3557,11 @@ body.dark .vm-matrix-table th{background:#202833}
         '<div class="shopee-detail-main fashion-product-main">'+
           '<div class="shopee-detail-gallery fashion-product-gallery">'+
             '<div class="detail-image fashion-product-hero"><img id="detailImage" src="'+imageUrl(gallery[0])+'" onclick="openProductImageModal()" onerror="imageFallback(this)" alt="'+esc(p.name)+'">'+productDetailCampaignBadges(p)+'</div>'+
-            '<div class="detail-thumbnails fashion-detail-thumbnails" aria-label="รูปภาพสินค้า">'+thumbs+'</div>'+
+            '<div class="fashion-detail-thumb-scroller">'+
+              '<button type="button" class="fashion-thumb-scroll is-disabled" id="detailThumbPrev" onclick="scrollDetailThumbs(-1)" aria-label="เลื่อนรูปไปทางซ้าย" disabled><i class="fa-solid fa-chevron-left"></i></button>'+
+              '<div id="detailThumbTrack" class="detail-thumbnails fashion-detail-thumbnails" aria-label="รูปภาพสินค้า">'+thumbs+'</div>'+
+              '<button type="button" class="fashion-thumb-scroll is-disabled" id="detailThumbNext" onclick="scrollDetailThumbs(1)" aria-label="เลื่อนรูปไปทางขวา" disabled><i class="fa-solid fa-chevron-right"></i></button>'+
+            '</div>'+
             '<div class="fashion-gallery-footer">'+
               '<div class="fashion-share-row"><span>แชร์:</span>'+
                 '<button type="button" title="Messenger" aria-label="แชร์ผ่าน Messenger" data-share-platform="messenger" onclick="shareProduct(this.dataset.sharePlatform)"><i class="fa-brands fa-facebook-messenger"></i></button>'+
@@ -3576,6 +3596,7 @@ body.dark .vm-matrix-table th{background:#202833}
         '<section class="shopee-detail-below fashion-product-description"><h3>รายละเอียดสินค้า</h3><div class="shopee-description-body">'+sanitizeRichEditorHtml(p.description||esc(p.summary||'ไม่มีรายละเอียดเพิ่มเติม'))+'</div><div style="margin-top:15px"><button class="btn btn-outline btn-small" data-product-id="'+esc(p.id)+'" onclick="loadProductReviews(this.dataset.productId)">ดูรีวิวสินค้า</button><div id="productReviews"></div></div></section>'+
         '<section class="related-products shopee-detail-related"><div class="section-head"><div><h2 class="section-title">สินค้าที่คล้ายกัน</h2><div class="section-sub">สินค้าอื่นในหมวดหมู่เดียวกัน</div></div><button class="btn btn-outline btn-small" data-category-id="'+esc(p.categoryId)+'" onclick="filterCategory(this.dataset.categoryId)">ดูทั้งหมด</button></div><div id="relatedProducts"><div class="product-grid">'+[1,2,3,4,5].map(function(){return '<div class="product-card"><div class="product-image skeleton"></div><div class="product-info"><div class="skeleton" style="height:12px;width:75%"></div><div class="skeleton" style="height:14px;width:45%;margin-top:8px"></div></div></div>';}).join('')+'</div></div></section></div>';
       document.getElementById('appRoot').innerHTML=html;
+      var thumbTrack=document.getElementById('detailThumbTrack');if(thumbTrack){thumbTrack.addEventListener('scroll',updateDetailThumbnailControls);updateDetailThumbnailControls();}
       refreshDetailVariantAvailability();
       apiCall('getShippingMethods',[{}],function(r){if(!document.getElementById('detailDeliveryInfo'))return;renderProductDelivery(r&&r.success?safeArray(r.data):[]);},false);
       if(!safeArray(APP.categories).length)apiCall('getCategories',[{}],function(cr){if(cr&&cr.success){APP.categories=safeArray(cr.data);var breadcrumb=document.querySelector('.fashion-breadcrumb');if(breadcrumb&&APP.currentProduct&&String(APP.currentProduct.id)===String(p.id))breadcrumb.innerHTML=productCategoryBreadcrumb(p.categoryId);}},false,'',true);
@@ -4788,7 +4809,6 @@ body.dark .vm-matrix-table th{background:#202833}
         groups.push({name:name,values:values});
       });
       if(!groups.length)throw new Error('กรุณาเพิ่มกลุ่มตัวเลือกอย่างน้อย 1 กลุ่ม');
-      if(groups.length>3)throw new Error('สินค้าหนึ่งรายการรองรับได้สูงสุด 3 กลุ่มตัวเลือก');
       return groups;
     }
     function variantMatrixCaptureRows(){
@@ -4823,7 +4843,6 @@ body.dark .vm-matrix-table th{background:#202833}
     }
     function variantMatrixAddGroup(){
       var rows=Array.prototype.slice.call(document.querySelectorAll('#vmGroupList .vm-group-row'));
-      if(rows.length>=3){toast('เพิ่มกลุ่มตัวเลือกได้สูงสุด 3 กลุ่ม','info');return;}
       var groups=rows.map(function(row){return {name:(row.querySelector('.vm-group-name')||{}).value||'',values:variantMatrixParseValues((row.querySelector('.vm-group-values')||{}).value||'')};});
       groups.push({name:'',values:[]});APP.variantMatrixGroups=groups;
       var host=document.getElementById('vmGroupList');if(host)host.innerHTML=variantMatrixGroupsHtml();
@@ -4919,7 +4938,7 @@ body.dark .vm-matrix-table th{background:#202833}
         APP.variantMatrixBuiltSignature=rows.length?variantMatrixGroupsSignature(APP.variantMatrixGroups):'';
         var name=product.name||'สินค้า '+productId,sku=product.sku||'';
         var html='<div class="vm-intro"><span class="vm-intro-icon"><i class="fa-solid fa-layer-group"></i></span><div class="vm-intro-copy"><b>'+esc(name)+'</b><small>กำหนดกลุ่มตัวเลือก เช่น สี / ไซส์ / รุ่น แล้วสร้างชุด SKU อัตโนมัติ แต่ละชุดมี SKU ราคา ราคาลด และสต็อกแยกกัน<br>SKU ใหม่เริ่มสต็อก 0 เพื่อป้องกันการคัดลอกสต็อกสินค้าหลักซ้ำ ต้องกำหนดสต็อกให้แต่ละ SKU ก่อนเปิดขาย<br>SKU ที่เคยถูกใช้ในคำสั่งซื้อหรือมีประวัติสต็อกจะถูกเก็บเป็น Archived เมื่อเอาออกจากชุดตัวเลือก</small></div></div>'+
-          '<div class="vm-section-title"><b>1. กลุ่มตัวเลือก</b><small>สูงสุด 3 กลุ่ม · 200 SKU ต่อสินค้า</small></div>'+
+          '<div class="vm-section-title"><b>1. กลุ่มตัวเลือก</b><small>ไม่จำกัดจำนวนกลุ่ม · สร้างได้สูงสุด 200 SKU ต่อสินค้า</small></div>'+
           '<div id="vmGroupList" class="vm-group-list">'+variantMatrixGroupsHtml()+'</div>'+
           '<div style="margin-top:8px;text-align:left"><button type="button" class="btn btn-outline btn-small" onclick="variantMatrixAddGroup()"><i class="fa-solid fa-plus"></i> เพิ่มกลุ่มตัวเลือก</button></div>'+
           '<div class="vm-section-title"><b>2. ค่าเริ่มต้นสำหรับชุดใหม่</b><small>ใช้เฉพาะ SKU ที่เพิ่งสร้าง</small></div>'+
@@ -7608,5 +7627,17 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     }
   </style>
 
+
+<style id="fashion-product-gallery-horizontal">
+.fashion-detail-thumb-scroller{display:flex;align-items:center;gap:6px;width:100%;max-width:450px;margin:0 auto;padding:10px 0 3px;min-width:0}
+.fashion-detail-thumbnails{display:flex!important;flex:1 1 auto!important;flex-wrap:nowrap!important;align-items:center;justify-content:flex-start;gap:8px!important;width:100%;min-width:0;max-width:none!important;padding:0!important;overflow-x:auto!important;overflow-y:hidden!important;white-space:nowrap;scrollbar-width:thin;scroll-behavior:smooth;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.fashion-detail-thumbnails .detail-thumb{display:block!important;flex:0 0 64px!important;width:64px!important;min-width:64px!important;max-width:64px;height:64px!important;aspect-ratio:auto!important;padding:1px!important;border:2px solid transparent!important;border-radius:5px!important;scroll-snap-align:start}
+.fashion-detail-thumbnails .detail-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.fashion-detail-thumbnails .detail-thumb.active,.fashion-detail-thumbnails .detail-thumb:hover{border-color:#ee4d2d!important}
+.fashion-thumb-scroll{width:26px;height:34px;flex:0 0 26px;display:grid;place-items:center;border:1px solid #e5e7eb;border-radius:5px;background:#fff;color:#475569;cursor:pointer;font-size:11px;transition:opacity .15s ease,background .15s ease}
+.fashion-thumb-scroll:hover:not(:disabled){border-color:#ee4d2d;color:#ee4d2d;background:#fff8f5}
+.fashion-thumb-scroll:disabled,.fashion-thumb-scroll.is-disabled{opacity:0;pointer-events:none}
+@media(max-width:720px){.fashion-detail-thumb-scroller{max-width:450px}.fashion-detail-thumbnails .detail-thumb{flex-basis:60px!important;width:60px!important;min-width:60px!important;max-width:60px;height:60px!important}}
+</style>
 </body>
 </html>
