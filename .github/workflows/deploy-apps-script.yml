@@ -18,8 +18,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      CLASPRC_JSON: \${{ secrets.CLASPRC_JSON }}
-      GAS_DEPLOYMENT_ID: \${{ vars.GAS_DEPLOYMENT_ID }}
+      CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+      GAS_DEPLOYMENT_ID: ${{ vars.GAS_DEPLOYMENT_ID }}
     steps:
       - name: Check deployment credentials
         id: config
@@ -62,4 +62,4 @@ jobs:
         if: steps.config.outputs.ready == 'true'
         shell: bash
         run: |
-          clasp deploy --deploymentId "$GAS_DEPLOYMENT_ID" --description "GitHub \${GITHUB_SHA}"
+          clasp deploy --deploymentId "$GAS_DEPLOYMENT_ID" --description "GitHub ${GITHUB_SHA}"
