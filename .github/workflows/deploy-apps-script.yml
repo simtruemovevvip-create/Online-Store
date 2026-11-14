@@ -53,16 +53,17 @@ jobs:
             echo "::error::Could not find a Web App deployment ID. Define the GAS_DEPLOYMENT_ID Actions variable or check WEB_APP_URL in Code.gs."
           fi
 
-          if [[ -z "$CLASPRC_JSON" ]]; then
-            echo "::error::Missing GitHub Actions secret CLASPRC_JSON. Add the clasp authentication JSON as a repository Actions secret."
+          if [[ -z "$DEPLOY_ID" ]]; then
+            echo "::error::Missing Web App deployment ID. Check WEB_APP_URL in Code.gs."
+            exit 1
           fi
 
-          if [[ -n "$CLASPRC_JSON" && -n "$DEPLOY_ID" ]]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Apps Script deployment was skipped because required credentials are missing."
+          if [[ -z "$CLASPRC_JSON" ]]; then
+            echo "::error::Missing GitHub Actions secret CLASPRC_JSON. Add the clasp authentication JSON as a repository Actions secret."
+            exit 1
           fi
+
+          echo "ready=true" >> "$GITHUB_OUTPUT"
 
       - name: Install clasp
         if: steps.config.outputs.ready == 'true'
