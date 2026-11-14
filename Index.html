@@ -2439,6 +2439,7 @@ function beginApiLoading(text){
         if(typeof callback==='function')callback(true,list);
       },false,'กำลังโหลดหมวดหมู่สินค้า...',true);
     }
+    function ownerSharedCategoryRows(){if(APP.sharedCategoriesIncludeInactive)return safeArray(APP.sharedCategories);if(APP.adminCategoriesLoaded&&Array.isArray(APP.adminCategories))return safeArray(APP.adminCategories);return safeArray(APP.sharedCategories&&APP.sharedCategories.length?APP.sharedCategories:APP.categories);}
     function sharedCategoryLabel(category,categories){
       if(!category)return '';
       var list=safeArray(categories&&categories.length?categories:APP.sharedCategories);
@@ -4787,7 +4788,7 @@ function loadPublicData(onComplete){
     function adminEditorIsOn(value){return value===true||value===1||String(value||'').toLowerCase()==='true'||String(value||'').toLowerCase()==='active'||String(value||'').toLowerCase()==='yes'||String(value||'')==='1';}
     function parseAdminEditorList(value){if(Array.isArray(value))return value.map(String);var raw=String(value||'').trim();if(!raw)return [];try{var parsed=JSON.parse(raw);if(Array.isArray(parsed))return parsed.map(String);}catch(e){}return raw.split(',').map(function(x){return x.trim();}).filter(Boolean);}
     function adminEditorOptions(key,row){
-      var cats=safeArray(APP.sharedCategories&&APP.sharedCategories.length?APP.sharedCategories:(APP.adminCategories&&APP.adminCategories.length?APP.adminCategories:APP.categories)),products=safeArray(APP.adminProducts&&APP.adminProducts.length?APP.adminProducts:APP.products),stores=safeArray(APP.adminStores&&APP.adminStores.length?APP.adminStores:APP.stores),opts=[];
+      var cats=ownerSharedCategoryRows(),products=safeArray(APP.adminProducts&&APP.adminProducts.length?APP.adminProducts:APP.products),stores=safeArray(APP.adminStores&&APP.adminStores.length?APP.adminStores:APP.stores),opts=[];
       if(key==='categoryId'){opts=[['','เลือกหมวดหมู่']].concat(cats.filter(function(x){return x.status==='Active'||String(row.categoryId||'')===String(x.id);}).map(function(x){return [x.id,sharedCategoryLabel(x,cats)+(sharedCategoryIsActive(x)?'':' (ปิดใช้งาน)')];}));}
       else if(key==='parentId'){opts=[['','ไม่มีหมวดหมู่หลัก (หมวดหมู่หลัก)']].concat(cats.filter(function(x){return x.id!==row.id&&(x.status==='Active'||String(row.parentId||'')===String(x.id));}).map(function(x){return [x.id,sharedCategoryLabel(x,cats)+(sharedCategoryIsActive(x)?'':' (ปิดใช้งาน)')];}));}
       else if(key==='type'||key==='discountType'){opts=[['percent','เปอร์เซ็นต์ (%)'],['amount','จำนวนเงิน']];}
@@ -4905,7 +4906,7 @@ function loadPublicData(onComplete){
         openEditorNow(page,id,true);
       });
     }
-    function ensureAdminEditorReferences(page,callback){var jobs=[];var needsCategories=['products','categories','promotions'].indexOf(page)>=0;var needsProducts=page==='promotions';var needsStores=['promotions','coupons'].indexOf(page)>=0;if(needsCategories&&!APP.adminCategoriesLoaded)jobs.push(function(done){refreshSharedCategories(true,function(ok,rows){if(ok){APP.adminCategories=rows.slice();APP.adminCategoriesLoaded=true;}else APP.adminCategoriesLoaded=false;done();},true);});if(needsProducts&&!APP.adminProductsLoaded)jobs.push(function(done){apiCall('getProductsAdmin',[{token:APP.adminToken,page:1,pageSize:500}],function(r){if(r&&r.success){var x=r.data||{};APP.adminProducts=safeArray(x.items||x);APP.adminProductsLoaded=true;}else APP.adminProductsLoaded=false;done();});});if(needsStores&&!APP.adminStoresLoaded)jobs.push(function(done){apiCall('adminGetSellers',[APP.adminToken,{}],function(r){if(r&&r.success){APP.adminStores=safeArray(r.data);APP.adminStoresLoaded=true;}else APP.adminStoresLoaded=false;done();});});if(!jobs.length){callback();return;}var pending=jobs.length;jobs.forEach(function(job){job(function(){pending--;if(pending===0)callback();});});}
+    function ensureAdminEditorReferences(page,callback){var jobs=[];var needsCategories=['products','categories','promotions'].indexOf(page)>=0;var needsProducts=page==='promotions';var needsStores=['promotions','coupons'].indexOf(page)>=0;if(needsCategories&&(!APP.adminCategoriesLoaded||!APP.sharedCategoriesIncludeInactive))jobs.push(function(done){refreshSharedCategories(true,function(ok,rows){if(ok){APP.adminCategories=rows.slice();APP.adminCategoriesLoaded=true;}else APP.adminCategoriesLoaded=false;done();},true);});if(needsProducts&&!APP.adminProductsLoaded)jobs.push(function(done){apiCall('getProductsAdmin',[{token:APP.adminToken,page:1,pageSize:500}],function(r){if(r&&r.success){var x=r.data||{};APP.adminProducts=safeArray(x.items||x);APP.adminProductsLoaded=true;}else APP.adminProductsLoaded=false;done();});});if(needsStores&&!APP.adminStoresLoaded)jobs.push(function(done){apiCall('adminGetSellers',[APP.adminToken,{}],function(r){if(r&&r.success){APP.adminStores=safeArray(r.data);APP.adminStoresLoaded=true;}else APP.adminStoresLoaded=false;done();});});if(!jobs.length){callback();return;}var pending=jobs.length;jobs.forEach(function(job){job(function(){pending--;if(pending===0)callback();});});}
     function openEditorNow(page,id,updateExisting){
       var cfg=MODULE_CONFIG[page];if(!cfg)return;
       var row=id?safeArray(APP.adminData).filter(function(x){return String(x.id)===String(id);})[0]||{}:{};
@@ -6003,7 +6004,7 @@ function adjustInventoryDialog(productId,variantId){
       productGalleryUploadFiles(fileInput,textareaId,'seller','spGalleryPreview','spGalleryCount','spGalleryUploadStatus');
     }
 
-    function sellerProductDialog(id){refreshSharedCategories(false,function(ok){if(!ok){alertError('โหลดหมวดหมู่สินค้ากลางไม่สำเร็จ กรุณาลองอีกครั้ง');return;}sellerProductDialogReady(id);},false);}
+    function sellerProductDialog(id){refreshSharedCategories(false,function(ok){if(!ok){alertError('โหลดหมวดหมู่สินค้ากลางไม่สำเร็จ กรุณาลองอีกครั้ง');return;}sellerProductDialogReady(id);},true);}
     function sellerProductDialogReady(id){
       var p=id?safeArray(APP.sellerProducts).filter(function(x){return String(x.id)===String(id);})[0]||{}:{};
       var sharedCategories=safeArray(APP.sharedCategories).filter(sharedCategoryIsActive);
