@@ -4766,7 +4766,7 @@ function loadPublicData(onComplete){
       var config=MODULE_CONFIG[page],cols=[];
       if(config&&config.columns){var totalsByPage={products:['stock'],categories:[],promotions:[],coupons:['usedCount'],banners:[],customers:[],users:[],shipping:[]};var pageTotals=totalsByPage[page]||[];cols=config.columns.map(function(c){var key=c[0],label=c[1],moneyKeys=['price','salePrice','costPrice','grandTotal','amount','fee','freeMinimum','dealPrice','netAmount','grossAmount','commissionAmount','discountAmount','subtotal','shippingFee','tax','discountValue','minimumOrder','maximumDiscount','value'];var numberKeys=['stock','quantity','reserved','available','order','rating','usedCount','quota','soldCount','remaining','followerCount','commissionRate'];var dateKeys=['createdAt','updatedAt','timestamp','paymentDate','approvedAt','paidAt','startDate','endDate'];var type=moneyKeys.indexOf(key)>=0?'money':(numberKeys.indexOf(key)>=0?'number':(dateKeys.indexOf(key)>=0?'date':(['status','orderStatus','paymentStatus'].indexOf(key)>=0?'status':(['featured','bestSeller'].indexOf(key)>=0?'boolean':'text'))));return adminGridCol(key,label,type,pageTotals.indexOf(key)>=0,['id','slug','parentId'].indexOf(key)>=0);});}
       else if(page==='orders')cols=[adminGridCol('orderNumber','เลขคำสั่งซื้อ'),adminGridCol('customerName','ลูกค้า'),adminGridCol('phone','โทรศัพท์'),adminGridCol('grandTotal','ยอดสุทธิ','money',true),adminGridCol('paymentStatus','การชำระเงิน','status'),adminGridCol('orderStatus','สถานะคำสั่งซื้อ','status'),adminGridCol('createdAt','วันที่สั่งซื้อ','date')];
-      else if(page==='payments')cols=[adminGridCol('orderNumber','เลขคำสั่งซื้อ'),adminGridCol('customerName','ลูกค้า'),adminGridCol('reference','เลขอ้างอิง'),adminGridCol('amount','ยอดชำระ','money',true),adminGridCol('paymentMethod','วิธีชำระ'),adminGridCol('status','สถานะ','status'),adminGridCol('paymentDate','วันที่ชำระ','date')];
+      else if(page==='payments')cols=[adminGridCol('orderNumber','เลขคำสั่งซื้อ'),adminGridCol('customerName','ลูกค้า'),adminGridCol('reference','เลขอ้างอิง'),adminGridCol('amount','ยอดชำระ','money',true),adminGridCol('paymentMethod','วิธีชำระ'),adminGridCol('status','สถานะชำระเงิน','status'),adminGridCol('paymentDate','วันที่ชำระ','date')];
       else if(page==='inventory')cols=[adminGridCol('productName','สินค้า'),adminGridCol('variantName','ตัวเลือก'),adminGridCol('sku','SKU'),adminGridCol('quantity','คงเหลือ','number',true),adminGridCol('reserved','จอง','number',true),adminGridCol('available','พร้อมขาย','number',true),adminGridCol('minimumStock','สต็อกขั้นต่ำ','number')];
       else if(page==='reviews')cols=[adminGridCol('productName','สินค้า'),adminGridCol('productId','Product ID'),adminGridCol('rating','คะแนน','number',false),adminGridCol('review','รีวิว'),adminGridCol('status','สถานะ','status'),adminGridCol('createdAt','วันที่','date')];
       else if(page==='logs')cols=[adminGridCol('timestamp','วันเวลา','date'),adminGridCol('username','ผู้ใช้'),adminGridCol('action','กิจกรรม'),adminGridCol('module','โมดูล'),adminGridCol('detail','รายละเอียด')];
@@ -6508,10 +6508,12 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
           Array.prototype.forEach.call(body.rows,function(row){
             columns.forEach(function(col){
               var cell=row.cells[col.index];if(!cell||cell.dataset.thaiStatusDone==='1'||cell.querySelector('button,a,input,select'))return;
-              if(cell.children.length)return;
-              var raw=String(cell.textContent||'').trim();if(!raw||raw==='—'||raw==='-')return;
+              var badge=cell.querySelector('.status-pill,.market-tag,.seller-status-pill,.customer-purchase-status,.eg-status-tag,.table-status-pill');
+              var target=badge||cell;if(!badge&&cell.children.length)return;
+              var raw=String(target.textContent||'').trim();if(!raw||raw==='—'||raw==='-')return;
               var label=tableStatusThaiLabel(raw,col.context);if(label===raw)return;
-              cell.innerHTML='<span class="table-status-pill '+tableStatusTone(raw,col.context)+'">'+esc(label)+'</span>';
+              if(badge){badge.textContent=label;badge.classList.add('table-status-pill',tableStatusTone(raw,col.context));}
+              else cell.innerHTML='<span class="table-status-pill '+tableStatusTone(raw,col.context)+'">'+esc(label)+'</span>';
               cell.dataset.thaiStatusDone='1';
             });
           });
