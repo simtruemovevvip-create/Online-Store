@@ -1933,6 +1933,15 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     .table-action-icon.is-delete:hover,.seller-action-icon.is-delete:hover{background:#ffe4e6!important;border-color:#fda4af!important}
     body.dark .table-action-icon.is-edit,body.dark .seller-action-icon.is-edit{color:#93c5fd!important;background:#172b4d!important;border-color:#294b7c!important}
     body.dark .table-action-icon.is-delete,body.dark .seller-action-icon.is-delete{color:#fda4af!important;background:#431f28!important;border-color:#6b2d3a!important}
+    table .table-action-icon,table .seller-action-icon,.eg-dom-table-wrapper .table-action-icon{
+      display:inline-grid!important;place-items:center!important;
+      width:32px!important;min-width:32px!important;height:32px!important;
+      padding:0!important;border-radius:8px!important;font-size:13px!important;
+    }
+    table .table-action-icon.is-edit,table .seller-action-icon.is-edit{color:#2563eb!important;background:#eff6ff!important;border:1px solid #dbeafe!important}
+    table .table-action-icon.is-delete,table .seller-action-icon.is-delete{color:#dc2626!important;background:#fff1f2!important;border:1px solid #ffe4e6!important}
+    body.dark table .table-action-icon.is-edit,body.dark table .seller-action-icon.is-edit{color:#93c5fd!important;background:#172b4d!important;border-color:#294b7c!important}
+    body.dark table .table-action-icon.is-delete,body.dark table .seller-action-icon.is-delete{color:#fda4af!important;background:#431f28!important;border-color:#6b2d3a!important}
     .row-actions .table-action-icon i,.seller-row-actions .seller-action-icon i,.seller-action-icon i{margin:0!important}
     .seller-row-actions .seller-variant-action{min-width:68px!important}
     .vm-matrix-table .vm-row-remove.table-action-icon{font-size:12px!important}
@@ -4807,62 +4816,93 @@ function loadPublicData(onComplete){
     function adminGridSetColumn(id,key,checked){var s=ADMIN_GRID_STATES[id];if(!s)return;var all=s.columns.map(function(c){return c.key;});if(!s.visibleKeys)s.visibleKeys=all.filter(function(k){return k!=='id'&&k!=='updatedAt';});if(checked&&s.visibleKeys.indexOf(key)<0)s.visibleKeys.push(key);if(!checked)s.visibleKeys=s.visibleKeys.filter(function(k){return k!==key;});try{localStorage.setItem('eg_cols_'+id,JSON.stringify(s.visibleKeys));}catch(e){}renderAdminGridHost(s);}
     function adminGridResetColumns(id){var s=ADMIN_GRID_STATES[id];if(!s)return;s.visibleKeys=s.columns.filter(function(c){return c.defaultVisible!==false;}).map(function(c){return c.key;});try{localStorage.removeItem('eg_cols_'+id);}catch(e){}renderAdminGridHost(s);}
     function adminGridRefresh(id){var s=ADMIN_GRID_STATES[id];if(!s)return;adminGridFetchState(s);}
+    function normalizeTableStatusKey(value){
+      return String(value===null||value===undefined?'':value).trim().toLowerCase()
+        .replace(/[\\_-]+/g,' ').replace(/\s+/g,' ').trim();
+    }
     function tableStatusContext(header,key){
-      var text=String(header||key||'').toLowerCase();
+      var text=(String(header||'')+' '+String(key||'')).toLowerCase();
       if(/วิธีชำระ|ช่องทางชำระ|payment method|paymentmethod/.test(text))return 'method';
-      if(/การชำระเงิน|ชำระเงิน|payment status|paymentstatus|สถานะจ่าย|payout/.test(text))return 'payment';
+      if(/seller payout|payout|จ่ายเงินให้ร้าน|ยอดจ่ายร้าน/.test(text))return 'payout';
+      if(/การชำระเงิน|ชำระเงิน|payment|สถานะจ่าย|ยอดชำระ/.test(text))return 'payment';
       return 'status';
     }
     function tableStatusThaiLabel(value,context){
       var raw=String(value===null||value===undefined?'':value).trim();
       if(!raw)return '—';
-      var key=raw.toLowerCase().replace(/[\\_-]+/g,' ').replace(/\\s+/g,' ').trim();
+      var key=normalizeTableStatusKey(raw);
       var methods={
-        'bank transfer':'โอนเงินผ่านธนาคาร','banktransfer':'โอนเงินผ่านธนาคาร',
-        'qr payment':'ชำระผ่าน QR','qrpayment':'ชำระผ่าน QR','qr':'ชำระผ่าน QR',
+        'bank transfer':'โอนเงินผ่านธนาคาร','banktransfer':'โอนเงินผ่านธนาคาร','bank':'โอนเงินผ่านธนาคาร','transfer':'โอนเงินผ่านธนาคาร',
+        'qr payment':'ชำระผ่าน QR','qrpayment':'ชำระผ่าน QR','qr':'ชำระผ่าน QR','promptpay':'พร้อมเพย์','prompt pay':'พร้อมเพย์',
         'cod':'เก็บเงินปลายทาง','cash on delivery':'เก็บเงินปลายทาง',
         'cash':'เงินสด','card':'บัตรเครดิต/เดบิต','credit card':'บัตรเครดิต','debit card':'บัตรเดบิต',
-        'installment':'ผ่อนชำระ','promptpay':'พร้อมเพย์'
+        'installment':'ผ่อนชำระ'
       };
       if(context==='method')return methods[key]||raw;
+
       var payment={
-        'unpaid':'ยังไม่ชำระเงิน','awaiting payment':'รอชำระเงิน','pending payment':'รอชำระเงิน',
+        'unpaid':'ยังไม่ชำระเงิน','not paid':'ยังไม่ชำระเงิน',
+        'awaiting':'รอชำระเงิน','awaiting payment':'รอชำระเงิน','pending payment':'รอชำระเงิน',
         'pending verification':'รอตรวจสอบการชำระเงิน','pending':'รอตรวจสอบการชำระเงิน',
-        'verified':'ชำระเงินแล้ว','paid':'ชำระเงินแล้ว','payment received':'ได้รับชำระเงินแล้ว',
-        'rejected':'หลักฐานชำระเงินไม่ผ่าน','failed':'ชำระเงินไม่สำเร็จ',
-        'refund pending':'รอดำเนินการคืนเงิน','refunded':'คืนเงินแล้ว',
-        'partially refunded':'คืนเงินบางส่วน','cancelled':'ยกเลิกการชำระเงิน',
-        'processing':'กำลังตรวจสอบการชำระเงิน','expired':'หมดเวลาชำระเงิน'
+        'pending approval':'รออนุมัติการชำระเงิน','awaiting confirmation':'รอยืนยันการชำระเงิน',
+        'processing':'กำลังตรวจสอบการชำระเงิน','verifying':'กำลังตรวจสอบการชำระเงิน',
+        'verified':'ชำระเงินแล้ว','paid':'ชำระเงินแล้ว','settled':'ชำระเงินแล้ว',
+        'confirmed':'ยืนยันการชำระเงินแล้ว','payment received':'ได้รับชำระเงินแล้ว',
+        'success':'ชำระเงินสำเร็จ','successful':'ชำระเงินสำเร็จ','captured':'ตัดชำระเงินแล้ว',
+        'completed':'ชำระเงินแล้ว',
+        'rejected':'หลักฐานชำระเงินไม่ผ่าน','declined':'ถูกปฏิเสธการชำระเงิน',
+        'failed':'ชำระเงินไม่สำเร็จ','payment failed':'ชำระเงินไม่สำเร็จ',
+        'cancelled':'ยกเลิกการชำระเงิน','canceled':'ยกเลิกการชำระเงิน','expired':'หมดเวลาชำระเงิน',
+        'refund pending':'รอดำเนินการคืนเงิน','refund requested':'ขอคืนเงินแล้ว',
+        'refunded':'คืนเงินแล้ว','partially refunded':'คืนเงินบางส่วน','partial refund':'คืนเงินบางส่วน',
+        'chargeback':'ถูกเรียกคืนยอดชำระ'
+      };
+      var payout={
+        'pending':'รอดำเนินการจ่ายเงิน','pending payout':'รอดำเนินการจ่ายเงิน',
+        'awaiting payout':'รอจ่ายเงิน','processing':'กำลังดำเนินการจ่ายเงิน',
+        'paid':'จ่ายเงินแล้ว','completed':'จ่ายเงินแล้ว','transferred':'โอนเงินแล้ว',
+        'success':'จ่ายเงินสำเร็จ','successful':'จ่ายเงินสำเร็จ',
+        'rejected':'ไม่อนุมัติการจ่ายเงิน','failed':'จ่ายเงินไม่สำเร็จ',
+        'cancelled':'ยกเลิกการจ่ายเงิน','canceled':'ยกเลิกการจ่ายเงิน'
       };
       var statuses={
         'active':'เปิดใช้งาน','enabled':'เปิดใช้งาน','published':'เผยแพร่','verified':'ตรวจสอบแล้ว',
         'paid':'ชำระแล้ว','completed':'สำเร็จแล้ว','delivered':'จัดส่งสำเร็จ','resolved':'ปิดเรื่องแล้ว',
-        'approved':'อนุมัติแล้ว','received':'รับสินค้าแล้ว','return received':'รับสินค้าคืนแล้ว',
+        'approved':'อนุมัติแล้ว','awaiting approval':'รออนุมัติ','pending admin review':'รอผู้ดูแลระบบตรวจสอบ',
+        'received':'รับสินค้าแล้ว','return received':'รับสินค้าคืนแล้ว',
         'inactive':'ปิดใช้งาน','disabled':'ปิดใช้งาน','rejected':'ไม่อนุมัติ','suspended':'ระงับการใช้งาน',
         'cancelled':'ยกเลิกแล้ว','canceled':'ยกเลิกแล้ว','refunded':'คืนเงินแล้ว','hidden':'ซ่อน',
         'failed':'ไม่สำเร็จ','pending':'รอดำเนินการ','pending seller review':'รอร้านค้าพิจารณา',
-        'pending review':'รอตรวจสอบ','pending verification':'รอตรวจสอบ','awaiting payment':'รอชำระเงิน',
+        'pending review':'รอตรวจสอบ','pending verification':'รอตรวจสอบ',
         'processing':'กำลังดำเนินการ','packed':'แพ็กสินค้าแล้ว','shipped':'จัดส่งแล้ว',
-        'return shipped':'ส่งคืนสินค้าแล้ว','refund pending':'รอดำเนินการคืนเงิน',
-        'draft':'ฉบับร่าง','archived':'เก็บเข้าคลัง','expired':'หมดอายุ','open':'เปิดอยู่',
-        'closed':'ปิดแล้ว','new':'ใหม่','replied':'ตอบกลับแล้ว','unread':'ยังไม่อ่าน',
-        'read':'อ่านแล้ว','waiting':'รอดำเนินการ','on hold':'พักรายการ','refunded partially':'คืนเงินบางส่วน'
+        'return':'คำขอคืนสินค้า','return requested':'รอพิจารณาคืนสินค้า',
+        'return approved':'อนุมัติการคืนสินค้าแล้ว','return shipped':'ส่งคืนสินค้าแล้ว',
+        'refund pending':'รอดำเนินการคืนเงิน','draft':'ฉบับร่าง','archived':'เก็บเข้าคลัง',
+        'expired':'หมดอายุ','open':'เปิดอยู่','closed':'ปิดแล้ว','new':'ใหม่',
+        'replied':'ตอบกลับแล้ว','unread':'ยังไม่อ่าน','read':'อ่านแล้ว','waiting':'รอดำเนินการ',
+        'on hold':'พักรายการ','onhold':'พักรายการ'
       };
-      var map=context==='payment'?payment:statuses;
-      if(map[key])return map[key];
-      return raw;
+      if(context==='payment'&&payment[key])return payment[key];
+      if(context==='payout'&&payout[key])return payout[key];
+      return statuses[key]||raw;
     }
     function tableStatusTone(value,context){
-      var key=String(value||'').toLowerCase().replace(/[\\_-]+/g,' ').replace(/\\s+/g,' ').trim();
+      var key=normalizeTableStatusKey(value);
       if(context==='payment'){
-        if(['verified','paid','payment received','refunded'].indexOf(key)>=0)return 'good';
-        if(['rejected','failed','cancelled'].indexOf(key)>=0)return 'bad';
-        if(['unpaid','pending','pending verification','awaiting payment','pending payment','processing','refund pending','expired'].indexOf(key)>=0)return 'warn';
+        if(['verified','paid','settled','payment received','success','successful','captured','completed','refunded'].indexOf(key)>=0)return 'good';
+        if(['rejected','declined','failed','payment failed','cancelled','canceled','chargeback'].indexOf(key)>=0)return 'bad';
+        if(['unpaid','not paid','pending','pending approval','pending verification','awaiting','awaiting payment','pending payment','awaiting confirmation','processing','verifying','refund pending','refund requested','expired'].indexOf(key)>=0)return 'warn';
+        return 'info';
+      }
+      if(context==='payout'){
+        if(['paid','completed','transferred','success','successful'].indexOf(key)>=0)return 'good';
+        if(['rejected','failed','cancelled','canceled'].indexOf(key)>=0)return 'bad';
+        if(['pending','pending payout','awaiting payout','processing'].indexOf(key)>=0)return 'warn';
         return 'info';
       }
       if(['active','enabled','published','verified','paid','completed','delivered','resolved','approved','received','return received'].indexOf(key)>=0)return 'good';
-      if(['pending','pending seller review','pending review','pending verification','awaiting payment','processing','packed','shipped','refund pending','waiting','open'].indexOf(key)>=0)return 'warn';
-      if(['inactive','disabled','rejected','suspended','cancelled','canceled','refunded','hidden','failed','closed'].indexOf(key)>=0)return 'bad';
+      if(['pending','pending seller review','pending admin review','awaiting approval','pending review','pending verification','processing','packed','shipped','refund pending','return requested','return approved','waiting','open'].indexOf(key)>=0)return 'warn';
+      if(['inactive','disabled','rejected','suspended','cancelled','canceled','refunded','hidden','failed','closed','expired'].indexOf(key)>=0)return 'bad';
       return 'info';
     }
     function adminGridStatusHtml(value,context){
@@ -6497,40 +6537,102 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
       function localizeTableStatusCells(table){
         if(!table||!table.tHead||!table.tBodies||!table.tBodies.length)return;
         var headerRow=table.tHead.rows[table.tHead.rows.length-1];if(!headerRow)return;
+        var tableHints=[
+          table.id,table.className,table.getAttribute('aria-label'),
+          table.getAttribute('data-table-title'),table.getAttribute('data-module'),
+          table.getAttribute('data-page'),table.getAttribute('data-status-context')
+        ].join(' ');
+        var previous=table.parentElement&&table.parentElement.previousElementSibling;
+        if(previous)tableHints+=' '+String(previous.textContent||'').trim().substring(0,180);
         var headers=Array.prototype.map.call(headerRow.cells,function(th){return String(th.textContent||'').replace(/[↕▲▼]/g,'').trim();});
         var columns=[];
         headers.forEach(function(header,index){
-          var context=tableStatusContext(header,'');
-          if(context==='method'||context==='payment'||/(สถานะ|status)/i.test(header))columns.push({index:index,context:context});
+          var context=tableStatusContext(header,tableHints);
+          if(context!=='status'||/(สถานะ|status)/i.test(header))columns.push({index:index,header:header,context:context});
         });
         if(!columns.length)return;
+
+        var badgeSelector='.status-pill,.market-tag,.seller-status-pill,.customer-purchase-status,.eg-status-tag,.table-status-pill,.badge,[data-status]';
         Array.prototype.forEach.call(table.tBodies,function(body){
           Array.prototype.forEach.call(body.rows,function(row){
             columns.forEach(function(col){
-              var cell=row.cells[col.index];if(!cell||cell.dataset.thaiStatusDone==='1'||cell.querySelector('button,a,input,select'))return;
-              var badge=cell.querySelector('.status-pill,.market-tag,.seller-status-pill,.customer-purchase-status,.eg-status-tag,.table-status-pill');
-              var target=badge||cell;if(!badge&&cell.children.length)return;
-              var raw=String(target.textContent||'').trim();if(!raw||raw==='—'||raw==='-')return;
-              var label=tableStatusThaiLabel(raw,col.context);if(label===raw)return;
-              if(badge){badge.textContent=label;badge.classList.add('table-status-pill',tableStatusTone(raw,col.context));}
-              else cell.innerHTML='<span class="table-status-pill '+tableStatusTone(raw,col.context)+'">'+esc(label)+'</span>';
-              cell.dataset.thaiStatusDone='1';
+              var cell=row.cells[col.index];if(!cell)return;
+              var fieldHint=[
+                cell.getAttribute('data-field'),cell.getAttribute('data-key'),
+                cell.getAttribute('data-status-context'),cell.className
+              ].join(' ');
+              var context=tableStatusContext(col.header,fieldHint+' '+tableHints);
+              var target=(cell.matches&&cell.matches(badgeSelector))?cell:cell.querySelector(badgeSelector);
+              if(!target){
+                if(cell.querySelector('button,a,input,select'))return;
+                var children=Array.prototype.slice.call(cell.children||[]);
+                if(!children.length)target=cell;
+                else if(children.length===1&&/^(SPAN|DIV)$/i.test(children[0].tagName)&&!children[0].querySelector('button,a,input,select,i,svg,img'))target=children[0];
+              }
+              if(!target)return;
+              var raw=String(target.textContent||'').trim();
+              if(!raw||raw==='—'||raw==='-')return;
+              var label=tableStatusThaiLabel(raw,context);
+              var tone=tableStatusTone(raw,context);
+              if(label!==raw){
+                if(target===cell){
+                  cell.innerHTML='<span class="table-status-pill '+tone+'">'+esc(label)+'</span>';
+                  target=cell.firstElementChild;
+                }else{
+                  target.textContent=label;
+                  target.classList.add('table-status-pill');
+                  target.classList.remove('good','warn','bad','info');
+                  target.classList.add(tone);
+                }
+              }else if(target!==cell&&target.classList){
+                target.classList.remove('good','warn','bad','info');
+                target.classList.add(tone);
+              }
             });
           });
         });
       }
-      function scan(node){
+      function normalizeCrudActionButtons(table){
+        if(!table||!table.querySelectorAll)return;
+        var buttons=table.querySelectorAll('button,a[role="button"]');
+        Array.prototype.forEach.call(buttons,function(button){
+          var text=normalizeTableStatusKey(button.textContent);
+          var intent=[
+            button.getAttribute('aria-label'),button.getAttribute('title'),
+            button.getAttribute('data-action'),button.className,text
+          ].join(' ').toLowerCase();
+          var edit=/(edit|แก้ไข)/i.test(intent);
+          var remove=/(delete|remove|ลบ)/i.test(intent);
+          if(!edit&&!remove)return;
+          var kind=edit?'edit':'delete';
+          var iconClass=edit?'fa-pen-to-square':'fa-trash-can';
+          var label=edit?'แก้ไข':'ลบ';
+          var existing=button.getAttribute('data-icon-action')===kind&&
+            button.querySelector('i.'+iconClass)&&!String(button.textContent||'').trim();
+          button.classList.add('table-action-icon','is-'+kind);
+          button.classList.remove(edit?'is-delete':'is-edit');
+          button.setAttribute('data-icon-action',kind);
+          button.setAttribute('title',label);
+          button.setAttribute('aria-label',label);
+          if(!existing)button.innerHTML='<i class="fa-solid '+iconClass+'" aria-hidden="true"></i>';
+        });
+      }
+            function scan(node){
         if(!node)return;
         var tables=[];
         if(node.tagName==='TABLE')tables.push(node);
         if(node.closest){var parentTable=node.closest('table');if(parentTable)tables.push(parentTable);}
         if(node.querySelectorAll){Array.prototype.forEach.call(node.querySelectorAll('table'),function(t){tables.push(t);});}
         var unique=Array.from(new Set(tables));
-        unique.forEach(function(table){localizeTableStatusCells(table);egDomInitTable(table);});
+        unique.forEach(function(table){
+          localizeTableStatusCells(table);
+          normalizeCrudActionButtons(table);
+          egDomInitTable(table);
+        });
       }
-      scan(root);if(!window.MutationObserver)return;
+            scan(root);if(!window.MutationObserver)return;
       function reconcileTableRows(table){if(!table||table.dataset.egEnhanced!=='1')return;var state=null;Object.keys(EG_DOM_TABLE_STATES).some(function(k){if(EG_DOM_TABLE_STATES[k]&&EG_DOM_TABLE_STATES[k].table===table){state=EG_DOM_TABLE_STATES[k];return true;}return false;});if(!state||!state.tbody)return;var current=Array.prototype.slice.call(state.tbody.rows).filter(function(row){return !(row.dataset&&row.dataset.egFilterEmpty==='1')&&!(row.cells.length===1&&Number(row.cells[0].colSpan||1)>1);}),known=new Set(state.rows.map(function(item){return item.node;}));var changed=current.length!==state.rows.length||current.some(function(row){return !known.has(row);});if(!changed)return;var oldByNode=new Map(state.rows.map(function(item){return [item.node,item];}));state.rows=current.map(function(row){return oldByNode.get(row)||{node:row,index:state.nextRowIndex++};});if(state.apply)state.apply();}
-      var observer=new MutationObserver(function(mutations){var touched=new Set();mutations.forEach(function(m){Array.prototype.forEach.call(m.addedNodes||[],function(n){if(n.nodeType===1)scan(n);});var target=m.target&&(m.target.nodeType===1?m.target:m.target.parentElement),table=target&&target.closest?target.closest('table.eg-dom-table'):null;if(table)touched.add(table);});touched.forEach(reconcileTableRows);});observer.observe(root,{childList:true,subtree:true});
+      var observer=new MutationObserver(function(mutations){var touched=new Set();mutations.forEach(function(m){Array.prototype.forEach.call(m.addedNodes||[],function(n){if(n.nodeType===1)scan(n);});var target=m.target&&(m.target.nodeType===1?m.target:m.target.parentElement),table=target&&target.closest?target.closest('table'):null;if(table){scan(table);if(table.classList.contains('eg-dom-table'))touched.add(table);}});touched.forEach(reconcileTableRows);});observer.observe(root,{childList:true,characterData:true,subtree:true});
     }
     window.__egDomTableRefresh=function(table,done){
       var finish=typeof done==='function'?done:function(){};
