@@ -350,12 +350,49 @@ function getOrCreateFolder_(parent, name) {
   return it.hasNext() ? it.next() : parent.createFolder(name);
 }
 
+/**
+ * Cache small JSON payloads only. CacheService allows at most 100 KB per key;
+ * keep a safety margin and measure UTF-8 bytes (not JavaScript character count).
+ */
+function cachePutJsonIfSmall_(cache, key, value, ttlSeconds) {
+  try {
+    var json = JSON.stringify(value);
+    var byteLength = Utilities.newBlob(json, 'application/json').getBytes().length;
+    if (byteLength >= 90000) return false;
+    var ttl = Math.max(1, Math.min(21600, Math.floor(number_(ttlSeconds, CACHE_SECONDS_))));
+    cache.put(String(key), json, ttl);
+    return true;
+  } catch (error) {
+    // Cache is an optimization, never a reason to fail the main request.
+    return false;
+  }
+}
+
+function productPublicMetricsCacheKey_() {
+  var timezone = Session.getScriptTimeZone() || 'Asia/Bangkok';
+  var now = new Date();
+  var currentDateKey = Utilities.formatDate(now, timezone, 'yyyy-MM-dd');
+  var currentMonthKey = currentDateKey.substring(0, 7);
+  var dayOfWeek = Math.max(1, number_(Utilities.formatDate(now, timezone, 'u'), 1));
+  var weekStartKey = Utilities.formatDate(new Date(now.getTime() - (dayOfWeek - 1) * 86400000), timezone, 'yyyy-MM-dd');
+  return 'product_public_metrics_v2_' + currentMonthKey + '_' + weekStartKey;
+}
+
 function clearRuntimeCaches_() {
   var cache = CacheService.getScriptCache();
-  ['table_Settings','table_Products','table_Categories','table_Banners','table_Promotions','table_Inventory','table_ProductVariants',
-   'table_Orders','table_OrderItems','table_Reviews','table_Favorites','product_public_metrics_v1','product_public_metrics_v2','dashboard','public_settings','inventory_variant_reconcile_v1'].forEach(function(key) {
+  // Clear every schema-backed table cache, including tables added in later migrations.
+  Object.keys(SCHEMA_).forEach(function(name) {
+    try { cache.remove('table_' + name); } catch (e) {}
+  });
+  [
+    'dashboard',
+    'public_settings',
+    'product_public_metrics_v1',
+    'inventory_variant_reconcile_v1'
+  ].forEach(function(key) {
     try { cache.remove(key); } catch (e) {}
   });
+  try { cache.remove(productPublicMetricsCacheKey_()); } catch (e) {}
   return true;
 }
 
@@ -384,28 +421,41 @@ function validateTable_(name) {
 function readTable_(name, useCache) {
   var cache = CacheService.getScriptCache();
   var key = 'table_' + name;
+
   if (useCache !== false) {
     try {
       var raw = cache.get(key);
-      if (raw) {
-        var cached = safeArray_(safeJson_(raw, []));
-        if (cached.length || raw === '[]') return cached;
+      if (raw !== null && raw !== undefined) {
+        var cached = safeJson_(raw, null);
+        if (Array.isArray(cached)) return cached;
       }
-    } catch (e) {}
+    } catch (cacheReadError) {}
   }
+
   var sh = validateTable_(name);
-  if (!sh || sh.getLastRow() < 2) return [];
-  var values = sh.getDataRange().getValues();
+  if (!sh) return [];
+  var lastRow = sh.getLastRow();
+  var lastColumn = sh.getLastColumn();
+
+  if (lastRow < 2 || lastColumn < 1) {
+    if (useCache !== false) cachePutJsonIfSmall_(cache, key, [], CACHE_SECONDS_);
+    return [];
+  }
+
+  // Read the populated rectangle once; avoid repeated getRange calls per cell.
+  var values = sh.getRange(1, 1, lastRow, lastColumn).getValues();
   var headers = values[0].map(function(x) { return String(x); });
   var rows = [];
+
   for (var r = 1; r < values.length; r++) {
     var obj = {};
-    for (var c = 0; c < headers.length; c++) obj[headers[c]] = serializable_(values[r][c]);
+    for (var c = 0; c < headers.length; c++) {
+      if (headers[c]) obj[headers[c]] = serializable_(values[r][c]);
+    }
     rows.push(obj);
   }
-  if (useCache !== false) {
-    try { var json = JSON.stringify(rows); if (json.length < 95000) cache.put(key, json, CACHE_SECONDS_); } catch (e2) {}
-  }
+
+  if (useCache !== false) cachePutJsonIfSmall_(cache, key, rows, CACHE_SECONDS_);
   return rows;
 }
 
@@ -518,7 +568,7 @@ var DRIVE_IMAGE_FIELDS_BY_TABLE_ = {
 
 function getDriveAssetTokenMap_() {
   var map = {};
-  var rows = readTable_('DriveAssets', false);
+  var rows = readTable_('DriveAssets', true);
   rows.forEach(function(row) {
     if (row && row.id && row.fileId) map[String(row.id)] = String(row.fileId);
   });
@@ -765,8 +815,20 @@ function deleteRows_(name, predicate) {
 }
 
 function invalidateTable_(name) {
-  try { CacheService.getScriptCache().remove('table_' + name); } catch (e) {}
-  try { CacheService.getScriptCache().remove('dashboard'); } catch (e2) {}
+  var cache = CacheService.getScriptCache();
+  try { cache.remove('table_' + name); } catch (e) {}
+  // Dashboard totals depend on orders, products, customers and stock.
+  try { cache.remove('dashboard'); } catch (e2) {}
+
+  if (name === 'Settings') {
+    try { cache.remove('public_settings'); } catch (settingsCacheError) {}
+  }
+
+  // Public sales/rating aggregates are derived from these source tables.
+  if (['Orders', 'OrderItems', 'Reviews'].indexOf(String(name)) >= 0) {
+    try { cache.remove('product_public_metrics_v1'); } catch (oldMetricsError) {}
+    try { cache.remove(productPublicMetricsCacheKey_()); } catch (metricsError) {}
+  }
 }
 
 function upsertSetting_(key, value) {
@@ -3052,11 +3114,22 @@ function saveReview(customerToken,data){try{var c=requireCustomer_(customerToken
 function updateReviewStatus(token,id,status){try{var user=requireAdmin_(token,'reviews.manage');if(['Published','Hidden','Rejected'].indexOf(status)<0)throw new Error('สถานะไม่ถูกต้อง');updateRecord_('Reviews',id,{status:status});log_('Review Status','Reviews',id+' => '+status,user.username);clearRuntimeCaches_();return ok_(true,'ปรับสถานะรีวิวแล้ว');}catch(e){return fail_(safeError_(e));}}
 
 /* ---------------------------------- UPLOAD -------------------------------- */
-function isFileInSystemFolder_(file,folderName){
-  var root=DriveApp.getFolderById(FOLDER_ID),folders=root.getFoldersByName(folderName);
-  if(!folders.hasNext())return false;
-  var folder=folders.next(),targetId=folder.getId(),parents=file.getParents();
-  while(parents.hasNext())if(parents.next().getId()===targetId)return true;
+function isFileInSystemFolder_(file, folderName, folderIdMemo) {
+  var targetId = '';
+  var name = String(folderName || '');
+  if (folderIdMemo && folderIdMemo[name]) {
+    targetId = folderIdMemo[name];
+  } else {
+    var root = DriveApp.getFolderById(FOLDER_ID);
+    var folders = root.getFoldersByName(name);
+    if (!folders.hasNext()) return false;
+    targetId = folders.next().getId();
+    if (folderIdMemo) folderIdMemo[name] = targetId;
+  }
+  var parents = file.getParents();
+  while (parents.hasNext()) {
+    if (parents.next().getId() === targetId) return true;
+  }
   return false;
 }
 function decodeUrlEncodedUploadPayload_(encoded) {
@@ -3307,7 +3380,7 @@ function getDriveImageDataBatch(token,assetTokens){
     var assets=readTable_('DriveAssets',true);
     var customer=null,adminCustomer=null,sellerContext=null;
     if(token){try{customer=requireCustomer_(token);}catch(ignoreCustomer){}try{adminCustomer=requireAdmin_(token,'customers.view');}catch(ignoreAdmin){}try{sellerContext=requireSeller_(token);}catch(ignoreSeller){}}
-    var output=[],totalBytes=0;
+    var output=[],totalBytes=0,folderIdMemo=Object.create(null);
     ids.forEach(function(key){
       try{
         var asset=assets.filter(function(a){return (a.id===key||a.fileId===key)&&a.status==='Active';})[0];
@@ -3318,8 +3391,8 @@ function getDriveImageDataBatch(token,assetTokens){
         var allowed=false,folderName=asset?asset.folder:'';
         var publicFolders=['Products','Categories','Banners','Website'];
         if(asset){
-          if(asset.access==='public'&&publicFolders.indexOf(folderName)>=0&&isFileInSystemFolder_(file,folderName))allowed=true;
-          else if(asset.access==='owner'&&folderName==='Customers'&&isFileInSystemFolder_(file,'Customers')){
+          if(asset.access==='public'&&publicFolders.indexOf(folderName)>=0&&isFileInSystemFolder_(file,folderName,folderIdMemo))allowed=true;
+          else if(asset.access==='owner'&&folderName==='Customers'&&isFileInSystemFolder_(file,'Customers',folderIdMemo)){
             if(customer&&asset.ownerType==='customer'&&asset.ownerId===customer.id)allowed=true;
             if(adminCustomer)allowed=true;
           }else if(asset.access==='chat'&&folderName==='ChatMessages'&&isFileInSystemFolder_(file,'ChatMessages')){
@@ -3332,8 +3405,8 @@ function getDriveImageDataBatch(token,assetTokens){
         }else{
           // Backward compatibility for legacy URLs: allow only files referenced
           // by public catalogue/settings records, never arbitrary Drive IDs.
-          for(var i=0;i<publicFolders.length;i++){if(isFileInSystemFolder_(file,publicFolders[i])&&legacyPublicImageIsReferenced_(fileId,publicFolders[i])){allowed=true;break;}}
-          if(!allowed&&isFileInSystemFolder_(file,'Customers')){
+          for(var i=0;i<publicFolders.length;i++){if(isFileInSystemFolder_(file,publicFolders[i],folderIdMemo)&&legacyPublicImageIsReferenced_(fileId,publicFolders[i])){allowed=true;break;}}
+          if(!allowed&&isFileInSystemFolder_(file,'Customers',folderIdMemo)){
             var desc=String(file.getDescription()||'');
             if(customer&&desc==='EcommerceCustomerProfile|'+customer.id)allowed=true;
             if(!allowed&&customer){allowed=readTable_('Customers',true).some(function(c){return c.id===customer.id&&extractDriveIdFromAssetValue_(c.profileImage)===fileId;});}
@@ -3433,7 +3506,7 @@ function deleteUser(token,id){try{var actor=requireAdmin_(token,'users.manage');
 function getDashboardStats(token){
   try{
     requireAdmin_(token,'reports.view');var cache=CacheService.getScriptCache(),raw=cache.get('dashboard');if(raw)return ok_(safeJson_(raw,{}));
-    var orders=readTable_('Orders',false),products=readTable_('Products',false),customers=readTable_('Customers',false),inventory=readTable_('Inventory',false),today=new Date(),day=today.toISOString().substring(0,10),month=day.substring(0,7),year=day.substring(0,4);
+    var orders=readTable_('Orders',true),products=readTable_('Products',true),customers=readTable_('Customers',true),inventory=readTable_('Inventory',true),today=new Date(),day=today.toISOString().substring(0,10),month=day.substring(0,7),year=day.substring(0,4);
     var paid=orders.filter(function(o){return o.paymentStatus==='Verified'&&o.orderStatus!=='Cancelled'&&o.orderStatus!=='Refunded';});
     function sum(list,fn){return list.reduce(function(s,x){return s+number_(fn(x),0);},0);}
     var stats={todaySales:sum(paid.filter(function(o){return String(o.createdAt).substring(0,10)===day;}),function(o){return o.grandTotal;}),yesterdaySales:sum(paid.filter(function(o){var d=new Date();d.setDate(d.getDate()-1);return String(o.createdAt).substring(0,10)===d.toISOString().substring(0,10);}),function(o){return o.grandTotal;}),monthSales:sum(paid.filter(function(o){return String(o.createdAt).substring(0,7)===month;}),function(o){return o.grandTotal;}),yearSales:sum(paid.filter(function(o){return String(o.createdAt).substring(0,4)===year;}),function(o){return o.grandTotal;}),totalSales:sum(paid,function(o){return o.grandTotal;}),orderCount:orders.length,pendingOrders:orders.filter(function(o){return ['Pending','Awaiting Payment','Processing','Packed'].indexOf(o.orderStatus)>=0;}).length,awaitingPayment:orders.filter(function(o){return o.paymentStatus==='Unpaid'||o.paymentStatus==='Pending Verification';}).length,productCount:products.length,lowStock:inventory.filter(function(i){return number_(i.quantity,0)-number_(i.reserved,0)<=number_(i.minimumStock,0);}).length,outOfStock:inventory.filter(function(i){return number_(i.quantity,0)-number_(i.reserved,0)<=0;}).length,customerCount:customers.length,netRevenue:sum(paid,function(o){return number_(o.grandTotal,0)-number_(o.tax,0);})};
@@ -3441,7 +3514,7 @@ function getDashboardStats(token){
   }catch(e){return fail_(safeError_(e));}
 }
 function getSalesReports(token,filters){
-  try{requireAdmin_(token,'reports.view');filters=filters||{};var orders=readTable_('Orders',false).filter(function(o){return o.paymentStatus==='Verified'&&o.orderStatus!=='Cancelled';});var start=filters.startDate?new Date(filters.startDate).getTime():0,end=filters.endDate?new Date(filters.endDate+'T23:59:59').getTime():Date.now();orders=orders.filter(function(o){var t=new Date(o.createdAt).getTime();return t>=start&&t<=end;});var byDay={},byPayment={},top={},allOrderItems=readTable_('OrderItems',false);orders.forEach(function(o){var d=String(o.createdAt).substring(0,10);byDay[d]=(byDay[d]||0)+number_(o.grandTotal,0);byPayment[o.paymentMethod]=(byPayment[o.paymentMethod]||0)+number_(o.grandTotal,0);allOrderItems.filter(function(i){return i.orderId===o.id;}).forEach(function(i){top[i.productName]=(top[i.productName]||0)+number_(i.quantity,0);});});var days=Object.keys(byDay).sort();return ok_({orders:orders,labels:days,sales:days.map(function(d){return byDay[d];}),paymentMethods:Object.keys(byPayment).map(function(k){return {name:k,value:byPayment[k]};}),topProducts:Object.keys(top).sort(function(a,b){return top[b]-top[a];}).slice(0,10).map(function(k){return {name:k,quantity:top[k]};}),total:orders.reduce(function(s,o){return s+number_(o.grandTotal,0);},0)});}catch(e){return fail_(safeError_(e));}
+  try{requireAdmin_(token,'reports.view');filters=filters||{};var orders=readTable_('Orders',true).filter(function(o){return o.paymentStatus==='Verified'&&o.orderStatus!=='Cancelled';});var start=filters.startDate?new Date(filters.startDate).getTime():0,end=filters.endDate?new Date(filters.endDate+'T23:59:59').getTime():Date.now();orders=orders.filter(function(o){var t=new Date(o.createdAt).getTime();return t>=start&&t<=end;});var byDay={},byPayment={},top={},allOrderItems=readTable_('OrderItems',true);orders.forEach(function(o){var d=String(o.createdAt).substring(0,10);byDay[d]=(byDay[d]||0)+number_(o.grandTotal,0);byPayment[o.paymentMethod]=(byPayment[o.paymentMethod]||0)+number_(o.grandTotal,0);allOrderItems.filter(function(i){return i.orderId===o.id;}).forEach(function(i){top[i.productName]=(top[i.productName]||0)+number_(i.quantity,0);});});var days=Object.keys(byDay).sort();return ok_({orders:orders,labels:days,sales:days.map(function(d){return byDay[d];}),paymentMethods:Object.keys(byPayment).map(function(k){return {name:k,value:byPayment[k]};}),topProducts:Object.keys(top).sort(function(a,b){return top[b]-top[a];}).slice(0,10).map(function(k){return {name:k,quantity:top[k]};}),total:orders.reduce(function(s,o){return s+number_(o.grandTotal,0);},0)});}catch(e){return fail_(safeError_(e));}
 }
 function recordVisitor(clientKey,userAgent){
   try{var date=new Date().toISOString().substring(0,10),hash=sha256_(text_(clientKey,200)+'|'+date),rows=readTable_('Visitors',false),found=rows.filter(function(x){return x.date===date&&x.ipHash===hash;})[0];if(found)updateRecord_('Visitors',found.id,{count:number_(found.count,0)+1});else appendRecord_('Visitors',{id:newId_('VIS'),date:date,ipHash:hash,userAgent:text_(userAgent,250),count:1,createdAt:now_()});return ok_(true);}catch(e){return fail_(safeError_(e));}
@@ -4326,6 +4399,26 @@ function getNewsletters(token) {
  * is intentionally never used as the default sort key, so editing a record
  * does not move it to the top of the table.
  */
+function indexRowsByField_(rows, fieldName) {
+  var index = Object.create(null);
+  safeArray_(rows).forEach(function(row) {
+    var key = String(row && row[fieldName] !== undefined && row[fieldName] !== null ? row[fieldName] : '');
+    if (key && !Object.prototype.hasOwnProperty.call(index, key)) index[key] = row;
+  });
+  return index;
+}
+
+function groupRowsByField_(rows, fieldName) {
+  var groups = Object.create(null);
+  safeArray_(rows).forEach(function(row) {
+    var key = String(row && row[fieldName] !== undefined && row[fieldName] !== null ? row[fieldName] : '');
+    if (!key) return;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(row);
+  });
+  return groups;
+}
+
 function getAdminGridPage(token, moduleName, options) {
   try {
     options = options || {};
@@ -4361,31 +4454,49 @@ function getAdminGridPage(token, moduleName, options) {
       return copy;
     });
 
-    // Join display-only fields without exposing password hashes or session data.
+    // Join display-only fields with O(1) lookup maps instead of filtering full sheets for every row.
     if (moduleName === 'products') {
-      var inventoryRows = readTable_('Inventory', true), variants = readTable_('ProductVariants', true), categories = readTable_('Categories', true), stores = readTable_('Stores', true);
+      var inventoryRows = readTable_('Inventory', true);
+      var variants = readTable_('ProductVariants', true);
+      var categories = readTable_('Categories', true);
+      var stores = readTable_('Stores', true);
+      var variantsByProduct = groupRowsByField_(variants, 'productId');
+      var categoriesById = indexRowsByField_(categories, 'id');
+      var storesById = indexRowsByField_(stores, 'id');
+      var inventoryByProductVariant = Object.create(null);
+
+      inventoryRows.forEach(function(item) {
+        var key = String(item.productId || '') + '\u0001' + String(item.variantId || '');
+        if (!Object.prototype.hasOwnProperty.call(inventoryByProductVariant, key)) inventoryByProductVariant[key] = item;
+      });
+
       rows.forEach(function(p) {
-        var child = variants.filter(function(v) { return String(v.productId) === String(p.id) && productVariantIsActive_(v); });
+        var productId = String(p.id || '');
+        var child = safeArray_(variantsByProduct[productId]).filter(productVariantIsActive_);
         if (child.length) {
-          p.stock = child.reduce(function(sum, v) {
-            var inv = inventoryRows.filter(function(x) { return String(x.productId) === String(p.id) && String(x.variantId) === String(v.id); })[0];
-            return sum + (inv ? Math.max(0, number_(inv.quantity, 0) - number_(inv.reserved, 0)) : number_(v.stock, 0));
+          p.stock = child.reduce(function(sum, variant) {
+            var key = productId + '\u0001' + String(variant.id || '');
+            var inv = inventoryByProductVariant[key];
+            return sum + (inv ? Math.max(0, number_(inv.quantity, 0) - number_(inv.reserved, 0)) : number_(variant.stock, 0));
           }, 0);
         } else {
-          var base = inventoryRows.filter(function(x) { return String(x.productId) === String(p.id) && !x.variantId; })[0];
+          var base = inventoryByProductVariant[productId + '\u0001'];
           if (base) p.stock = Math.max(0, number_(base.quantity, 0) - number_(base.reserved, 0));
         }
-        var cat = categories.filter(function(x) { return String(x.id) === String(p.categoryId); })[0];
-        var store = stores.filter(function(x) { return String(x.id) === String(p.sellerId); })[0];
+        var cat = categoriesById[String(p.categoryId || '')] || null;
+        var store = storesById[String(p.sellerId || '')] || null;
         p.categoryName = cat ? cat.name : '';
         p.shopName = store ? store.shopName : '';
       });
     } else if (moduleName === 'inventory') {
-      var products = readTable_('Products', true), productVariants = readTable_('ProductVariants', true);
+      var products = readTable_('Products', true);
+      var productVariants = readTable_('ProductVariants', true);
+      var productsById = indexRowsByField_(products, 'id');
+      var variantsById = indexRowsByField_(productVariants, 'id');
       rows = inventoryRowsForDisplay_(rows, productVariants);
       rows.forEach(function(x) {
-        var p = products.filter(function(v) { return String(v.id) === String(x.productId); })[0] || {};
-        var variant = productVariants.filter(function(v) { return String(v.id) === String(x.variantId); })[0] || {};
+        var p = productsById[String(x.productId || '')] || {};
+        var variant = variantsById[String(x.variantId || '')] || {};
         x.productName = p.name || '';
         x.variantName = productVariantDisplayName_(variant);
         x.sku = variant.sku || p.sku || '';
@@ -4393,38 +4504,45 @@ function getAdminGridPage(token, moduleName, options) {
       });
     } else if (moduleName === 'payments') {
       var orderRows = readTable_('Orders', true);
+      var ordersById = indexRowsByField_(orderRows, 'id');
       rows.forEach(function(x) {
-        var o = orderRows.filter(function(v) { return String(v.id) === String(x.orderId); })[0] || {};
+        var o = ordersById[String(x.orderId || '')] || {};
         x.orderNumber = o.orderNumber || '';
         x.customerName = o.customerName || '';
       });
     } else if (moduleName === 'sellers') {
       var customers = readTable_('Customers', true);
+      var customersById = indexRowsByField_(customers, 'id');
       rows.forEach(function(x) {
-        var c = customers.filter(function(v) { return String(v.id) === String(x.ownerCustomerId); })[0] || {};
+        var c = customersById[String(x.ownerCustomerId || '')] || {};
         x.ownerName = [c.firstname || '', c.lastname || ''].join(' ').trim();
         x.ownerEmail = c.email || '';
         x.ownerPhone = c.phone || '';
       });
     } else if (moduleName === 'flashDeals') {
-      var dealProducts = readTable_('Products', true), dealStores = readTable_('Stores', true);
+      var dealProducts = readTable_('Products', true);
+      var dealStores = readTable_('Stores', true);
+      var dealProductsById = indexRowsByField_(dealProducts, 'id');
+      var dealStoresById = indexRowsByField_(dealStores, 'id');
       rows.forEach(function(x) {
-        var p = dealProducts.filter(function(v) { return String(v.id) === String(x.productId); })[0] || {};
-        var s = dealStores.filter(function(v) { return String(v.id) === String(x.sellerId); })[0] || {};
+        var p = dealProductsById[String(x.productId || '')] || {};
+        var s = dealStoresById[String(x.sellerId || '')] || {};
         x.productName = p.name || '';
         x.shopName = s.shopName || 'ร้านค้าหลัก';
         x.remaining = number_(x.quota, 0) > 0 ? Math.max(0, number_(x.quota, 0) - number_(x.soldCount, 0)) : '';
       });
     } else if (moduleName === 'marketplacePayouts') {
       var payoutStores = readTable_('Stores', true);
+      var payoutStoresById = indexRowsByField_(payoutStores, 'id');
       rows.forEach(function(x) {
-        var s = payoutStores.filter(function(v) { return String(v.id) === String(x.sellerId); })[0] || {};
+        var s = payoutStoresById[String(x.sellerId || '')] || {};
         x.shopName = s.shopName || '';
       });
     } else if (moduleName === 'reviews') {
       var reviewProducts = readTable_('Products', true);
+      var reviewProductsById = indexRowsByField_(reviewProducts, 'id');
       rows.forEach(function(x) {
-        var p = reviewProducts.filter(function(v) { return String(v.id) === String(x.productId); })[0] || {};
+        var p = reviewProductsById[String(x.productId || '')] || {};
         x.productName = p.name || '';
       });
     }
