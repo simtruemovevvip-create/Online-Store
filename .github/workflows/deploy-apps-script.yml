@@ -38,7 +38,10 @@ jobs:
             DEPLOY_ID="$(node <<'NODE'
           const fs = require("fs");
           const source = fs.readFileSync("Code.gs", "utf8");
-          const match = source.match(/WEB_APP_URL\\s*=\\s*["']https:\\/\\/script\\.google\\.com\\/macros\\/s\\/([^/"']+)\\/exec/);
+          const prefix = "https://script.google.com/macros/s/";
+          const start = source.indexOf(prefix);
+          const deploymentId = start >= 0 ? source.slice(start + prefix.length).split("/")[0] : "";
+          if (deploymentId) process.stdout.write(deploymentId);
           if (match) process.stdout.write(match[1]);
           NODE
           )"
