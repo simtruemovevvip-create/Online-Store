@@ -3791,7 +3791,7 @@ function sellerGetCustomers(customerToken, filters) {
       if (!id) return null;
       if (!rowsById[id]) rowsById[id] = {
         customerId:id, customerName:'', email:'', phone:'',
-        orderCount:0, totalSpent:0, lastOrderAt:'', lastOrderNumber:'', tags:'', note:''
+        orderCount:0, totalSpent:0, lastOrderAt:'', lastOrderNumber:'', lastActivityAt:'', tags:'', note:''
       };
       return rowsById[id];
     }
@@ -3805,10 +3805,13 @@ function sellerGetCustomers(customerToken, filters) {
       row.customerName = row.customerName || [customer.firstname,customer.lastname].filter(Boolean).join(' ') || parent.customerName || customer.username || 'ลูกค้า';
       row.email = row.email || customer.email || parent.email || '';
       row.phone = row.phone || customer.phone || parent.phone || '';
+      var parentActivity = parent.createdAt || customer.createdAt || '';
+      if (parentActivity && (!row.lastActivityAt || new Date(parentActivity).getTime() > new Date(row.lastActivityAt).getTime())) row.lastActivityAt = parentActivity;
       relatedOrders.forEach(function(sellerOrder) {
         row.orderCount++;
         row.totalSpent += Math.max(0, number_(sellerOrder.subtotal,0) - number_(sellerOrder.discountAmount,0));
-        var stamp = sellerOrder.createdAt || parent.createdAt || '';
+        var stamp = sellerOrder.createdAt || parent.createdAt || customer.createdAt || '';
+        if (stamp && (!row.lastActivityAt || new Date(stamp).getTime() > new Date(row.lastActivityAt).getTime())) row.lastActivityAt = stamp;
         if (!row.lastOrderAt || new Date(stamp).getTime() > new Date(row.lastOrderAt).getTime()) {
           row.lastOrderAt = stamp;
           row.lastOrderNumber = sellerOrder.orderNumber || parent.orderNumber || '';
@@ -3824,6 +3827,8 @@ function sellerGetCustomers(customerToken, filters) {
       row.customerName = row.customerName || [customer.firstname,customer.lastname].filter(Boolean).join(' ') || customer.username || 'ลูกค้า';
       row.email = row.email || customer.email || '';
       row.phone = row.phone || customer.phone || '';
+      var threadActivity = thread.lastMessageAt || thread.updatedAt || thread.createdAt || customer.createdAt || '';
+      if (threadActivity && (!row.lastActivityAt || new Date(threadActivity).getTime() > new Date(row.lastActivityAt).getTime())) row.lastActivityAt = threadActivity;
     });
     readTable_('SellerCustomerNotes', false).filter(function(note) {
       return String(note.sellerId) === storeId;
@@ -3836,7 +3841,11 @@ function sellerGetCustomers(customerToken, filters) {
     if (q) rows = rows.filter(function(row) {
       return [row.customerName,row.email,row.phone,row.lastOrderNumber,row.tags,row.note].join(' ').toLowerCase().indexOf(q) >= 0;
     });
-    rows.sort(function(a,b) { return new Date(b.lastOrderAt || 0).getTime() - new Date(a.lastOrderAt || 0).getTime(); });
+    rows.sort(function(a,b) {
+      var activityA = new Date(a.lastActivityAt || a.lastOrderAt || 0).getTime() || 0;
+      var activityB = new Date(b.lastActivityAt || b.lastOrderAt || 0).getTime() || 0;
+      return activityB - activityA || String(a.customerId || '').localeCompare(String(b.customerId || ''));
+    });
     return ok_(rows);
   } catch (e) { return fail_(safeError_(e)); }
 }

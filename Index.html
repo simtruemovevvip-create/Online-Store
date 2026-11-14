@@ -4819,7 +4819,11 @@ function loadPublicData(onComplete){
     function runSellerModalMutation(api,args,page){
       return new Promise(function(resolve){
         var popup=Swal.getPopup(),saved=getCurrentModalMutationReceipt(api,page);
-        function reloadAfterSave(result){loadSellerPage(page,function(ok,message){if(!ok){Swal.showValidationMessage('บันทึกข้อมูลแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ: '+message+' กดปุ่มอีกครั้งเพื่อโหลดข้อมูลใหม่โดยไม่บันทึกซ้ำ');resolve(false);return;}clearCurrentModalMutationReceipt(popup);toast(result.message||'บันทึกข้อมูลสำเร็จ','success');resolve({success:true});},true);}
+        var payload=args&&args.length?args[args.length-1]:null;
+        var isNewProduct=page==='products'&&api==='sellerSaveProduct'&&payload&&typeof payload==='object'&&!Array.isArray(payload)&&!String(payload.id||'').trim();
+        var keepTableState=!isNewProduct;
+        if(isNewProduct){APP.sellerProductPage=1;APP.sellerProductQuery='';APP.sellerProductStatus='all';}
+        function reloadAfterSave(result){loadSellerPage(page,function(ok,message){if(!ok){Swal.showValidationMessage('บันทึกข้อมูลแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ: '+message+' กดปุ่มอีกครั้งเพื่อโหลดข้อมูลใหม่โดยไม่บันทึกซ้ำ');resolve(false);return;}clearCurrentModalMutationReceipt(popup);toast(result.message||'บันทึกข้อมูลสำเร็จ','success');resolve({success:true});},true,keepTableState);}
         if(saved){popup=saved.popup;reloadAfterSave(saved.receipt.result);return;}
         apiCall(api,args,function(result){if(!result||!result.success){Swal.showValidationMessage(result&&result.message?result.message:'ไม่สามารถบันทึกข้อมูลได้');resolve(false);return;}popup=Swal.getPopup()||popup;setCurrentModalMutationReceipt(popup,api,page,result);reloadAfterSave(result);},false);
       });
@@ -4871,7 +4875,7 @@ function loadPublicData(onComplete){
     function adminGridSkeleton(title){var cards='<div class="eg-skeleton-title"><i></i><b>'+esc(title||'กำลังโหลดข้อมูล')+'</b></div><div class="eg-skeleton-toolbar"><i></i><i></i><i></i><i></i></div><div class="eg-skeleton-table">'+Array.from({length:7}).map(function(){return '<div class="eg-skeleton-row"><i></i><i></i><i></i><i></i><i></i></div>';}).join('')+'</div>';return '<div class="eg-grid eg-skeleton-grid" aria-live="polite">'+cards+'</div>'; }
     function adminGridLoad(page,options,callback,silent){
       var state=adminGridState(page);if(options){Object.keys(options).forEach(function(k){state.options[k]=options[k];});}
-      if(!state.options.sortKey)state.options.sortKey=page==='logs'?'timestamp':(page==='inventory'?'updatedAt':'createdAt');
+      if(!state.options.sortKey)state.options.sortKey=page==='logs'?'timestamp':'createdAt';
       var host=document.getElementById('adminContent');if(host){host.setAttribute('aria-busy','true');if(!silent)host.innerHTML=adminGridSkeleton(state.title||'กำลังโหลดข้อมูล');}
       apiCall('getAdminGridPage',[APP.adminToken,page,state.options],function(r){
         if(!r||!r.success){if(host){host.setAttribute('aria-busy','false');if(APP.adminPage===page)host.innerHTML='<div class="eg-grid-empty eg-grid-error"><i class="fa-solid fa-triangle-exclamation"></i>'+esc(r&&r.message||'โหลดข้อมูลตารางไม่สำเร็จ')+'<button class="btn btn-outline btn-small" onclick="adminGridRefresh(\'admin_'+page+'\')">ลองอีกครั้ง</button></div>';}if(typeof callback==='function')callback(false,r&&r.message||'โหลดข้อมูลตารางไม่สำเร็จ');else showAdminError(r&&r.message||'โหลดข้อมูลตารางไม่สำเร็จ');return;}
@@ -5239,7 +5243,7 @@ function loadPublicData(onComplete){
     function reviewStatus(id,status){var button=APP.lastActionButton;var busy=setInlineButtonBusy(button,'กำลังอัปเดต...');apiCall('updateReviewStatus',[APP.adminToken,id,status],function(r){if(!r.success){restoreInlineButton(busy);alertError(r.message);return;}adminRefreshModuleAfterMutation('reviews',function(ok,message){if(!ok){restoreInlineButton(busy);alertError('บันทึกแล้วแต่โหลดข้อมูลใหม่ไม่สำเร็จ: '+message);return;}toast(r.message,'success');},true);},false);}
     function inventorySetLatestGridPage(){
       var state=ADMIN_GRID_STATES['admin_inventory'];
-      if(state&&state.options){state.options.page=1;state.options.sortKey='updatedAt';state.options.sortDir='desc';}
+      if(state&&state.options){state.options.page=1;state.options.sortKey='createdAt';state.options.sortDir='desc';}
     }
     function loadInventoryProductVariantOptions(productId,productSelectId,variantSelectId,selectedVariantId){
       var select=document.getElementById(variantSelectId);
@@ -5320,7 +5324,6 @@ function loadPublicData(onComplete){
           var minimumStock=Number(document.getElementById('invEditMinimum').value);
           if(!Number.isInteger(quantity)||quantity<reserved){Swal.showValidationMessage('จำนวนคงเหลือต้องเป็นจำนวนเต็ม และไม่น้อยกว่ายอดจอง '+reserved+' ชิ้น');return false;}
           if(!Number.isInteger(minimumStock)||minimumStock<0){Swal.showValidationMessage('สต็อกขั้นต่ำต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป');return false;}
-          inventorySetLatestGridPage();
           return runAdminModalMutation('inventory','updateInventoryItem',[APP.adminToken,{
             id:inventoryId,quantity:quantity,minimumStock:minimumStock,reason:document.getElementById('invEditReason').value
           }]);
@@ -5337,7 +5340,7 @@ function loadPublicData(onComplete){
         html:'<div style="text-align:left"><b>'+esc(row.productName||'รายการคลังสินค้า')+'</b><div>'+esc(row.variantName||'สินค้าหลัก')+' · SKU '+esc(row.sku||'-')+'</div><p style="margin:10px 0 0">คงเหลือ '+quantity+' ชิ้น · ถูกจอง '+reserved+' ชิ้น</p><small>ระบบจะลบเฉพาะรายการคลังที่ยอดคงเหลือและยอดจองเป็น 0 เท่านั้น และเก็บประวัติการเคลื่อนไหวไว้</small></div>',
         icon:'warning',showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'ลบรายการ',cancelButtonText:'ยกเลิก',
         allowOutsideClick:function(){return !Swal.isLoading();},
-        preConfirm:function(){inventorySetLatestGridPage();return runAdminModalMutation('inventory','deleteInventoryItem',[APP.adminToken,inventoryId]);}
+        preConfirm:function(){return runAdminModalMutation('inventory','deleteInventoryItem',[APP.adminToken,inventoryId]);}
       });
     }
 
@@ -6134,7 +6137,7 @@ function adjustInventoryDialog(productId,variantId){
     function toggleSellerSidebar(){var shell=document.getElementById('sellerConsole');if(!shell)return;if(window.innerWidth<=980){shell.classList.toggle('mobile-open');return;}shell.classList.toggle('is-collapsed');try{localStorage.setItem('seller_sidebar_collapsed',shell.classList.contains('is-collapsed')?'1':'0');}catch(e){}}
     function closeSellerMobileSidebar(){var shell=document.getElementById('sellerConsole');if(shell)shell.classList.remove('mobile-open');}
     function toggleSellerTheme(){document.body.classList.toggle('dark');try{localStorage.setItem('store_theme',document.body.classList.contains('dark')?'dark':'light');}catch(e){}var icon=document.querySelector('.seller-topbar-icon[onclick="toggleSellerTheme()"] i');if(icon)icon.className=document.body.classList.contains('dark')?'fa-regular fa-sun':'fa-regular fa-moon';}
-    function sellerRefreshCurrentPage(){loadSellerPage(APP.sellerPage||'dashboard');}
+    function sellerRefreshCurrentPage(){loadSellerPage(APP.sellerPage||'dashboard',null,true,true);}
     function sellerRunGlobalSearch(){var input=document.getElementById('sellerGlobalSearch'),q=input?input.value.trim():'';if(!q)return;loadSellerPage('products',function(ok){if(ok){var search=document.getElementById('sellerProductSearch');if(search){search.value=q;sellerFilterProducts();}}});}
     function sellerSkeletonMarkup(page){
       var card='<div class="seller-skeleton-card"><i></i><b></b><span></span></div>';
@@ -6144,7 +6147,7 @@ function adjustInventoryDialog(productId,variantId){
       if(page==='products'||page==='orders'||page==='customers'||page==='returns'||page==='payouts'||page==='vouchers'||page==='deals'||page==='live')return '<div class="seller-skeleton"><div class="seller-skeleton-heading"><b></b><i></i></div><div class="seller-skeleton-toolbar"></div>'+rows+'</div>';
       return '<div class="seller-skeleton"><div class="seller-skeleton-heading"><b></b><i></i></div><div class="seller-skeleton-columns"><div>'+card+card+'</div><div>'+card+card+'</div></div></div>';
     }
-    function loadSellerPage(page,onLoaded,silent){
+    function loadSellerPage(page,onLoaded,silent,keepTableState){
       APP.currentView='seller';
       var apis={dashboard:'sellerDashboard',products:'sellerGetProducts',orders:'sellerGetOrders',customers:'sellerGetCustomers',vouchers:'sellerGetVouchers',deals:'sellerGetFlashDeals',returns:'sellerGetReturns',chat:'getSellerChatThreads',payouts:'sellerGetPayouts',live:'sellerGetLiveRooms',store:'sellerGetStoreProfile'};
       if(!apis[page]){if(typeof onLoaded==='function')onLoaded(false,'ไม่พบหน้าที่ต้องการ');return;}savePortalRoutePage('seller',APP.customerToken,page,SELLER_MENU.map(function(m){return m[0];}));
@@ -6158,9 +6161,9 @@ function adjustInventoryDialog(productId,variantId){
         if(!r||!r.success){sellerError(r&&r.message||'ไม่สามารถโหลดข้อมูลได้');if(typeof onLoaded==='function')onLoaded(false,r&&r.message||'ไม่สามารถโหลดข้อมูลได้');return;}
         var d=r.data;
         if(page==='dashboard')renderSellerDashboard(d||{});
-        else if(page==='products')renderSellerProducts(safeArray(d));
+        else if(page==='products')renderSellerProducts(safeArray(d),!!keepTableState);
         else if(page==='orders')renderSellerOrders(safeArray(d));
-        else if(page==='customers')renderSellerCustomers(safeArray(d));
+        else if(page==='customers')renderSellerCustomers(safeArray(d),!!keepTableState);
         else if(page==='vouchers')renderSellerVouchers(safeArray(d));
         else if(page==='deals')renderSellerDeals(safeArray(d));
         else if(page==='returns')renderSellerReturns(safeArray(d));
@@ -6188,11 +6191,13 @@ function adjustInventoryDialog(productId,variantId){
         '<section class="seller-panel seller-checklist-panel"><div class="seller-panel-heading"><div><span class="seller-eyebrow">STORE READINESS</span><h2>ความพร้อมของร้าน</h2><p>ข้อมูลเบื้องต้นสำหรับเริ่มขาย</p></div><span class="seller-ready-badge"><i class="fa-solid fa-circle-check"></i> เปิดใช้งาน</span></div><div class="seller-checklist"><div><i class="fa-solid fa-circle-check"></i><span><b>ร้านค้าได้รับการเปิดใช้งาน</b><small>บัญชีร้านค้าพร้อมจัดการข้อมูล</small></span></div><div class="'+(Number(d.productCount)>0?'is-done':'')+'"><i class="fa-solid '+(Number(d.productCount)>0?'fa-circle-check':'fa-circle-plus')+'"></i><span><b>เพิ่มสินค้าอย่างน้อย 1 รายการ</b><small>'+(Number(d.productCount)>0?'มีสินค้า '+sellerFormatCount(d.productCount)+' รายการ':'เริ่มต้นลงขายสินค้าเพื่อให้ลูกค้าเห็น')+'</small></span></div><div class="'+(Number(d.activeProducts)>0?'is-done':'')+'"><i class="fa-solid '+(Number(d.activeProducts)>0?'fa-circle-check':'fa-toggle-on')+'"></i><span><b>เปิดขายสินค้า</b><small>'+(Number(d.activeProducts)>0?sellerFormatCount(d.activeProducts)+' รายการกำลังเปิดขาย':'ตรวจสอบสถานะสินค้าให้เป็นเปิดขาย')+'</small></span></div></div><button class="seller-text-link" onclick="loadSellerPage(\'products\')">ตรวจสอบรายการสินค้า <i class="fa-solid fa-arrow-right"></i></button></section></div>';
       var host=document.getElementById('sellerContent');if(host)host.innerHTML=html;
     }
-    function renderSellerProducts(rows){
-      APP.sellerProducts=safeArray(rows);APP.sellerProductPage=1;APP.sellerProductPageSize=Number(APP.sellerProductPageSize||10);APP.sellerProductStatus=APP.sellerProductStatus||'all';APP.sellerProductQuery='';
+    function renderSellerProducts(rows,keepState){
+      APP.sellerProducts=safeArray(rows);
+      if(!keepState){APP.sellerProductPage=1;APP.sellerProductStatus='all';APP.sellerProductQuery='';}
+      APP.sellerProductPage=Number(APP.sellerProductPage||1);APP.sellerProductPageSize=Number(APP.sellerProductPageSize||10);APP.sellerProductStatus=APP.sellerProductStatus||'all';APP.sellerProductQuery=String(APP.sellerProductQuery||'');
       var html='<div class="seller-page-heading"><div><span class="seller-eyebrow">CATALOG MANAGEMENT</span><h1>สินค้าของฉัน</h1><p>จัดการรายการสินค้า ราคา สต็อก รูปภาพ และสถานะการขาย</p></div><button class="btn btn-primary" onclick="sellerProductDialog(null)"><i class="fa-solid fa-plus"></i> เพิ่มสินค้าใหม่</button></div>'+
         '<section class="seller-panel seller-products-panel"><div class="seller-table-heading"><div><h2>รายการสินค้า</h2><p id="sellerProductCount">กำลังแสดงข้อมูลสินค้า</p></div><button class="btn btn-outline btn-small" onclick="sellerRefreshCurrentPage()"><i class="fa-solid fa-rotate"></i> รีเฟรช</button></div>'+
-        '<div class="seller-product-toolbar"><div class="seller-product-search"><i class="fa-solid fa-magnifying-glass"></i><input id="sellerProductSearch" type="search" placeholder="ค้นหาชื่อสินค้า หรือ SKU..." oninput="sellerFilterProducts()"></div><select class="seller-product-filter-select" id="sellerProductStatus" aria-label="กรองสถานะสินค้า" onchange="sellerFilterProducts()"><option value="all">ทุกสถานะ</option><option value="Active">เปิดขาย</option><option value="Inactive">ปิดขาย</option><option value="Archived">เก็บเข้าคลัง</option></select><label class="seller-product-page-size" title="จำนวนรายการที่แสดง"><span>แสดง</span><select id="sellerProductPageSize" aria-label="จำนวนรายการที่แสดง" onchange="sellerSetProductPageSize(this.value)"><option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></label></div>'+
+        '<div class="seller-product-toolbar"><div class="seller-product-search"><i class="fa-solid fa-magnifying-glass"></i><input id="sellerProductSearch" type="search" value="'+esc(APP.sellerProductQuery)+'" placeholder="ค้นหาชื่อสินค้า หรือ SKU..." oninput="sellerFilterProducts()"></div><select class="seller-product-filter-select" id="sellerProductStatus" aria-label="กรองสถานะสินค้า" onchange="sellerFilterProducts()"><option value="all">ทุกสถานะ</option><option value="Active">เปิดขาย</option><option value="Inactive">ปิดขาย</option><option value="Archived">เก็บเข้าคลัง</option></select><label class="seller-product-page-size" title="จำนวนรายการที่แสดง"><span>แสดง</span><select id="sellerProductPageSize" aria-label="จำนวนรายการที่แสดง" onchange="sellerSetProductPageSize(this.value)"><option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></label></div>'+
         '<div class="seller-table-wrap"><table class="market-table seller-data-table" data-eg-skip-enhance="1"><thead><tr><th>สินค้า</th><th>SKU</th><th>หมวดหมู่</th><th>ราคา</th><th>สต็อก</th><th>สถานะ</th><th>อัปเดตล่าสุด</th><th>จัดการ</th></tr></thead><tbody id="sellerProductRows"></tbody></table></div><div class="seller-table-footer"><span id="sellerProductRange">0 รายการ</span><nav class="seller-pagination" id="sellerProductPagination" aria-label="เปลี่ยนหน้าสินค้าของฉัน"></nav></div></section>';
       var host=document.getElementById('sellerContent');if(host)host.innerHTML=html;sellerRenderProductRows();
     }
@@ -6356,11 +6361,12 @@ function adjustInventoryDialog(productId,variantId){
     function sellerManageVariants(productId){variantMatrixOpen(productId,'seller');}
     function sellerDeleteVariantAction(productId,variantId){Swal.fire({title:'ลบ Variant นี้?',text:'หากเคยมีคำสั่งซื้อ ระบบจะเก็บเข้าคลังแทน',showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'ยืนยันลบ',cancelButtonText:'ยกเลิก',allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){return runSellerModalMutation('sellerDeleteProductVariant',[APP.customerToken,variantId],'products');}});}
     function sellerDeleteProductAction(id){Swal.fire({title:'ลบสินค้า?',text:'หากสินค้ามีประวัติคำสั่งซื้อ ระบบจะเก็บเข้าคลังแทนการลบถาวร',showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'ยืนยันลบ',cancelButtonText:'ยกเลิก',allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){return runSellerModalMutation('sellerDeleteProduct',[APP.customerToken,id],'products');}});}
-    function renderSellerCustomers(rows) {
+    function renderSellerCustomers(rows,keepState) {
       APP.sellerCustomers=safeArray(rows);
+      if(!keepState)APP.sellerCustomerQuery='';APP.sellerCustomerQuery=String(APP.sellerCustomerQuery||'');
       var totalSpend=APP.sellerCustomers.reduce(function(sum,row){return sum+Number(row.totalSpent||0);},0);
       var html='<div class="seller-page-heading"><div><span class="seller-eyebrow">CUSTOMER RELATIONSHIPS</span><h1>ลูกค้าของร้าน</h1><p>รายชื่อลูกค้าที่เคยสั่งซื้อหรือแชตกับร้านนี้เท่านั้น · หน้านี้ไม่เปิดให้แก้ไขรหัสผ่านหรือข้อมูลบัญชีส่วนตัวของลูกค้า</p></div><button class="btn btn-outline" type="button" onclick="sellerRefreshCurrentPage()"><i class="fa-solid fa-rotate"></i> รีเฟรช</button></div>'+
-        '<div class="seller-product-toolbar"><div class="seller-product-search"><i class="fa-solid fa-magnifying-glass"></i><input id="sellerCustomerSearch" type="search" placeholder="ค้นหาชื่อ เบอร์โทร อีเมล หรือแท็ก..." oninput="sellerFilterCustomers()"></div><span class="seller-sku-summary">'+APP.sellerCustomers.length.toLocaleString('th-TH')+' ลูกค้า</span></div>'+
+        '<div class="seller-product-toolbar"><div class="seller-product-search"><i class="fa-solid fa-magnifying-glass"></i><input id="sellerCustomerSearch" type="search" value="'+esc(APP.sellerCustomerQuery)+'" placeholder="ค้นหาชื่อ เบอร์โทร อีเมล หรือแท็ก..." oninput="sellerFilterCustomers()"></div><span class="seller-sku-summary">'+APP.sellerCustomers.length.toLocaleString('th-TH')+' ลูกค้า</span></div>'+
         '<section class="seller-panel"><div class="seller-table-heading"><div><h2>รายชื่อลูกค้าของร้าน</h2><p id="sellerCustomerCount">ลูกค้าทั้งหมด '+APP.sellerCustomers.length.toLocaleString('th-TH')+' ราย · ยอดซื้อรวม '+money(totalSpend)+'</p></div></div>'+
         '<div class="seller-table-wrap"><table class="market-table seller-data-table"><thead><tr><th>ลูกค้า</th><th>ช่องทางติดต่อ</th><th>คำสั่งซื้อ</th><th>ยอดซื้อกับร้าน</th><th>สั่งซื้อล่าสุด</th><th>แท็ก / หมายเหตุ</th><th>จัดการ</th></tr></thead><tbody id="sellerCustomerRows"></tbody></table></div>'+
         '<div class="seller-table-footer"><span id="sellerCustomerRange"></span></div></section>';
@@ -6404,7 +6410,7 @@ function adjustInventoryDialog(productId,variantId){
           },false);
         });
       }}).then(function(result){
-        if(result.isConfirmed){toast('บันทึกข้อมูลลูกค้าของร้านแล้ว','success');loadSellerPage('customers');}
+        if(result.isConfirmed){toast('บันทึกข้อมูลลูกค้าของร้านแล้ว','success');loadSellerPage('customers',null,true,true);}
       });
     }
         function renderSellerOrders(rows){document.getElementById('sellerContent').innerHTML='<h2>คำสั่งซื้อร้านค้า</h2><div class="table-scroll"><table class="market-table"><thead><tr><th>เลขที่คำสั่งซื้อ</th><th>ผู้รับ</th><th>รายการ</th><th>ยอดสินค้า</th><th>ชำระเงิน</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody>'+(rows.length?rows.map(function(o){var next=o.status==='Processing'?'Packed':(o.status==='Packed'?'Shipped':(o.status==='Shipped'?'Delivered':''));return '<tr><td>'+esc(o.orderNumber)+'<small class="muted" style="display:block">'+esc(formatThaiChatTime(o.createdAt,true))+'</small></td><td>'+esc(o.customerName)+'<small class="muted" style="display:block">'+esc(o.phone)+'</small></td><td>'+safeArray(o.items).map(function(i){return esc(i.productName)+' × '+i.quantity;}).join('<br>')+'</td><td>'+money(o.subtotal)+'</td><td>'+esc(o.paymentStatus)+'</td><td>'+esc(o.status)+'</td><td>'+(next?'<button class="btn btn-primary btn-small" onclick="sellerAdvanceOrder(\''+esc(o.id)+'\',\''+next+'\')">'+(next==='Packed'?'แพ็กสินค้า':(next==='Shipped'?'จัดส่ง':'ส่งสำเร็จ'))+'</button>':'—')+'</td></tr>';}).join(''):'<tr><td colspan="7">ยังไม่มีคำสั่งซื้อ</td></tr>')+'</tbody></table></div>';}
