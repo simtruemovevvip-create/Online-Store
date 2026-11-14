@@ -1,0 +1,65 @@
+name: Sync and deploy Google Apps Script
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Code.gs"
+      - "Index.html"
+      - ".clasp.json"
+      - ".github/workflows/deploy-apps-script.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLASPRC_JSON: \${{ secrets.CLASPRC_JSON }}
+      GAS_DEPLOYMENT_ID: \${{ vars.GAS_DEPLOYMENT_ID }}
+    steps:
+      - name: Check deployment credentials
+        id: config
+        shell: bash
+        run: |
+          if [[ -n "$CLASPRC_JSON" && -n "$GAS_DEPLOYMENT_ID" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Apps Script sync skipped. Add the CLASPRC_JSON Actions secret and GAS_DEPLOYMENT_ID Actions variable to enable deployment."
+          fi
+
+      - name: Check out repository
+        if: steps.config.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: steps.config.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install clasp
+        if: steps.config.outputs.ready == 'true'
+        run: npm install --global @google/clasp
+
+      - name: Authenticate clasp
+        if: steps.config.outputs.ready == 'true'
+        shell: bash
+        run: |
+          install -d "$HOME"
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          chmod 600 "$HOME/.clasprc.json"
+
+      - name: Push source to Apps Script
+        if: steps.config.outputs.ready == 'true'
+        run: clasp push --force
+
+      - name: Update existing web app deployment
+        if: steps.config.outputs.ready == 'true'
+        shell: bash
+        run: |
+          clasp deploy --deploymentId "$GAS_DEPLOYMENT_ID" --description "GitHub \${GITHUB_SHA}"
