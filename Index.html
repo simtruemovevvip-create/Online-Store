@@ -1896,6 +1896,51 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     }
   </style>
 
+
+  <style id="system-table-status-and-action-icons-v1">
+    .table-status-pill,.eg-status-tag{
+      display:inline-flex;align-items:center;justify-content:center;gap:5px;
+      min-height:23px;padding:4px 9px;border:1px solid transparent;border-radius:999px;
+      font-size:10px;font-weight:750;line-height:1.25;white-space:nowrap;
+    }
+    .table-status-pill.good,.eg-status-tag.good{background:#e8f7ef;color:#137a49;border-color:#ccebd9}
+    .table-status-pill.warn,.eg-status-tag.warn{background:#fff5df;color:#9a6200;border-color:#f7e4b3}
+    .table-status-pill.bad,.eg-status-tag.bad{background:#fff0ef;color:#bd3027;border-color:#f4d1ce}
+    .table-status-pill.info,.eg-status-tag.info{background:#edf3ff;color:#2858a7;border-color:#d6e3ff}
+    body.dark .table-status-pill.good,body.dark .eg-status-tag.good{background:#123c2b;color:#8de0b4;border-color:#1d6244}
+    body.dark .table-status-pill.warn,body.dark .eg-status-tag.warn{background:#473516;color:#ffd47a;border-color:#705322}
+    body.dark .table-status-pill.bad,body.dark .eg-status-tag.bad{background:#481f20;color:#ffaaa4;border-color:#71302f}
+    body.dark .table-status-pill.info,body.dark .eg-status-tag.info{background:#1b3154;color:#a9c9ff;border-color:#2a4774}
+    .row-actions .table-action-icon,.seller-row-actions .seller-action-icon,
+    .seller-table-wrap .seller-action-icon,.table-scroll .seller-action-icon,
+    .vm-matrix-table .table-action-icon{
+      display:inline-grid!important;place-items:center!important;
+      width:32px!important;min-width:32px!important;height:32px!important;
+      padding:0!important;border:1px solid transparent!important;border-radius:8px!important;
+      background:var(--surface,#fff)!important;font-size:13px!important;line-height:1!important;
+      cursor:pointer;transition:background .15s,border-color .15s,color .15s,transform .15s;
+    }
+    .row-actions .table-action-icon:hover,.seller-row-actions .seller-action-icon:hover,
+    .seller-table-wrap .seller-action-icon:hover,.table-scroll .seller-action-icon:hover,
+    .vm-matrix-table .table-action-icon:hover{transform:translateY(-1px)}
+    .table-action-icon.is-edit,.seller-action-icon.is-edit{
+      color:#2563eb!important;background:#eff6ff!important;border-color:#dbeafe!important;
+    }
+    .table-action-icon.is-edit:hover,.seller-action-icon.is-edit:hover{background:#dbeafe!important;border-color:#93c5fd!important}
+    .table-action-icon.is-delete,.seller-action-icon.is-delete{
+      color:#dc2626!important;background:#fff1f2!important;border-color:#ffe4e6!important;
+    }
+    .table-action-icon.is-delete:hover,.seller-action-icon.is-delete:hover{background:#ffe4e6!important;border-color:#fda4af!important}
+    body.dark .table-action-icon.is-edit,body.dark .seller-action-icon.is-edit{color:#93c5fd!important;background:#172b4d!important;border-color:#294b7c!important}
+    body.dark .table-action-icon.is-delete,body.dark .seller-action-icon.is-delete{color:#fda4af!important;background:#431f28!important;border-color:#6b2d3a!important}
+    .row-actions .table-action-icon i,.seller-row-actions .seller-action-icon i,.seller-action-icon i{margin:0!important}
+    .seller-row-actions .seller-variant-action{min-width:68px!important}
+    .vm-matrix-table .vm-row-remove.table-action-icon{font-size:12px!important}
+    @media(max-width:600px){
+      .row-actions .table-action-icon,.seller-row-actions .seller-action-icon,.seller-action-icon{width:30px!important;min-width:30px!important;height:30px!important}
+    }
+  </style>
+
 </head>
 <body data-qr-login="<?= qrLoginChallenge ?>" data-portal-entry="<?= portalEntry ?>" data-web-app-url="<?= webAppUrl ?>">
   <header class="top-header">
@@ -4762,8 +4807,79 @@ function loadPublicData(onComplete){
     function adminGridSetColumn(id,key,checked){var s=ADMIN_GRID_STATES[id];if(!s)return;var all=s.columns.map(function(c){return c.key;});if(!s.visibleKeys)s.visibleKeys=all.filter(function(k){return k!=='id'&&k!=='updatedAt';});if(checked&&s.visibleKeys.indexOf(key)<0)s.visibleKeys.push(key);if(!checked)s.visibleKeys=s.visibleKeys.filter(function(k){return k!==key;});try{localStorage.setItem('eg_cols_'+id,JSON.stringify(s.visibleKeys));}catch(e){}renderAdminGridHost(s);}
     function adminGridResetColumns(id){var s=ADMIN_GRID_STATES[id];if(!s)return;s.visibleKeys=s.columns.filter(function(c){return c.defaultVisible!==false;}).map(function(c){return c.key;});try{localStorage.removeItem('eg_cols_'+id);}catch(e){}renderAdminGridHost(s);}
     function adminGridRefresh(id){var s=ADMIN_GRID_STATES[id];if(!s)return;adminGridFetchState(s);}
-    function adminGridStatusHtml(value){var v=String(value||'—'),low=v.toLowerCase(),cls='info';if(['active','published','verified','paid','completed','delivered','resolved','approved'].indexOf(low)>=0)cls='good';else if(['pending','pending verification','pending seller review','awaiting payment','processing','packed','shipped','refund pending'].indexOf(low)>=0)cls='warn';else if(['inactive','disabled','rejected','suspended','cancelled','refunded','hidden','failed'].indexOf(low)>=0)cls='bad';return '<span class="eg-status-tag '+cls+'">'+esc(v)+'</span>';}
-    function adminGridCellHtml(row,col){var value=row[col.key];if(value===null||value===undefined||value==='')return '<span class="muted">—</span>';if(col.type==='status')return adminGridStatusHtml(value);if(col.type==='boolean')return adminGridStatusHtml((value===true||String(value).toLowerCase()==='true'||String(value)==='1')?'เปิดใช้งาน':'ปิดใช้งาน');if(col.type==='money')return esc(money(value));if(col.type==='number')return esc(Number(value||0).toLocaleString('th-TH',{maximumFractionDigits:2}));if(col.type==='date'){var d=new Date(value);return esc(isNaN(d.getTime())?String(value):new Intl.DateTimeFormat('th-TH',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(d));}var text=String(value);if(/<\/?[a-z][\s\S]*>/i.test(text))text=text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();return '<span class="eg-cell-clip" title="'+esc(text)+'">'+esc(text)+'</span>';}
+    function tableStatusContext(header,key){
+      var text=String(header||key||'').toLowerCase();
+      if(/วิธีชำระ|ช่องทางชำระ|payment method|paymentmethod/.test(text))return 'method';
+      if(/การชำระเงิน|ชำระเงิน|payment status|paymentstatus|สถานะจ่าย|payout/.test(text))return 'payment';
+      return 'status';
+    }
+    function tableStatusThaiLabel(value,context){
+      var raw=String(value===null||value===undefined?'':value).trim();
+      if(!raw)return '—';
+      var key=raw.toLowerCase().replace(/[\\_-]+/g,' ').replace(/\\s+/g,' ').trim();
+      var methods={
+        'bank transfer':'โอนเงินผ่านธนาคาร','banktransfer':'โอนเงินผ่านธนาคาร',
+        'qr payment':'ชำระผ่าน QR','qrpayment':'ชำระผ่าน QR','qr':'ชำระผ่าน QR',
+        'cod':'เก็บเงินปลายทาง','cash on delivery':'เก็บเงินปลายทาง',
+        'cash':'เงินสด','card':'บัตรเครดิต/เดบิต','credit card':'บัตรเครดิต','debit card':'บัตรเดบิต',
+        'installment':'ผ่อนชำระ','promptpay':'พร้อมเพย์'
+      };
+      if(context==='method')return methods[key]||raw;
+      var payment={
+        'unpaid':'ยังไม่ชำระเงิน','awaiting payment':'รอชำระเงิน','pending payment':'รอชำระเงิน',
+        'pending verification':'รอตรวจสอบการชำระเงิน','pending':'รอตรวจสอบการชำระเงิน',
+        'verified':'ชำระเงินแล้ว','paid':'ชำระเงินแล้ว','payment received':'ได้รับชำระเงินแล้ว',
+        'rejected':'หลักฐานชำระเงินไม่ผ่าน','failed':'ชำระเงินไม่สำเร็จ',
+        'refund pending':'รอดำเนินการคืนเงิน','refunded':'คืนเงินแล้ว',
+        'partially refunded':'คืนเงินบางส่วน','cancelled':'ยกเลิกการชำระเงิน',
+        'processing':'กำลังตรวจสอบการชำระเงิน','expired':'หมดเวลาชำระเงิน'
+      };
+      var statuses={
+        'active':'เปิดใช้งาน','enabled':'เปิดใช้งาน','published':'เผยแพร่','verified':'ตรวจสอบแล้ว',
+        'paid':'ชำระแล้ว','completed':'สำเร็จแล้ว','delivered':'จัดส่งสำเร็จ','resolved':'ปิดเรื่องแล้ว',
+        'approved':'อนุมัติแล้ว','received':'รับสินค้าแล้ว','return received':'รับสินค้าคืนแล้ว',
+        'inactive':'ปิดใช้งาน','disabled':'ปิดใช้งาน','rejected':'ไม่อนุมัติ','suspended':'ระงับการใช้งาน',
+        'cancelled':'ยกเลิกแล้ว','canceled':'ยกเลิกแล้ว','refunded':'คืนเงินแล้ว','hidden':'ซ่อน',
+        'failed':'ไม่สำเร็จ','pending':'รอดำเนินการ','pending seller review':'รอร้านค้าพิจารณา',
+        'pending review':'รอตรวจสอบ','pending verification':'รอตรวจสอบ','awaiting payment':'รอชำระเงิน',
+        'processing':'กำลังดำเนินการ','packed':'แพ็กสินค้าแล้ว','shipped':'จัดส่งแล้ว',
+        'return shipped':'ส่งคืนสินค้าแล้ว','refund pending':'รอดำเนินการคืนเงิน',
+        'draft':'ฉบับร่าง','archived':'เก็บเข้าคลัง','expired':'หมดอายุ','open':'เปิดอยู่',
+        'closed':'ปิดแล้ว','new':'ใหม่','replied':'ตอบกลับแล้ว','unread':'ยังไม่อ่าน',
+        'read':'อ่านแล้ว','waiting':'รอดำเนินการ','on hold':'พักรายการ','refunded partially':'คืนเงินบางส่วน'
+      };
+      var map=context==='payment'?payment:statuses;
+      if(map[key])return map[key];
+      return raw;
+    }
+    function tableStatusTone(value,context){
+      var key=String(value||'').toLowerCase().replace(/[\\_-]+/g,' ').replace(/\\s+/g,' ').trim();
+      if(context==='payment'){
+        if(['verified','paid','payment received','refunded'].indexOf(key)>=0)return 'good';
+        if(['rejected','failed','cancelled'].indexOf(key)>=0)return 'bad';
+        if(['unpaid','pending','pending verification','awaiting payment','pending payment','processing','refund pending','expired'].indexOf(key)>=0)return 'warn';
+        return 'info';
+      }
+      if(['active','enabled','published','verified','paid','completed','delivered','resolved','approved','received','return received'].indexOf(key)>=0)return 'good';
+      if(['pending','pending seller review','pending review','pending verification','awaiting payment','processing','packed','shipped','refund pending','waiting','open'].indexOf(key)>=0)return 'warn';
+      if(['inactive','disabled','rejected','suspended','cancelled','canceled','refunded','hidden','failed','closed'].indexOf(key)>=0)return 'bad';
+      return 'info';
+    }
+    function adminGridStatusHtml(value,context){
+      var v=String(value===null||value===undefined||value===''?'—':value),label=tableStatusThaiLabel(v,context||'status'),cls=tableStatusTone(v,context||'status');
+      return '<span class="eg-status-tag '+cls+'">'+esc(label)+'</span>';
+    }
+    function adminGridCellHtml(row,col){
+      var value=row[col.key];if(value===null||value===undefined||value==='')return '<span class="muted">—</span>';
+      if(col.type==='status')return adminGridStatusHtml(value,tableStatusContext(col.label,col.key));
+      if(col.type==='boolean')return adminGridStatusHtml((value===true||String(value).toLowerCase()==='true'||String(value)==='1')?'เปิดใช้งาน':'ปิดใช้งาน','status');
+      if(col.type==='money')return esc(money(value));
+      if(col.type==='number')return esc(Number(value||0).toLocaleString('th-TH',{maximumFractionDigits:2}));
+      if(col.type==='date'){var d=new Date(value);return esc(isNaN(d.getTime())?String(value):new Intl.DateTimeFormat('th-TH',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(d));}
+      if(tableStatusContext(col.label,col.key)==='method')return esc(tableStatusThaiLabel(value,'method'));
+      var text=String(value);if(/<\\/?[a-z][\\s\\S]*>/i.test(text))text=text.replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim();
+      return '<span class="eg-cell-clip" title="'+esc(text)+'">'+esc(text)+'</span>';
+    }
     function adminGridColumnsMarkup(state){var id=state.id,visible=state.visibleKeys||state.columns.filter(function(c){return c.defaultVisible!==false;}).map(function(c){return c.key;});return '<div class="eg-column-control"><button class="eg-control-btn" type="button" onclick="adminGridToggleColumns(\''+id+'\')"><i class="fa-solid fa-columns"></i><span class="eg-btn-label">คอลัมน์</span><i class="fa-solid fa-chevron-down"></i></button><div class="eg-column-menu" id="'+id+'_columns"><div class="eg-column-menu-head"><span>เลือกคอลัมน์ที่แสดง</span><button type="button" onclick="adminGridResetColumns(\''+id+'\')">คืนค่าเริ่มต้น</button></div>'+state.columns.map(function(c){return '<label class="eg-column-option"><input type="checkbox" '+(visible.indexOf(c.key)>=0?'checked':'')+' onchange="adminGridSetColumn(\''+id+'\',\''+c.key+'\',this.checked)"><span>'+esc(c.label)+'</span></label>';}).join('')+'</div></div>';}
     function adminGridPaginationMarkup(state){
       var meta=state.meta||{},id=state.id,page=Math.max(1,Number(state.options.page||1)),pageSize=Math.max(1,Number(state.options.pageSize||10)),filtered=Math.max(0,Number(meta.filteredTotal===undefined?safeArray(state.rows).length:meta.filteredTotal)),pages=Math.max(1,Math.ceil(filtered/pageSize));
@@ -4807,7 +4923,14 @@ function loadPublicData(onComplete){
       users:{title:'ผู้ใช้งานและสิทธิ์',add:'เพิ่มผู้ใช้',edit:'แก้ไขผู้ใช้',save:'saveUser',del:'deleteUser',columns:[['username','Username'],['name','ชื่อ'],['role','Role'],['status','สถานะ']],fields:[['username','Username','text'],['email','อีเมลสำหรับกู้คืนรหัสผ่าน','email'],['name','ชื่อ','text'],['role','บทบาทผู้ใช้งาน','text'],['permissions','สิทธิ์เพิ่มเติม (JSON Array)','textarea'],['status','สถานะ','text'],['password','ตั้งรหัสผ่านใหม่ (เว้นว่างเพื่อไม่เปลี่ยน)','password']]},
       shipping:{title:'วิธีจัดส่ง',add:'เพิ่มวิธีจัดส่ง',edit:'แก้ไขวิธีจัดส่ง',save:'saveShippingMethod',del:'deleteShippingMethod',columns:[['name','ชื่อวิธีจัดส่ง'],['method','Method'],['fee','ค่าจัดส่ง'],['freeMinimum','ส่งฟรีเมื่อซื้อ'],['status','สถานะ']],fields:[['name','ชื่อวิธีจัดส่ง','text'],['method','รูปแบบการจัดส่ง','text'],['fee','ค่าจัดส่ง','number'],['freeMinimum','ส่งฟรีเมื่อยอดถึง','number'],['maxWeight','น้ำหนักสูงสุด','number'],['status','สถานะ','text']]}
     };
-    function adminRowActions(page,row,config){if(page==='orders')return '<div class="row-actions"><button onclick="viewAdminOrder(\''+esc(row.id)+'\')">ดูรายละเอียด</button><button onclick="changeOrderStatus(\''+esc(row.id)+'\')">สถานะ</button><button onclick="editShipping(\''+esc(row.id)+'\')">Tracking</button></div>';if(page==='payments')return '<div class="row-actions">'+(row.proofFileId?'<button onclick="viewPaymentProof(\''+esc(row.proofFileId)+'\')">ดูหลักฐาน</button>':'')+'<button onclick="verifyPaymentAction(\''+esc(row.id)+'\')">ยืนยัน</button><button onclick="rejectPaymentAction(\''+esc(row.id)+'\')">ปฏิเสธ</button></div>';if(page==='inventory')return '<div class="row-actions"><button onclick="adjustInventoryDialog(\''+esc(row.productId)+'\',\''+esc(row.variantId||'')+'\')">ปรับสต็อก</button><button onclick="inventoryEditDialog(\''+esc(row.id)+'\')"><i class="fa-solid fa-pen"></i> แก้ไข</button><button class="danger" onclick="inventoryDeleteDialog(\''+esc(row.id)+'\')"><i class="fa-solid fa-trash"></i> ลบ</button></div>';if(page==='reviews')return '<div class="row-actions"><button onclick="reviewStatus(\''+esc(row.id)+'\',\'Published\')">เผยแพร่</button><button onclick="reviewStatus(\''+esc(row.id)+'\',\'Hidden\')">ซ่อน</button></div>';if(config)return '<div class="row-actions"><button onclick="openEditor(\''+page+'\',\''+esc(row.id)+'\')"><i class="fa-solid fa-pen"></i></button><button onclick="deleteAdminRecord(\''+page+'\',\''+esc(row.id)+'\')"><i class="fa-solid fa-trash"></i></button>'+(page==='products'?'<button onclick="manageVariants(\''+esc(row.id)+'\')">ตัวเลือกสินค้า</button>':'')+'</div>';return '<span class="muted">—</span>';}
+    function adminRowActions(page,row,config){
+      if(page==='orders')return '<div class="row-actions"><button type="button" title="ดูรายละเอียด" aria-label="ดูรายละเอียด" onclick="viewAdminOrder(\''+esc(row.id)+'\')">ดูรายละเอียด</button><button type="button" onclick="changeOrderStatus(\''+esc(row.id)+'\')">สถานะ</button><button type="button" onclick="editShipping(\''+esc(row.id)+'\')">Tracking</button></div>';
+      if(page==='payments')return '<div class="row-actions">'+(row.proofFileId?'<button type="button" onclick="viewPaymentProof(\''+esc(row.proofFileId)+'\')">ดูหลักฐาน</button>':'')+'<button type="button" onclick="verifyPaymentAction(\''+esc(row.id)+'\')">ยืนยัน</button><button type="button" onclick="rejectPaymentAction(\''+esc(row.id)+'\')">ปฏิเสธ</button></div>';
+      if(page==='inventory')return '<div class="row-actions"><button type="button" onclick="adjustInventoryDialog(\''+esc(row.productId)+'\',\''+esc(row.variantId||'')+'\')">ปรับสต็อก</button><button type="button" class="table-action-icon is-edit" title="แก้ไข" aria-label="แก้ไข" onclick="inventoryEditDialog(\''+esc(row.id)+'\')"><i class="fa-solid fa-pen-to-square"></i></button><button type="button" class="table-action-icon is-delete" title="ลบ" aria-label="ลบ" onclick="inventoryDeleteDialog(\''+esc(row.id)+'\')"><i class="fa-solid fa-trash-can"></i></button></div>';
+      if(page==='reviews')return '<div class="row-actions"><button type="button" onclick="reviewStatus(\''+esc(row.id)+'\',\'Published\')">เผยแพร่</button><button type="button" onclick="reviewStatus(\''+esc(row.id)+'\',\'Hidden\')">ซ่อน</button></div>';
+      if(config)return '<div class="row-actions"><button type="button" class="table-action-icon is-edit" title="แก้ไข" aria-label="แก้ไข" onclick="openEditor(\''+page+'\',\''+esc(row.id)+'\')"><i class="fa-solid fa-pen-to-square"></i></button><button type="button" class="table-action-icon is-delete" title="ลบ" aria-label="ลบ" onclick="deleteAdminRecord(\''+page+'\',\''+esc(row.id)+'\')"><i class="fa-solid fa-trash-can"></i></button>'+(page==='products'?'<button type="button" title="จัดการตัวเลือกสินค้า" aria-label="จัดการตัวเลือกสินค้า" onclick="manageVariants(\''+esc(row.id)+'\')">ตัวเลือกสินค้า</button>':'')+'</div>';
+      return '<span class="muted">—</span>';
+    }
     function makeAdminCode(prefix){var d=new Date(),stamp=d.getFullYear().toString().slice(-2)+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);return String(prefix||'SKU').toUpperCase()+'-'+stamp+'-'+Math.random().toString(36).substring(2,8).toUpperCase();}
     function adminEditorIsOn(value){return value===true||value===1||String(value||'').toLowerCase()==='true'||String(value||'').toLowerCase()==='active'||String(value||'').toLowerCase()==='yes'||String(value||'')==='1';}
     function parseAdminEditorList(value){if(Array.isArray(value))return value.map(String);var raw=String(value||'').trim();if(!raw)return [];try{var parsed=JSON.parse(raw);if(Array.isArray(parsed))return parsed.map(String);}catch(e){}return raw.split(',').map(function(x){return x.trim();}).filter(Boolean);}
@@ -5196,7 +5319,7 @@ function adjustInventoryDialog(productId,variantId){
           '<td><input type="number" data-vm-field="salePrice" min="0" step="0.01" value="'+esc(row.salePrice||0)+'" aria-label="ราคาขาย"></td>'+
           '<td><input type="number" data-vm-field="stock" min="0" step="1" value="'+esc(row.stock===undefined?0:row.stock)+'" aria-label="สต็อก"></td>'+
           '<td><select data-vm-field="status" aria-label="สถานะ"><option value="Active" '+(String(row.status||'Active')==='Active'?'selected':'')+'>เปิดขาย</option><option value="Inactive" '+(String(row.status)==='Inactive'?'selected':'')+'>ปิดขาย</option></select></td>'+
-          '<td><button type="button" class="vm-row-remove" onclick="variantMatrixRemoveRow('+index+')"><i class="fa-solid fa-xmark"></i> นำออก</button></td>'+
+          '<td><button type="button" class="vm-row-remove table-action-icon is-delete" title="ลบ SKU ตัวเลือก" aria-label="ลบ SKU ตัวเลือก" onclick="variantMatrixRemoveRow('+index+')"><i class="fa-solid fa-trash-can"></i></button></td>'+
         '</tr>';
       }).join('');
     }
@@ -5924,7 +6047,7 @@ function adjustInventoryDialog(productId,variantId){
         var state=String(p.status||'Active'),stateLabel=state==='Active'?'เปิดขาย':(state==='Archived'?'เก็บเข้าคลัง':'ปิดขาย'),stateClass=state==='Active'?'is-active':(state==='Archived'?'is-archived':'is-inactive');
         var image=p.coverImage?'<img src="'+imageUrl(p.coverImage)+'" alt="'+esc(p.name)+'" onerror="imageFallback(this)">':'<span class="seller-product-placeholder"><i class="fa-regular fa-image"></i></span>';
         var stockDisplay=Number(p.variantCount||0)>0?Number(p.totalVariantAvailableStock||0):Number(p.stock||0);
-        return '<tr><td><div class="seller-product-cell"><div class="seller-product-thumb">'+image+'</div><div class="seller-product-name"><b>'+esc(p.name||'ไม่ระบุชื่อสินค้า')+'</b><small>'+esc(p.brand||p.summary||'')+(Number(p.variantCount||0)>0?' · '+sellerFormatCount(p.variantCount)+' SKU':'')+'</small></div></div></td><td>'+esc(p.sku||'—')+'</td><td>'+esc(sellerCategoryLabel(p.categoryId,p.categoryName))+'</td><td><b>'+money(Number(p.salePrice)>0?p.salePrice:p.price)+'</b>'+(Number(p.salePrice)>0?'<small class="seller-old-price">'+money(p.price)+'</small>':'')+'</td><td><span class="seller-stock-pill '+(stockDisplay>0?'':'is-empty')+'">'+sellerFormatCount(stockDisplay)+' '+esc(p.unit||'ชิ้น')+'</span></td><td><span class="seller-status-pill '+stateClass+'"><i></i>'+stateLabel+'</span></td><td>'+esc(String(p.updatedAt||p.createdAt||'—').substring(0,16))+'</td><td><div class="seller-row-actions"><button type="button" title="แก้ไขสินค้า" onclick="sellerProductDialog(\''+esc(p.id)+'\')"><i class="fa-solid fa-pen"></i></button><button type="button" class="seller-variant-action" title="จัดการตัวเลือกสินค้า / SKU" aria-label="จัดการตัวเลือกสินค้า" onclick="sellerManageVariants(\''+esc(p.id)+'\')"><i class="fa-solid fa-layer-group"></i><span>ตัวเลือก</span></button><button type="button" class="is-danger" title="ลบสินค้า" onclick="sellerDeleteProductAction(\''+esc(p.id)+'\')"><i class="fa-regular fa-trash-can"></i></button></div></td></tr>';
+        return '<tr><td><div class="seller-product-cell"><div class="seller-product-thumb">'+image+'</div><div class="seller-product-name"><b>'+esc(p.name||'ไม่ระบุชื่อสินค้า')+'</b><small>'+esc(p.brand||p.summary||'')+(Number(p.variantCount||0)>0?' · '+sellerFormatCount(p.variantCount)+' SKU':'')+'</small></div></div></td><td>'+esc(p.sku||'—')+'</td><td>'+esc(sellerCategoryLabel(p.categoryId,p.categoryName))+'</td><td><b>'+money(Number(p.salePrice)>0?p.salePrice:p.price)+'</b>'+(Number(p.salePrice)>0?'<small class="seller-old-price">'+money(p.price)+'</small>':'')+'</td><td><span class="seller-stock-pill '+(stockDisplay>0?'':'is-empty')+'">'+sellerFormatCount(stockDisplay)+' '+esc(p.unit||'ชิ้น')+'</span></td><td><span class="seller-status-pill '+stateClass+'"><i></i>'+stateLabel+'</span></td><td>'+esc(String(p.updatedAt||p.createdAt||'—').substring(0,16))+'</td><td><div class="seller-row-actions"><button type="button" class="seller-action-icon is-edit" title="แก้ไขสินค้า" aria-label="แก้ไขสินค้า" onclick="sellerProductDialog(\''+esc(p.id)+'\')"><i class="fa-solid fa-pen-to-square"></i></button><button type="button" class="seller-variant-action" title="จัดการตัวเลือกสินค้า / SKU" aria-label="จัดการตัวเลือกสินค้า" onclick="sellerManageVariants(\''+esc(p.id)+'\')"><i class="fa-solid fa-layer-group"></i><span>ตัวเลือก</span></button><button type="button" class="seller-action-icon is-delete" title="ลบสินค้า" aria-label="ลบสินค้า" onclick="sellerDeleteProductAction(\''+esc(p.id)+'\')"><i class="fa-solid fa-trash-can"></i></button></div></td></tr>';
       }).join(''):'<tr><td colspan="8"><div class="seller-empty-table"><i class="fa-solid fa-box-open"></i><b>ไม่พบสินค้า</b><small>ลองเปลี่ยนคำค้นหา หรือลงขายสินค้าใหม่</small><button class="btn btn-primary btn-small" onclick="sellerProductDialog(null)">เพิ่มสินค้า</button></div></td></tr>';
       var total=rows.length,from=total?start+1:0,to=Math.min(start+size,total),count=document.getElementById('sellerProductCount'),range=document.getElementById('sellerProductRange'),pg=document.getElementById('sellerProductPagination');Array.prototype.forEach.call(document.querySelectorAll('#sellerContent .seller-pagination, #sellerContent .eg-pagination'),function(node){if(node!==pg)node.remove();});
       if(count)count.textContent='แสดง '+sellerFormatCount(total)+' รายการตามเงื่อนไขค้นหา';if(range)range.textContent=from+'–'+to+' จาก '+sellerFormatCount(total)+' รายการ';
@@ -6099,7 +6222,7 @@ function adjustInventoryDialog(productId,variantId){
           '<td>'+esc(row.phone||'—')+'<small class="muted" style="display:block">'+esc(row.email||'')+'</small></td>'+
           '<td>'+Number(row.orderCount||0).toLocaleString('th-TH')+'</td><td>'+money(row.totalSpent||0)+'</td><td>'+esc(date)+'</td>'+
           '<td style="max-width:240px;white-space:normal">'+tags+'</td>'+
-          '<td><button type="button" class="btn btn-outline btn-small" onclick="sellerEditCustomerNote(\''+esc(row.customerId)+'\')"><i class="fa-regular fa-pen-to-square"></i> จัดการ</button></td></tr>';
+          '<td><button type="button" class="seller-action-icon is-edit" title="แก้ไขหมายเหตุลูกค้า" aria-label="แก้ไขหมายเหตุลูกค้า" onclick="sellerEditCustomerNote(\''+esc(row.customerId)+'\')"><i class="fa-solid fa-pen-to-square"></i></button></td></tr>';
       }).join(''):'<tr><td colspan="7"><div class="vm-empty">ไม่พบลูกค้าที่ตรงกับคำค้นหา</div></td></tr>';
       var range=document.getElementById('sellerCustomerRange');if(range)range.textContent='แสดง '+rows.length.toLocaleString('th-TH')+' จาก '+safeArray(APP.sellerCustomers).length.toLocaleString('th-TH')+' ราย';
       var count=document.getElementById('sellerCustomerCount');if(count)count.textContent='พบ '+rows.length.toLocaleString('th-TH')+' ราย · ข้อมูลเฉพาะลูกค้าที่เคยซื้อหรือแชตกับร้านนี้';
@@ -6371,7 +6494,38 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     }
     function initEnterpriseTableEnhancer(){
       var root=document.body;if(!root)return;
-      function scan(node){if(!node)return;var tables=[];if(node.tagName==='TABLE')tables.push(node);if(node.querySelectorAll){Array.prototype.forEach.call(node.querySelectorAll('table'),function(t){tables.push(t);});}tables.forEach(egDomInitTable);}
+      function localizeTableStatusCells(table){
+        if(!table||!table.tHead||!table.tBodies||!table.tBodies.length)return;
+        var headerRow=table.tHead.rows[table.tHead.rows.length-1];if(!headerRow)return;
+        var headers=Array.prototype.map.call(headerRow.cells,function(th){return String(th.textContent||'').replace(/[↕▲▼]/g,'').trim();});
+        var columns=[];
+        headers.forEach(function(header,index){
+          var context=tableStatusContext(header,'');
+          if(context==='method'||context==='payment'||/(สถานะ|status)/i.test(header))columns.push({index:index,context:context});
+        });
+        if(!columns.length)return;
+        Array.prototype.forEach.call(table.tBodies,function(body){
+          Array.prototype.forEach.call(body.rows,function(row){
+            columns.forEach(function(col){
+              var cell=row.cells[col.index];if(!cell||cell.dataset.thaiStatusDone==='1'||cell.querySelector('button,a,input,select'))return;
+              if(cell.children.length)return;
+              var raw=String(cell.textContent||'').trim();if(!raw||raw==='—'||raw==='-')return;
+              var label=tableStatusThaiLabel(raw,col.context);if(label===raw)return;
+              cell.innerHTML='<span class="table-status-pill '+tableStatusTone(raw,col.context)+'">'+esc(label)+'</span>';
+              cell.dataset.thaiStatusDone='1';
+            });
+          });
+        });
+      }
+      function scan(node){
+        if(!node)return;
+        var tables=[];
+        if(node.tagName==='TABLE')tables.push(node);
+        if(node.closest){var parentTable=node.closest('table');if(parentTable)tables.push(parentTable);}
+        if(node.querySelectorAll){Array.prototype.forEach.call(node.querySelectorAll('table'),function(t){tables.push(t);});}
+        var unique=Array.from(new Set(tables));
+        unique.forEach(function(table){localizeTableStatusCells(table);egDomInitTable(table);});
+      }
       scan(root);if(!window.MutationObserver)return;
       function reconcileTableRows(table){if(!table||table.dataset.egEnhanced!=='1')return;var state=null;Object.keys(EG_DOM_TABLE_STATES).some(function(k){if(EG_DOM_TABLE_STATES[k]&&EG_DOM_TABLE_STATES[k].table===table){state=EG_DOM_TABLE_STATES[k];return true;}return false;});if(!state||!state.tbody)return;var current=Array.prototype.slice.call(state.tbody.rows).filter(function(row){return !(row.dataset&&row.dataset.egFilterEmpty==='1')&&!(row.cells.length===1&&Number(row.cells[0].colSpan||1)>1);}),known=new Set(state.rows.map(function(item){return item.node;}));var changed=current.length!==state.rows.length||current.some(function(row){return !known.has(row);});if(!changed)return;var oldByNode=new Map(state.rows.map(function(item){return [item.node,item];}));state.rows=current.map(function(row){return oldByNode.get(row)||{node:row,index:state.nextRowIndex++};});if(state.apply)state.apply();}
       var observer=new MutationObserver(function(mutations){var touched=new Set();mutations.forEach(function(m){Array.prototype.forEach.call(m.addedNodes||[],function(n){if(n.nodeType===1)scan(n);});var target=m.target&&(m.target.nodeType===1?m.target:m.target.parentElement),table=target&&target.closest?target.closest('table.eg-dom-table'):null;if(table)touched.add(table);});touched.forEach(reconcileTableRows);});observer.observe(root,{childList:true,subtree:true});
