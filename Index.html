@@ -2149,6 +2149,9 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
         case 'updateShipping': runner.updateShipping(args[0],args[1]); break;
         case 'getInventory': runner.getInventory(args[0]); break;
         case 'adjustStock': runner.adjustStock(args[0],args[1]); break;
+        case 'createInventoryItem': runner.createInventoryItem(args[0],args[1]); break;
+        case 'updateInventoryItem': runner.updateInventoryItem(args[0],args[1]); break;
+        case 'deleteInventoryItem': runner.deleteInventoryItem(args[0],args[1]); break;
         case 'getStockMovements': runner.getStockMovements(args[0],args[1]); break;
         case 'getCoupons': runner.getCoupons(args[0]); break;
         case 'saveCoupon': runner.saveCoupon(args[0],args[1]); break;
@@ -4627,7 +4630,7 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     function adminGridSkeleton(title){var cards='<div class="eg-skeleton-title"><i></i><b>'+esc(title||'กำลังโหลดข้อมูล')+'</b></div><div class="eg-skeleton-toolbar"><i></i><i></i><i></i><i></i></div><div class="eg-skeleton-table">'+Array.from({length:7}).map(function(){return '<div class="eg-skeleton-row"><i></i><i></i><i></i><i></i><i></i></div>';}).join('')+'</div>';return '<div class="eg-grid eg-skeleton-grid" aria-live="polite">'+cards+'</div>'; }
     function adminGridLoad(page,options,callback,silent){
       var state=adminGridState(page);if(options){Object.keys(options).forEach(function(k){state.options[k]=options[k];});}
-      if(!state.options.sortKey)state.options.sortKey=page==='logs'?'timestamp':'createdAt';
+      if(!state.options.sortKey)state.options.sortKey=page==='logs'?'timestamp':(page==='inventory'?'updatedAt':'createdAt');
       var host=document.getElementById('adminContent');if(host){host.setAttribute('aria-busy','true');if(!silent)host.innerHTML=adminGridSkeleton(state.title||'กำลังโหลดข้อมูล');}
       apiCall('getAdminGridPage',[APP.adminToken,page,state.options],function(r){
         if(!r||!r.success){if(host){host.setAttribute('aria-busy','false');if(APP.adminPage===page)host.innerHTML='<div class="eg-grid-empty eg-grid-error"><i class="fa-solid fa-triangle-exclamation"></i>'+esc(r&&r.message||'โหลดข้อมูลตารางไม่สำเร็จ')+'<button class="btn btn-outline btn-small" onclick="adminGridRefresh(\'admin_'+page+'\')">ลองอีกครั้ง</button></div>';}if(typeof callback==='function')callback(false,r&&r.message||'โหลดข้อมูลตารางไม่สำเร็จ');else showAdminError(r&&r.message||'โหลดข้อมูลตารางไม่สำเร็จ');return;}
@@ -4695,7 +4698,7 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     }
     function adminGridBindScroll(id){var top=document.getElementById(id+'_scroll_top'),bottom=document.getElementById(id+'_scroll_bottom'),view=document.getElementById(id+'_viewport'),table=document.getElementById(id+'_table'),topInner=document.getElementById(id+'_scroll_top_inner'),bottomInner=document.getElementById(id+'_scroll_bottom_inner');if(!top||!bottom||!view||!table)return;function measure(){var width=Math.max(table.scrollWidth,view.clientWidth);topInner.style.width=width+'px';bottomInner.style.width=width+'px';var hidden=width<=view.clientWidth+2;top.style.display=hidden?'none':'block';bottom.style.display=hidden?'none':'block';top.scrollLeft=view.scrollLeft;bottom.scrollLeft=view.scrollLeft;}var busy=false;function sync(source){if(busy)return;busy=true;var pos=source.scrollLeft;if(source!==top)top.scrollLeft=pos;if(source!==bottom)bottom.scrollLeft=pos;if(source!==view)view.scrollLeft=pos;busy=false;}top.onscroll=function(){sync(top);};bottom.onscroll=function(){sync(bottom);};view.onscroll=function(){sync(view);};measure();if(window.ResizeObserver){var ro=new ResizeObserver(measure);ro.observe(view);}else window.addEventListener('resize',measure);}
     function renderAdminGridHost(state){var host=document.getElementById('adminContent');if(!host)return;host.innerHTML=adminGridRender(state);host.setAttribute('aria-busy','false');adminGridBindScroll(state.id);}
-    function renderAdminTable(page,rows,meta){var state=adminGridState(page);state.rows=safeArray(rows);state.meta=meta||state.meta;state.columns=adminGridColumns(page,state.rows);var cfg=MODULE_CONFIG[page],titles={orders:'คำสั่งซื้อ',payments:'การชำระเงิน',inventory:'คลังสินค้า',reviews:'รีวิว',logs:'บันทึกกิจกรรม',newsletters:'ผู้รับข่าวสาร'};state.title=cfg?cfg.title:(titles[page]||page);state.topActions='';if(cfg)state.topActions='<button class="btn btn-primary btn-small" type="button" onclick="openEditor(\''+page+'\',null)"><i class="fa-solid fa-plus"></i> '+esc(cfg.add)+'</button>';if(page==='inventory')state.topActions+='<button class="btn btn-primary btn-small" type="button" onclick="adjustInventoryDialog()">ปรับสต็อก</button>';state.actionRenderer=function(row){return adminRowActions(page,row,cfg);};if(!state.visibleKeys){try{var saved=JSON.parse(localStorage.getItem('eg_cols_'+state.id)||'null');if(Array.isArray(saved))state.visibleKeys=saved;}catch(e){}}APP.adminData=state.rows;renderAdminGridHost(state);}
+    function renderAdminTable(page,rows,meta){var state=adminGridState(page);state.rows=safeArray(rows);state.meta=meta||state.meta;state.columns=adminGridColumns(page,state.rows);var cfg=MODULE_CONFIG[page],titles={orders:'คำสั่งซื้อ',payments:'การชำระเงิน',inventory:'คลังสินค้า',reviews:'รีวิว',logs:'บันทึกกิจกรรม',newsletters:'ผู้รับข่าวสาร'};state.title=cfg?cfg.title:(titles[page]||page);state.topActions='';if(cfg)state.topActions='<button class="btn btn-primary btn-small" type="button" onclick="openEditor(\''+page+'\',null)"><i class="fa-solid fa-plus"></i> '+esc(cfg.add)+'</button>';if(page==='inventory')state.topActions='<button class="btn btn-primary btn-small" type="button" onclick="inventoryCreateDialog()"><i class="fa-solid fa-plus"></i> เพิ่มเข้าคลัง</button><button class="btn btn-outline btn-small" type="button" onclick="adjustInventoryDialog()"><i class="fa-solid fa-arrows-rotate"></i> ปรับสต็อก</button>';state.actionRenderer=function(row){return adminRowActions(page,row,cfg);};if(!state.visibleKeys){try{var saved=JSON.parse(localStorage.getItem('eg_cols_'+state.id)||'null');if(Array.isArray(saved))state.visibleKeys=saved;}catch(e){}}APP.adminData=state.rows;renderAdminGridHost(state);}
     function renderMarketplaceAdminTable(page,rows,meta){var state=adminGridState(page);state.rows=safeArray(rows);state.meta=meta||state.meta;state.columns=adminGridColumns(page,state.rows);state.title=page==='sellers'?'ผู้ขายและร้านค้า':(page==='flashDeals'?'Flash Deals':(page==='marketplaceReturns'?'คำขอคืนสินค้า/คืนเงิน':'ยอดจ่ายผู้ขาย'));state.topActions='';state.actionRenderer=function(row){return marketAdminActions(page,row);};if(!state.visibleKeys){try{var saved=JSON.parse(localStorage.getItem('eg_cols_'+state.id)||'null');if(Array.isArray(saved))state.visibleKeys=saved;}catch(e){}}APP.adminData=state.rows;renderAdminGridHost(state);}
     function renderBackupAdminGrid(state){state.columns=adminGridColumns('backup',state.rows);state.title='ประวัติสำรองข้อมูล';state.topActions='<button class="btn btn-primary btn-small" type="button" onclick="makeBackup(this)"><i class="fa-solid fa-database"></i> สำรองข้อมูล</button>';state.actionRenderer=function(row){return row.fileId?'<a class="btn btn-outline btn-small" target="_blank" rel="noopener" href="https://drive.google.com/file/d/'+encodeURIComponent(row.fileId)+'/view">เปิดไฟล์</a>':'—';};renderAdminGridHost(state);}
     function loadAdminModule(page){adminGridLoad(page,null,null,false);}
@@ -4710,7 +4713,7 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
       users:{title:'ผู้ใช้งานและสิทธิ์',add:'เพิ่มผู้ใช้',edit:'แก้ไขผู้ใช้',save:'saveUser',del:'deleteUser',columns:[['username','Username'],['name','ชื่อ'],['role','Role'],['status','สถานะ']],fields:[['username','Username','text'],['email','อีเมลสำหรับกู้คืนรหัสผ่าน','email'],['name','ชื่อ','text'],['role','บทบาทผู้ใช้งาน','text'],['permissions','สิทธิ์เพิ่มเติม (JSON Array)','textarea'],['status','สถานะ','text'],['password','ตั้งรหัสผ่านใหม่ (เว้นว่างเพื่อไม่เปลี่ยน)','password']]},
       shipping:{title:'วิธีจัดส่ง',add:'เพิ่มวิธีจัดส่ง',edit:'แก้ไขวิธีจัดส่ง',save:'saveShippingMethod',del:'deleteShippingMethod',columns:[['name','ชื่อวิธีจัดส่ง'],['method','Method'],['fee','ค่าจัดส่ง'],['freeMinimum','ส่งฟรีเมื่อซื้อ'],['status','สถานะ']],fields:[['name','ชื่อวิธีจัดส่ง','text'],['method','รูปแบบการจัดส่ง','text'],['fee','ค่าจัดส่ง','number'],['freeMinimum','ส่งฟรีเมื่อยอดถึง','number'],['maxWeight','น้ำหนักสูงสุด','number'],['status','สถานะ','text']]}
     };
-    function adminRowActions(page,row,config){if(page==='orders')return '<div class="row-actions"><button onclick="viewAdminOrder(\''+esc(row.id)+'\')">ดูรายละเอียด</button><button onclick="changeOrderStatus(\''+esc(row.id)+'\')">สถานะ</button><button onclick="editShipping(\''+esc(row.id)+'\')">Tracking</button></div>';if(page==='payments')return '<div class="row-actions">'+(row.proofFileId?'<button onclick="viewPaymentProof(\''+esc(row.proofFileId)+'\')">ดูหลักฐาน</button>':'')+'<button onclick="verifyPaymentAction(\''+esc(row.id)+'\')">ยืนยัน</button><button onclick="rejectPaymentAction(\''+esc(row.id)+'\')">ปฏิเสธ</button></div>';if(page==='inventory')return '<div class="row-actions"><button onclick="adjustInventoryDialog(\''+esc(row.productId)+'\',\''+esc(row.variantId||'')+'\')">ปรับสต็อก</button></div>';if(page==='reviews')return '<div class="row-actions"><button onclick="reviewStatus(\''+esc(row.id)+'\',\'Published\')">เผยแพร่</button><button onclick="reviewStatus(\''+esc(row.id)+'\',\'Hidden\')">ซ่อน</button></div>';if(config)return '<div class="row-actions"><button onclick="openEditor(\''+page+'\',\''+esc(row.id)+'\')"><i class="fa-solid fa-pen"></i></button><button onclick="deleteAdminRecord(\''+page+'\',\''+esc(row.id)+'\')"><i class="fa-solid fa-trash"></i></button>'+(page==='products'?'<button onclick="manageVariants(\''+esc(row.id)+'\')">ตัวเลือกสินค้า</button>':'')+'</div>';return '<span class="muted">—</span>';}
+    function adminRowActions(page,row,config){if(page==='orders')return '<div class="row-actions"><button onclick="viewAdminOrder(\''+esc(row.id)+'\')">ดูรายละเอียด</button><button onclick="changeOrderStatus(\''+esc(row.id)+'\')">สถานะ</button><button onclick="editShipping(\''+esc(row.id)+'\')">Tracking</button></div>';if(page==='payments')return '<div class="row-actions">'+(row.proofFileId?'<button onclick="viewPaymentProof(\''+esc(row.proofFileId)+'\')">ดูหลักฐาน</button>':'')+'<button onclick="verifyPaymentAction(\''+esc(row.id)+'\')">ยืนยัน</button><button onclick="rejectPaymentAction(\''+esc(row.id)+'\')">ปฏิเสธ</button></div>';if(page==='inventory')return '<div class="row-actions"><button onclick="adjustInventoryDialog(\''+esc(row.productId)+'\',\''+esc(row.variantId||'')+'\')">ปรับสต็อก</button><button onclick="inventoryEditDialog(\''+esc(row.id)+'\')"><i class="fa-solid fa-pen"></i> แก้ไข</button><button class="danger" onclick="inventoryDeleteDialog(\''+esc(row.id)+'\')"><i class="fa-solid fa-trash"></i> ลบ</button></div>';if(page==='reviews')return '<div class="row-actions"><button onclick="reviewStatus(\''+esc(row.id)+'\',\'Published\')">เผยแพร่</button><button onclick="reviewStatus(\''+esc(row.id)+'\',\'Hidden\')">ซ่อน</button></div>';if(config)return '<div class="row-actions"><button onclick="openEditor(\''+page+'\',\''+esc(row.id)+'\')"><i class="fa-solid fa-pen"></i></button><button onclick="deleteAdminRecord(\''+page+'\',\''+esc(row.id)+'\')"><i class="fa-solid fa-trash"></i></button>'+(page==='products'?'<button onclick="manageVariants(\''+esc(row.id)+'\')">ตัวเลือกสินค้า</button>':'')+'</div>';return '<span class="muted">—</span>';}
     function makeAdminCode(prefix){var d=new Date(),stamp=d.getFullYear().toString().slice(-2)+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);return String(prefix||'SKU').toUpperCase()+'-'+stamp+'-'+Math.random().toString(36).substring(2,8).toUpperCase();}
     function adminEditorIsOn(value){return value===true||value===1||String(value||'').toLowerCase()==='true'||String(value||'').toLowerCase()==='active'||String(value||'').toLowerCase()==='yes'||String(value||'')==='1';}
     function parseAdminEditorList(value){if(Array.isArray(value))return value.map(String);var raw=String(value||'').trim();if(!raw)return [];try{var parsed=JSON.parse(raw);if(Array.isArray(parsed))return parsed.map(String);}catch(e){}return raw.split(',').map(function(x){return x.trim();}).filter(Boolean);}
@@ -4877,7 +4880,111 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     function verifyPaymentAction(id){Swal.fire({title:'ยืนยันการชำระเงิน?',input:'text',inputLabel:'หมายเหตุ (ถ้ามี)',showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'ยืนยัน',cancelButtonText:'ยกเลิก',allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){return runAdminModalMutation('payments','verifyPayment',[APP.adminToken,id,Swal.getInput().value]);}});}
     function rejectPaymentAction(id){Swal.fire({title:'ปฏิเสธหลักฐานการชำระเงิน',input:'text',inputLabel:'เหตุผล',showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'ปฏิเสธ',cancelButtonText:'ยกเลิก',allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){var reason=Swal.getInput().value;if(!reason){Swal.showValidationMessage('กรุณาระบุเหตุผล');return false;}return runAdminModalMutation('payments','rejectPayment',[APP.adminToken,id,reason]);}});}
     function reviewStatus(id,status){var button=APP.lastActionButton;var busy=setInlineButtonBusy(button,'กำลังอัปเดต...');apiCall('updateReviewStatus',[APP.adminToken,id,status],function(r){if(!r.success){restoreInlineButton(busy);alertError(r.message);return;}adminRefreshModuleAfterMutation('reviews',function(ok,message){if(!ok){restoreInlineButton(busy);alertError('บันทึกแล้วแต่โหลดข้อมูลใหม่ไม่สำเร็จ: '+message);return;}toast(r.message,'success');},true);},false);}
-    function adjustInventoryDialog(productId,variantId){
+    function inventorySetLatestGridPage(){
+      var state=ADMIN_GRID_STATES['admin_inventory'];
+      if(state&&state.options){state.options.page=1;state.options.sortKey='updatedAt';state.options.sortDir='desc';}
+    }
+    function loadInventoryProductVariantOptions(productId,productSelectId,variantSelectId,selectedVariantId){
+      var select=document.getElementById(variantSelectId);
+      if(!select)return;
+      select.innerHTML='<option value="">กำลังโหลด SKU...</option>';
+      if(!productId){select.innerHTML='<option value="">กรุณาเลือกสินค้าก่อน</option>';return;}
+      apiCall('getProductVariants',[productId,{token:APP.adminToken}],function(r){
+        var target=document.getElementById(variantSelectId);
+        if(!target)return;
+        if(!r||!r.success){target.innerHTML='<option value="">โหลด SKU ไม่สำเร็จ</option>';return;}
+        var variants=safeArray(r.data).filter(function(v){return String(v.status||'Active')!=='Archived';});
+        var html=variants.length?'<option value="" data-requires-variant="true">เลือกตัวเลือกสินค้า / SKU (จำเป็น)</option>':'<option value="">สินค้าหลัก (ไม่มีตัวเลือก SKU)</option>';
+        variants.forEach(function(v){
+          html+='<option value="'+esc(v.id)+'" '+(String(v.id)===String(selectedVariantId||'')?'selected':'')+'>'+esc(v.variantName||v.sku)+' — '+esc(v.sku||'')+'</option>';
+        });
+        target.innerHTML=html;
+      },false);
+    }
+    function inventoryCreateDialog(){
+      apiCall('getProductsAdmin',[{token:APP.adminToken,page:1,pageSize:500}],function(r){
+        if(!r||!r.success){alertError(r&&r.message||'โหลดรายการสินค้าไม่สำเร็จ');return;}
+        var products=safeArray(r.data&&r.data.items?r.data.items:r.data);
+        APP.adminProducts=products;
+        if(!products.length){alertError('ยังไม่มีสินค้าในระบบ กรุณาเพิ่มสินค้าก่อน');return;}
+        var options='<option value="">เลือกสินค้า</option>'+products.map(function(p){
+          return '<option value="'+esc(p.id)+'">'+esc(p.name||'สินค้า')+' — '+esc(p.sku||p.id)+'</option>';
+        }).join('');
+        Swal.fire({
+          title:'เพิ่มสินค้าเข้าคลัง',
+          width:720,
+          html:'<div class="admin-editor-intro"><span class="admin-editor-icon"><i class="fa-solid fa-warehouse"></i></span><span><b>เพิ่มสินค้าเดิมเข้าสู่คลังสินค้า</b><small>เลือกสินค้าและ SKU จากระบบ สร้างรายการคลังใหม่โดยไม่สร้างสินค้าซ้ำ</small></span></div>'+
+            '<div class="modal-form-grid">'+
+              '<div class="modal-field full"><label for="invNewProduct">สินค้า</label><select id="invNewProduct" onchange="loadInventoryProductVariantOptions(this.value,\'invNewProduct\',\'invNewVariant\')">'+options+'</select></div>'+
+              '<div class="modal-field full"><label for="invNewVariant">ตัวเลือกสินค้า / SKU</label><select id="invNewVariant"><option value="">กรุณาเลือกสินค้าก่อน</option></select></div>'+
+              '<div class="modal-field"><label for="invNewQuantity">จำนวนเริ่มต้น</label><input id="invNewQuantity" type="number" min="0" step="1" value="0"></div>'+
+              '<div class="modal-field"><label for="invNewMinimum">แจ้งเตือนเมื่อเหลือต่ำกว่า</label><input id="invNewMinimum" type="number" min="0" step="1" value="0"></div>'+
+              '<div class="modal-field full"><label for="invNewReason">หมายเหตุการรับเข้าคลัง</label><input id="invNewReason" type="text" maxlength="500" placeholder="เช่น รับสินค้าเข้าคลังครั้งแรก"></div>'+
+            '</div>',
+          showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'เพิ่มเข้าคลัง',cancelButtonText:'ยกเลิก',focusConfirm:false,
+          allowOutsideClick:function(){return !Swal.isLoading();},
+          preConfirm:function(){
+            var productId=document.getElementById('invNewProduct').value;
+            var variantSelect=document.getElementById('invNewVariant');
+            var quantity=Number(document.getElementById('invNewQuantity').value);
+            var minimumStock=Number(document.getElementById('invNewMinimum').value);
+            if(!productId){Swal.showValidationMessage('กรุณาเลือกสินค้า');return false;}
+            if(variantSelect&&variantSelect.selectedOptions[0]&&variantSelect.selectedOptions[0].dataset.requiresVariant==='true'){Swal.showValidationMessage('สินค้านี้มีหลาย SKU กรุณาเลือกตัวเลือกสินค้า');return false;}
+            if(!Number.isInteger(quantity)||quantity<0){Swal.showValidationMessage('จำนวนเริ่มต้นต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป');return false;}
+            if(!Number.isInteger(minimumStock)||minimumStock<0){Swal.showValidationMessage('สต็อกขั้นต่ำต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป');return false;}
+            inventorySetLatestGridPage();
+            return runAdminModalMutation('inventory','createInventoryItem',[APP.adminToken,{
+              productId:productId,variantId:variantSelect?variantSelect.value:'',quantity:quantity,minimumStock:minimumStock,
+              reason:document.getElementById('invNewReason').value
+            }]);
+          }
+        });
+      },false);
+    }
+    function inventoryEditDialog(inventoryId){
+      var state=ADMIN_GRID_STATES['admin_inventory'];
+      var row=safeArray(state&&state.rows).filter(function(x){return String(x.id)===String(inventoryId);})[0]||
+        safeArray(APP.adminData).filter(function(x){return String(x.id)===String(inventoryId);})[0];
+      if(!row){alertError('ไม่พบรายการคลังสินค้า กรุณาโหลดตารางใหม่');return;}
+      var reserved=Number(row.reserved||0);
+      Swal.fire({
+        title:'แก้ไขรายการคลังสินค้า',
+        width:680,
+        html:'<div class="admin-editor-intro"><span class="admin-editor-icon"><i class="fa-solid fa-pen-to-square"></i></span><span><b>'+esc(row.productName||'สินค้า')+'</b><small>'+esc(row.variantName||'สินค้าหลัก')+' · SKU '+esc(row.sku||'-')+'</small></span></div>'+
+          '<div class="modal-form-grid">'+
+            '<div class="modal-field"><label for="invEditQuantity">จำนวนคงเหลือจริง</label><input id="invEditQuantity" type="number" min="'+reserved+'" step="1" value="'+Number(row.quantity||0)+'"><small class="modal-help">จำนวนที่จองอยู่ '+reserved+' ชิ้น ต้องไม่น้อยกว่ายอดจอง</small></div>'+
+            '<div class="modal-field"><label for="invEditMinimum">สต็อกขั้นต่ำ</label><input id="invEditMinimum" type="number" min="0" step="1" value="'+Number(row.minimumStock||0)+'"></div>'+
+            '<div class="modal-field full"><label for="invEditReason">เหตุผล / หมายเหตุ</label><input id="invEditReason" type="text" maxlength="500" placeholder="ระบุเหตุผลที่แก้ไขจำนวนหรือสต็อกขั้นต่ำ"></div>'+
+          '</div>',
+        showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึกการแก้ไข',cancelButtonText:'ยกเลิก',focusConfirm:false,
+        allowOutsideClick:function(){return !Swal.isLoading();},
+        preConfirm:function(){
+          var quantity=Number(document.getElementById('invEditQuantity').value);
+          var minimumStock=Number(document.getElementById('invEditMinimum').value);
+          if(!Number.isInteger(quantity)||quantity<reserved){Swal.showValidationMessage('จำนวนคงเหลือต้องเป็นจำนวนเต็ม และไม่น้อยกว่ายอดจอง '+reserved+' ชิ้น');return false;}
+          if(!Number.isInteger(minimumStock)||minimumStock<0){Swal.showValidationMessage('สต็อกขั้นต่ำต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป');return false;}
+          inventorySetLatestGridPage();
+          return runAdminModalMutation('inventory','updateInventoryItem',[APP.adminToken,{
+            id:inventoryId,quantity:quantity,minimumStock:minimumStock,reason:document.getElementById('invEditReason').value
+          }]);
+        }
+      });
+    }
+    function inventoryDeleteDialog(inventoryId){
+      var state=ADMIN_GRID_STATES['admin_inventory'];
+      var row=safeArray(state&&state.rows).filter(function(x){return String(x.id)===String(inventoryId);})[0]||
+        safeArray(APP.adminData).filter(function(x){return String(x.id)===String(inventoryId);})[0]||{};
+      var quantity=Number(row.quantity||0),reserved=Number(row.reserved||0);
+      Swal.fire({
+        title:'ยืนยันการลบรายการคลัง?',
+        html:'<div style="text-align:left"><b>'+esc(row.productName||'รายการคลังสินค้า')+'</b><div>'+esc(row.variantName||'สินค้าหลัก')+' · SKU '+esc(row.sku||'-')+'</div><p style="margin:10px 0 0">คงเหลือ '+quantity+' ชิ้น · ถูกจอง '+reserved+' ชิ้น</p><small>ระบบจะลบเฉพาะรายการคลังที่ยอดคงเหลือและยอดจองเป็น 0 เท่านั้น และเก็บประวัติการเคลื่อนไหวไว้</small></div>',
+        icon:'warning',showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'ลบรายการ',cancelButtonText:'ยกเลิก',
+        allowOutsideClick:function(){return !Swal.isLoading();},
+        preConfirm:function(){inventorySetLatestGridPage();return runAdminModalMutation('inventory','deleteInventoryItem',[APP.adminToken,inventoryId]);}
+      });
+    }
+
+function adjustInventoryDialog(productId,variantId){
       apiCall('getProductsAdmin',[{token:APP.adminToken,page:1,pageSize:500}],function(r){if(!r.success){alertError(r.message);return;}var rows=safeArray(r.data&&r.data.items?r.data.items:r.data);APP.adminProducts=rows;var options='<option value="">เลือกสินค้า</option>'+rows.map(function(p){return '<option value="'+esc(p.id)+'" '+(String(p.id)===String(productId||'')?'selected':'')+'>'+esc(p.name)+' — '+esc(p.sku||p.id)+'</option>';}).join('');
         Swal.fire({title:'ปรับปรุงสต็อกสินค้า',width:680,html:'<div class="admin-editor-intro"><span class="admin-editor-icon"><i class="fa-solid fa-boxes-stacked"></i></span><span><b>ปรับจำนวนสินค้าคงเหลือ</b><small>เลือกรายการสินค้าและตัวเลือกจากข้อมูลในระบบ ไม่ต้องกรอก ID เอง</small></span></div><div class="modal-form-grid"><div class="modal-field full"><label for="stockProduct">สินค้า</label><select id="stockProduct" onchange="loadInventoryVariantOptions(this.value)">'+options+'</select></div><div class="modal-field full"><label for="stockVariant">ตัวเลือกสินค้า / SKU</label><select id="stockVariant"><option value="">กำลังโหลดตัวเลือก...</option></select></div><div class="modal-field"><label for="stockQty">จำนวนที่ปรับ</label><input id="stockQty" type="number" step="1" placeholder="เช่น 10 หรือ -2"></div><div class="modal-field"><label for="stockReason">เหตุผลในการปรับ</label><select id="stockReason"><option value="Purchase">รับสินค้าเข้า</option><option value="Adjustment">ปรับยอดสต็อก</option><option value="Return">รับคืนสินค้า</option><option value="Damage">สินค้าชำรุด / สูญหาย</option></select></div></div>',showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึกการปรับสต็อก',cancelButtonText:'ยกเลิก',focusConfirm:false,allowOutsideClick:function(){return !Swal.isLoading();},didOpen:function(){var select=document.getElementById('stockProduct');if(select&&select.value)loadInventoryVariantOptions(select.value,variantId||'');},preConfirm:function(){var pid=document.getElementById('stockProduct').value,qty=Number(document.getElementById('stockQty').value);if(!pid){Swal.showValidationMessage('กรุณาเลือกสินค้า');return false;}if(!Number.isFinite(qty)||qty===0){Swal.showValidationMessage('กรุณาระบุจำนวนที่ต้องการปรับ และห้ามเป็นศูนย์');return false;}var variantValue=document.getElementById('stockVariant').value,variantLabel=document.getElementById('stockVariant').selectedOptions[0]?document.getElementById('stockVariant').selectedOptions[0].text:'';if(!variantValue&&variantLabel.indexOf('จำเป็นสำหรับสินค้านี้')>=0){Swal.showValidationMessage('กรุณาเลือกตัวเลือกสินค้า (Variant)');return false;}return runAdminModalMutation('inventory','adjustStock',[APP.adminToken,{productId:pid,variantId:variantValue,quantity:qty,reason:document.getElementById('stockReason').value}]);}});
       },false);
