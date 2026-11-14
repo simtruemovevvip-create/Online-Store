@@ -21,26 +21,46 @@ jobs:
       CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
       GAS_DEPLOYMENT_ID: ${{ vars.GAS_DEPLOYMENT_ID }}
     steps:
-      - name: Check deployment credentials
-        id: config
-        shell: bash
-        run: |
-          if [[ -n "$CLASPRC_JSON" && -n "$GAS_DEPLOYMENT_ID" ]]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Apps Script sync skipped. Add the CLASPRC_JSON Actions secret and GAS_DEPLOYMENT_ID Actions variable to enable deployment."
-          fi
-
       - name: Check out repository
-        if: steps.config.outputs.ready == 'true'
         uses: actions/checkout@v4
 
       - name: Set up Node.js
-        if: steps.config.outputs.ready == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      - name: Resolve deployment target and check credentials
+        id: config
+        shell: bash
+        run: |
+          DEPLOY_ID="$GAS_DEPLOYMENT_ID"
+          if [[ -z "$DEPLOY_ID" ]]; then
+            DEPLOY_ID="$(node <<'NODE'
+          const fs = require("fs");
+          const source = fs.readFileSync("Code.gs", "utf8");
+          const match = source.match(/WEB_APP_URL\\s*=\\s*["']https:\\/\\/script\\.google\\.com\\/macros\\/s\\/([^/"']+)\\/exec/);
+          if (match) process.stdout.write(match[1]);
+          NODE
+          )"
+          fi
+
+          if [[ -n "$DEPLOY_ID" ]]; then
+            echo "GAS_DEPLOYMENT_ID=$DEPLOY_ID" >> "$GITHUB_ENV"
+            echo "Deployment target resolved."
+          else
+            echo "::error::Could not find a Web App deployment ID. Define the GAS_DEPLOYMENT_ID Actions variable or check WEB_APP_URL in Code.gs."
+          fi
+
+          if [[ -z "$CLASPRC_JSON" ]]; then
+            echo "::error::Missing GitHub Actions secret CLASPRC_JSON. Add the clasp authentication JSON as a repository Actions secret."
+          fi
+
+          if [[ -n "$CLASPRC_JSON" && -n "$DEPLOY_ID" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Apps Script deployment was skipped because required credentials are missing."
+          fi
 
       - name: Install clasp
         if: steps.config.outputs.ready == 'true'
