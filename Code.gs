@@ -2248,7 +2248,7 @@ function saveCart_(sessionId, customerId, items) {
 }
 function cartCustomer_(customerToken, portalMode) {
   var mode = String(portalMode || '').toLowerCase();
-  if (customerToken && (mode === 'seller' || mode === 'owner')) {
+  if (mode === 'seller' || mode === 'owner') {
     throw new Error('ตะกร้าสินค้าแยกจาก Seller Center และ Owner Portal กรุณาเข้าสู่โหมดลูกค้าก่อนใช้งานตะกร้า');
   }
   return customerToken ? requireCustomer_(customerToken) : null;
@@ -3441,6 +3441,7 @@ function ensureSellerCustomerNotesSheet_() {
     sh = ss.insertSheet(name);
     sh.getRange(1, 1, 1, SCHEMA_.SellerCustomerNotes.length).setValues([SCHEMA_.SellerCustomerNotes]);
     sh.setFrozenRows(1);
+    invalidateTable_(name);
   } else ensureTableColumns_(name, SCHEMA_.SellerCustomerNotes);
   return sh;
 }
@@ -3450,15 +3451,24 @@ function sellerGetCustomers(customerToken, filters) {
     filters = filters || {};
     ensureSellerCustomerNotesSheet_();
     var sellerOrders = readTable_('SellerOrders', false).filter(function(order) { return String(order.sellerId) === storeId; });
-    var orderIds = Object.create(null);
-    sellerOrders.forEach(function(order) { orderIds[String(order.parentOrderId)] = true; });
-    var parentOrders = readTable_('Orders', false).filter(function(order) { return !!orderIds[String(order.id)] && !!String(order.customerId || ''); });
+    var orderIds = Object.create(null), ordersByParent = Object.create(null);
+    sellerOrders.forEach(function(order) {
+      var parentId = String(order.parentOrderId || '');
+      if (!parentId) return;
+      orderIds[parentId] = true;
+      if (!ordersByParent[parentId]) ordersByParent[parentId] = [];
+      ordersByParent[parentId].push(order);
+    });
+    var parentOrders = readTable_('Orders', false).filter(function(order) {
+      return !!orderIds[String(order.id)] && !!String(order.customerId || '');
+    });
     var rowsById = Object.create(null);
     function ensureCustomerRow(customerId) {
       var id = String(customerId || '');
       if (!id) return null;
       if (!rowsById[id]) rowsById[id] = {
-        customerId:id,customerName:'',email:'',phone:'',orderCount:0,totalSpent:0,lastOrderAt:'',lastOrderNumber:'',tags:'',note:''
+        customerId:id, customerName:'', email:'', phone:'',
+        orderCount:0, totalSpent:0, lastOrderAt:'', lastOrderNumber:'', tags:'', note:''
       };
       return rowsById[id];
     }
@@ -3467,12 +3477,12 @@ function sellerGetCustomers(customerToken, filters) {
     parentOrders.forEach(function(parent) {
       var row = ensureCustomerRow(parent.customerId);
       if (!row) return;
-      var sellerOrder = sellerOrders.filter(function(order) { return String(order.parentOrderId) === String(parent.id); })[0];
+      var relatedOrders = ordersByParent[String(parent.id)] || [];
       var customer = customerById[String(parent.customerId)] || {};
       row.customerName = row.customerName || [customer.firstname,customer.lastname].filter(Boolean).join(' ') || parent.customerName || customer.username || 'ลูกค้า';
       row.email = row.email || customer.email || parent.email || '';
       row.phone = row.phone || customer.phone || parent.phone || '';
-      if (sellerOrder) {
+      relatedOrders.forEach(function(sellerOrder) {
         row.orderCount++;
         row.totalSpent += Math.max(0, number_(sellerOrder.subtotal,0) - number_(sellerOrder.discountAmount,0));
         var stamp = sellerOrder.createdAt || parent.createdAt || '';
@@ -3480,9 +3490,11 @@ function sellerGetCustomers(customerToken, filters) {
           row.lastOrderAt = stamp;
           row.lastOrderNumber = sellerOrder.orderNumber || parent.orderNumber || '';
         }
-      }
+      });
     });
-    readTable_('ChatThreads', false).filter(function(thread) { return String(thread.sellerId) === storeId; }).forEach(function(thread) {
+    readTable_('ChatThreads', false).filter(function(thread) {
+      return String(thread.sellerId) === storeId;
+    }).forEach(function(thread) {
       var row = ensureCustomerRow(thread.customerId);
       if (!row) return;
       var customer = customerById[String(thread.customerId)] || {};
@@ -3490,7 +3502,9 @@ function sellerGetCustomers(customerToken, filters) {
       row.email = row.email || customer.email || '';
       row.phone = row.phone || customer.phone || '';
     });
-    readTable_('SellerCustomerNotes', false).filter(function(note) { return String(note.sellerId) === storeId; }).forEach(function(note) {
+    readTable_('SellerCustomerNotes', false).filter(function(note) {
+      return String(note.sellerId) === storeId;
+    }).forEach(function(note) {
       var row = rowsById[String(note.customerId)];
       if (row) { row.tags = note.tags || ''; row.note = note.note || ''; }
     });
@@ -3509,11 +3523,12 @@ function sellerSaveCustomerNote(customerToken, data) {
     data = data || {};
     var customerId = text_(data.customerId,100);
     if (!customerId) throw new Error('ไม่พบรหัสลูกค้า');
-    var hasOrder = readTable_('SellerOrders',false).some(function(order) {
-      if (String(order.sellerId) !== storeId) return false;
-      return readTable_('Orders',false).some(function(parent) {
-        return String(parent.id) === String(order.parentOrderId) && String(parent.customerId) === customerId;
-      });
+    var sellerOrderIds = Object.create(null);
+    readTable_('SellerOrders',false).forEach(function(order) {
+      if (String(order.sellerId) === storeId) sellerOrderIds[String(order.parentOrderId)] = true;
+    });
+    var hasOrder = readTable_('Orders',false).some(function(parent) {
+      return String(parent.customerId) === customerId && !!sellerOrderIds[String(parent.id)];
     });
     var hasChat = readTable_('ChatThreads',false).some(function(thread) {
       return String(thread.sellerId) === storeId && String(thread.customerId) === customerId;
@@ -3525,9 +3540,9 @@ function sellerSaveCustomerNote(customerToken, data) {
     })[0] || null;
     var stamp = now_();
     var row = {
-      id:current ? current.id : newId_('SCN'),sellerId:storeId,customerId:customerId,
-      tags:text_(data.tags,300),note:text_(data.note,1500),
-      createdAt:current ? current.createdAt : stamp,updatedAt:stamp
+      id:current ? current.id : newId_('SCN'), sellerId:storeId, customerId:customerId,
+      tags:text_(data.tags,300), note:text_(data.note,1500),
+      createdAt:current ? current.createdAt : stamp, updatedAt:stamp
     };
     upsertById_('SellerCustomerNotes',row);
     return ok_(row,'บันทึกข้อมูลลูกค้าของร้านแล้ว');
