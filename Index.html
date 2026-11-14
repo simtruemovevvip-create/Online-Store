@@ -4847,12 +4847,12 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     }
     function variantMatrixGroupsHtml(){
       return safeArray(APP.variantMatrixGroups).map(function(g,index){
-        var values=safeArray(g.values).join('\\n');
+        var values=safeArray(g.values).join('\n');
         return '<div class="vm-group-row" data-vm-group-index="'+index+'">'+
           '<div class="vm-group-card-head"><span class="vm-group-number">กลุ่มตัวเลือก '+(index+1)+'</span><button type="button" class="vm-remove-group" title="ลบกลุ่มนี้" onclick="variantMatrixRemoveGroup('+index+')"><i class="fa-regular fa-trash-can"></i> ลบกลุ่ม</button></div>'+
           '<div class="vm-group-fields">'+
             '<label class="vm-group-field"><span>ชื่อกลุ่ม</span><input type="text" class="vm-group-name" maxlength="40" value="'+esc(g.name||'')+'" placeholder="เช่น สี, ไซส์, รุ่น" aria-label="ชื่อกลุ่มตัวเลือก" oninput="variantMatrixUpdateCombinationInfo()"></label>'+
-            '<label class="vm-group-field"><span>ค่าตัวเลือก</span><textarea class="vm-group-values" rows="2" placeholder="พิมพ์ค่าตัวเลือก คั่นด้วย Enter หรือเครื่องหมาย ,\\nเช่น ดำ\\nขาว\\nชมพู" aria-label="ค่าตัวเลือก" oninput="variantMatrixUpdateCombinationInfo()">'+esc(values)+'</textarea><small>ใส่ได้สูงสุด 50 ค่าในแต่ละกลุ่ม · ระบบตัดค่าที่ซ้ำให้อัตโนมัติ</small></label>'+
+            '<label class="vm-group-field"><span>ค่าตัวเลือก</span><textarea class="vm-group-values" rows="2" placeholder="พิมพ์ค่าตัวเลือก คั่นด้วย Enter หรือเครื่องหมาย ,\nเช่น ดำ\nขาว\nชมพู" aria-label="ค่าตัวเลือก" oninput="variantMatrixUpdateCombinationInfo()">'+esc(values)+'</textarea><small>ใส่ได้สูงสุด 50 ค่าในแต่ละกลุ่ม · ระบบตัดค่าที่ซ้ำให้อัตโนมัติ</small></label>'+
           '</div>'+
         '</div>';
       }).join('');
@@ -4912,23 +4912,23 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     }
     function variantMatrixRemoveRow(index){
       variantMatrixCaptureRows();
-      var row=safeArray(APP.variantMatrixRows)[Number(index)];if(!row)return;
-      var name=String(row.variantName||row.sku||'ตัวเลือกนี้');
-      Swal.fire({title:'นำตัวเลือกนี้ออก?',text:name+' จะไม่อยู่ในรายการหลังจากกดบันทึก',icon:'warning',showCancelButton:true,confirmButtonText:'นำออก',cancelButtonText:'ยกเลิก',reverseButtons:true}).then(function(result){
-        if(result.isConfirmed){APP.variantMatrixRows.splice(Number(index),1);variantMatrixRenderRows();var hint=document.getElementById('vmMatrixHint');if(hint)hint.textContent='นำตัวเลือกออกจากตารางแล้ว · การเปลี่ยนแปลงจะมีผลเมื่อกดบันทึก';}
-      });
+      var idx=Number(index);if(!isFinite(idx)||idx<0||idx>=safeArray(APP.variantMatrixRows).length)return;
+      APP.variantMatrixRows.splice(idx,1);variantMatrixRenderRows();
+      var hint=document.getElementById('vmMatrixHint');if(hint)hint.textContent='นำตัวเลือกออกจากตารางแล้ว · ระบบจะเปลี่ยนแปลงข้อมูลจริงเมื่อกด “บันทึกตัวเลือกสินค้า”';
     }
     function variantMatrixAddGroup(){
       var rows=Array.prototype.slice.call(document.querySelectorAll('#vmGroupList .vm-group-row'));
       var groups=rows.map(function(row){return {name:(row.querySelector('.vm-group-name')||{}).value||'',values:variantMatrixParseValues((row.querySelector('.vm-group-values')||{}).value||'')};});
       groups.push({name:'',values:[]});APP.variantMatrixGroups=groups;
       var host=document.getElementById('vmGroupList');if(host)host.innerHTML=variantMatrixGroupsHtml();
+      variantMatrixUpdateCombinationInfo();
     }
     function variantMatrixRemoveGroup(index){
       var rows=Array.prototype.slice.call(document.querySelectorAll('#vmGroupList .vm-group-row'));
       APP.variantMatrixGroups=rows.map(function(row){return {name:(row.querySelector('.vm-group-name')||{}).value||'',values:variantMatrixParseValues((row.querySelector('.vm-group-values')||{}).value||'')};});
       APP.variantMatrixGroups.splice(Number(index),1);
       var host=document.getElementById('vmGroupList');if(host)host.innerHTML=variantMatrixGroupsHtml();
+      variantMatrixUpdateCombinationInfo();
     }
     function variantMatrixGenerateSku(baseSku,attrs,usedSkus){
       var base=String(baseSku||'').trim().toUpperCase().replace(/\s+/g,'-').replace(/[^A-Z0-9_-]/g,'-').replace(/[-_]{2,}/g,'-').replace(/^[-_]+|[-_]+$/g,'').substring(0,60);
@@ -4952,7 +4952,10 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
         var useStock=!!(document.getElementById('vmBulkApplyStock')||{}).checked;
         if(!usePrice&&!useSale&&!useStock)throw new Error('เลือกอย่างน้อยหนึ่งรายการที่ต้องการใช้กับทุก SKU');
         var priceInput=document.getElementById('vmBulkPrice'),saleInput=document.getElementById('vmBulkSale'),stockInput=document.getElementById('vmBulkStock');
-        var price=usePrice?Number(priceInput&&priceInput.value):null,sale=useSale?Number(saleInput&&saleInput.value):null,stock=useStock?Number(stockInput&&stockInput.value):null;
+        if(usePrice&&(!priceInput||!String(priceInput.value||'').trim()))throw new Error('กรุณากรอกราคาปกติที่จะใช้กับทุก SKU');
+        if(useSale&&(!saleInput||!String(saleInput.value||'').trim()))throw new Error('กรุณากรอกราคาขาย (ใส่ 0 หากไม่ลดราคา)');
+        if(useStock&&(!stockInput||!String(stockInput.value||'').trim()))throw new Error('กรุณากรอกจำนวนสต็อกที่จะใช้กับทุก SKU');
+        var price=usePrice?Number(priceInput.value):null,sale=useSale?Number(saleInput.value):null,stock=useStock?Number(stockInput.value):null;
         if(usePrice&&(!isFinite(price)||price<=0))throw new Error('กรุณาระบุราคาปกติมากกว่า 0');
         if(useSale&&(!isFinite(sale)||sale<0))throw new Error('ราคาขายต้องเป็น 0 หรือมากกว่า');
         if(useStock&&(!isFinite(stock)||stock<0||Math.floor(stock)!==stock))throw new Error('สต็อกต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป');
