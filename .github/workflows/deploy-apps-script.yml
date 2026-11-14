@@ -42,7 +42,6 @@ jobs:
           const start = source.indexOf(prefix);
           const deploymentId = start >= 0 ? source.slice(start + prefix.length).split("/")[0] : "";
           if (deploymentId) process.stdout.write(deploymentId);
-          if (match) process.stdout.write(match[1]);
           NODE
           )"
           fi
