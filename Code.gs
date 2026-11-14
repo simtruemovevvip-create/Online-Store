@@ -1928,7 +1928,12 @@ function saveProduct(token, data) {
     var duplicate = readTable_('Products', false).some(function(p) { return p.id !== id && String(p.sku).toLowerCase() === product.sku.toLowerCase(); }) || readTable_('ProductVariants',false).some(function(v) { return String(v.sku).toLowerCase() === product.sku.toLowerCase(); });
     if (duplicate) throw new Error('SKU นี้มีอยู่แล้วในสินค้า/ตัวเลือกสินค้า');
     upsertById_('Products', product);
-    ensureInventory_(id, '', product.stock, 0);
+    // A product with active variants keeps stock per SKU. Do not create/update
+    // an additional parent-level inventory row for the same variant-managed product.
+    var activeStockVariants=readTable_('ProductVariants',false).filter(function(v){
+      return String(v.productId)===String(id)&&productVariantIsActive_(v);
+    });
+    if(!activeStockVariants.length)ensureInventory_(id, '', product.stock, 0);
     clearRuntimeCaches_(); log_(old ? 'Update Product' : 'Create Product', 'Products', product.name, user.username);
     return ok_(product, old ? 'แก้ไขสินค้าแล้ว' : 'เพิ่มสินค้าแล้ว');
   } catch (e) { return fail_(safeError_(e)); }
@@ -2547,10 +2552,38 @@ function settleOrderStock_(orderId,returnStock) {
     }
   });
 }
+function inventoryRowsForDisplay_(inventoryRows,variants) {
+  var source=safeArray_(inventoryRows),variantRows=safeArray_(variants);
+  var variantsById=Object.create(null),activeCountByProduct=Object.create(null),seen=Object.create(null);
+  variantRows.forEach(function(variant){
+    var variantId=String(variant.id||'').trim(),productId=String(variant.productId||'').trim();
+    if(variantId)variantsById[variantId]=variant;
+    if(productId&&productVariantIsActive_(variant))activeCountByProduct[productId]=(activeCountByProduct[productId]||0)+1;
+  });
+  return source.filter(function(row){
+    var productId=String(row.productId||'').trim(),variantId=String(row.variantId||'').trim();
+    if(!productId)return false;
+    // Parent stock is not a separate SKU once the product is managed by variants.
+    if(!variantId&&activeCountByProduct[productId]>0)return false;
+    // The inventory engine updates the first matching product/SKU row. Use that
+    // same canonical row in the UI and suppress older duplicate sheet rows.
+    var key=JSON.stringify([productId,variantId]);
+    if(seen[key])return false;
+    seen[key]=true;
+    if(variantId){
+      var variant=variantsById[variantId];
+      var hasStock=number_(row.quantity,0)>0||number_(row.reserved,0)>0;
+      if(variant&&!productVariantIsActive_(variant)&&!hasStock)return false;
+      if(!variant&&!hasStock)return false;
+    }
+    return true;
+  });
+}
 function getInventory(token) {
   try {
     requireAdmin_(token,'inventory.view');
-    var rows=readTable_('Inventory',false),products=readTable_('Products',false),variants=readTable_('ProductVariants',false);
+    var products=readTable_('Products',false),variants=readTable_('ProductVariants',false);
+    var rows=inventoryRowsForDisplay_(readTable_('Inventory',false),variants);
     rows=rows.map(function(r){
       var p=products.filter(function(x){return String(x.id)===String(r.productId);})[0]||{};
       var v=variants.filter(function(x){return String(x.id)===String(r.variantId||'');})[0]||{};
@@ -4157,6 +4190,7 @@ function getAdminGridPage(token, moduleName, options) {
       });
     } else if (moduleName === 'inventory') {
       var products = readTable_('Products', true), productVariants = readTable_('ProductVariants', true);
+      rows = inventoryRowsForDisplay_(rows, productVariants);
       rows.forEach(function(x) {
         var p = products.filter(function(v) { return String(v.id) === String(x.productId); })[0] || {};
         var variant = productVariants.filter(function(v) { return String(v.id) === String(x.variantId); })[0] || {};
