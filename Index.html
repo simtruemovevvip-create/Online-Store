@@ -2552,6 +2552,7 @@ function loadPublicData(onComplete){
       APP.homePublicProductsLoaded=false;
       APP.homeDailyDiscoverLoaded=false;
       APP.homeDailyDiscoverLoading=false;
+      APP.homeDailyDiscoverFailed=false;
       function isCurrentLoad(){return Number(APP.publicDataLoadRequestId||0)===loadId;}
       function isPublicHome(){return isCurrentLoad()&&(APP.accessMode==='guest'||APP.accessMode==='customer')&&APP.currentView==='home';}
       function renderPublicHome(){if(isPublicHome())renderHome();}
@@ -3348,6 +3349,10 @@ function loadPublicData(onComplete){
         host.innerHTML=renderDailyDiscoverGrid(safeArray(APP.homeDailyDiscoverProducts));
         return;
       }
+      if(APP.homeDailyDiscoverFailed){
+        host.innerHTML='<div class="daily-discover-error">โหลดสินค้าไม่สำเร็จ <button type="button" onclick="APP.homeDailyDiscoverFailed=false;loadHomeDailyDiscover()">ลองอีกครั้ง</button></div>';
+        return;
+      }
       // Ignore repeated render requests while the first discovery request is pending.
       if(APP.homeDailyDiscoverLoading)return;
       if(APP.homePublicProductsLoaded){
@@ -3365,12 +3370,15 @@ function loadPublicData(onComplete){
         if(r&&r.success){
           APP.homeDailyDiscoverProducts=safeArray(r.data&&r.data.items);
           APP.homeDailyDiscoverLoaded=true;
+          APP.homeDailyDiscoverFailed=false;
+        }else{
+          APP.homeDailyDiscoverFailed=true;
         }
         if(APP.currentView!=='home')return;
         var target=document.getElementById('homeDailyDiscoverGrid');
         if(!target)return;
         if(!r||!r.success){
-          target.innerHTML='<div class="daily-discover-error">โหลดสินค้าไม่สำเร็จ <button type="button" onclick="APP.homeDailyDiscoverLoaded=false;loadHomeDailyDiscover()">ลองอีกครั้ง</button></div>';
+          target.innerHTML='<div class="daily-discover-error">โหลดสินค้าไม่สำเร็จ <button type="button" onclick="APP.homeDailyDiscoverFailed=false;loadHomeDailyDiscover()">ลองอีกครั้ง</button></div>';
           return;
         }
         target.innerHTML=renderDailyDiscoverGrid(APP.homeDailyDiscoverProducts);
