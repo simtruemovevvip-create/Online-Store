@@ -6635,7 +6635,53 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     /* Super Admin page transitions already use adminSkeleton; refreshes and pagination now use it too. */
     /* ---------------- END UNIFIED MARKETPLACE SKELETON LOADING ---------------- */
 
-    window.addEventListener('load',function(){initEnterpriseTableEnhancer();initApp();});
+    (function(){
+      var appStartupStarted=false;
+      var tableEnhancerStarted=false;
+
+      function startTableEnhancerSafely(){
+        if(tableEnhancerStarted)return;
+        tableEnhancerStarted=true;
+        try{
+          initEnterpriseTableEnhancer();
+        }catch(error){
+          // A table enhancement issue must never prevent the storefront or portal from starting.
+          console.error('[Online Store] Table enhancer initialization failed',error);
+        }
+      }
+
+      function startApplication(){
+        if(appStartupStarted)return;
+        appStartupStarted=true;
+
+        // Start the application as soon as the document is ready. Do not wait for
+        // every image/background resource as window.load does.
+        try{
+          initApp();
+        }catch(error){
+          console.error('[Online Store] Application startup failed',error);
+          try{
+            APP.pageLoadingCount=0;
+            loading(false);
+          }catch(ignoreLoadingError){}
+          try{
+            var root=document.getElementById('appRoot');
+            if(root){
+              root.innerHTML='<div role="alert" style="max-width:680px;margin:40px auto;padding:24px;border:1px solid #fecaca;border-radius:14px;background:#fff;color:#991b1b;text-align:center"><h2 style="margin:0 0 10px;font-size:18px">เปิดหน้าเว็บไม่สำเร็จ</h2><p style="margin:0 0 18px">ระบบเริ่มต้นทำงานไม่ครบ กรุณาลองโหลดหน้าเว็บอีกครั้ง</p><button type="button" onclick="window.location.reload()" style="border:0;border-radius:8px;padding:10px 18px;background:#dc2626;color:#fff;font-weight:700;cursor:pointer">ลองโหลดใหม่</button></div>';
+            }
+          }catch(fallbackError){}
+        }
+
+        // Table enhancement runs after the app boot begins and cannot block it.
+        window.setTimeout(startTableEnhancerSafely,0);
+      }
+
+      if(document.readyState==='loading'){
+        document.addEventListener('DOMContentLoaded',startApplication,{once:true});
+      }else{
+        startApplication();
+      }
+    })();
   </script>
 
   <style id="page-layout-width-rules-v2">
