@@ -24,7 +24,7 @@ var SCHEMA_ = {
   Sessions: ['id','tokenHash','userId','username','accountType','role','permissions','expiresAt','createdAt','revokedAt'],
   Categories: ['id','name','slug','description','image','parentId','order','status','createdAt','updatedAt'],
   Products: ['id','sku','barcode','name','slug','categoryId','brand','summary','description','coverImage','images','price','salePrice','costPrice','stock','unit','weight','featured','featuredLabel','bestSeller','sellerId','tags','status','createdAt','updatedAt','quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart'],
-  ProductVariants: ['id','productId','sku','variantName','attributes','price','salePrice','stock','status','createdAt','updatedAt'],
+  ProductVariants: ['id','productId','sku','variantName','attributes','price','salePrice','stock','status','mergedIntoVariantId','createdAt','updatedAt'],
   Carts: ['id','customerId','sessionId','items','updatedAt'],
   Orders: ['id','orderNumber','customerId','customerName','phone','email','shippingAddress','subtotal','discount','shippingFee','tax','grandTotal','paymentMethod','paymentStatus','orderStatus','shippingStatus','trackingNumber','note','idempotencyKey','guestAccessToken','createdAt','updatedAt','paidAt','completedAt','grossSubtotal','quantityPromoDiscount'],
   OrderItems: ['id','orderId','productId','variantId','productName','sku','image','unitPrice','quantity','subtotal','sellerId','sellerOrderId','quantityPromoDiscount'],
@@ -353,7 +353,7 @@ function getOrCreateFolder_(parent, name) {
 function clearRuntimeCaches_() {
   var cache = CacheService.getScriptCache();
   ['table_Settings','table_Products','table_Categories','table_Banners','table_Promotions','table_Inventory','table_ProductVariants',
-   'table_Orders','table_OrderItems','table_Reviews','table_Favorites','product_public_metrics_v1','product_public_metrics_v2','dashboard','public_settings'].forEach(function(key) {
+   'table_Orders','table_OrderItems','table_Reviews','table_Favorites','product_public_metrics_v1','product_public_metrics_v2','dashboard','public_settings','inventory_variant_reconcile_v1'].forEach(function(key) {
     try { cache.remove(key); } catch (e) {}
   });
   return true;
@@ -1987,21 +1987,29 @@ function deleteCategory(token, id) {
   } catch (e) { return fail_(safeError_(e)); }
 }
 
-function saveProductVariant(token, data) {
+function saveProductVariant(token,data) {
   try {
-    var user = requireAdmin_(token,'products.manage'); data = data || {};
-    var now = now_(), id = text_(data.id,100) || newId_('VAR');
-    if (!data.productId) throw new Error('กรุณาเลือกสินค้า');
-    var product = readTable_('Products',false).filter(function(p) { return p.id === data.productId; })[0];
-    if (!product) throw new Error('ไม่พบสินค้าแม่');
-    var old = readTable_('ProductVariants',false).filter(function(x) { return x.id === id; })[0];
-    var variantSku = text_(data.sku,80) || ('VAR-' + Utilities.getUuid().replace(/-/g,'').substring(0,10).toUpperCase());
-    var row = { id:id, productId:text_(data.productId,100), sku:variantSku, variantName:text_(data.variantName,160), attributes:JSON.stringify(data.attributes || {}), price:Math.max(0,number_(data.price,0)), salePrice:Math.max(0,number_(data.salePrice,0)), stock:Math.max(0,number_(data.stock,0)), status:text_(data.status || 'Active',30), createdAt:old ? old.createdAt : now, updatedAt:now };
-    if (!row.variantName) throw new Error('กรุณาระบุชื่อของตัวเลือก');
-    var duplicateVariantSku = readTable_('ProductVariants',false).some(function(v) { return String(v.id)!==String(id) && String(v.sku).toLowerCase()===row.sku.toLowerCase(); }) || readTable_('Products',false).some(function(p) { return String(p.sku).toLowerCase()===row.sku.toLowerCase(); });
-    if (duplicateVariantSku) throw new Error('SKU นี้มีอยู่แล้วในสินค้า/ตัวเลือกสินค้า');
-    upsertById_('ProductVariants',row); ensureInventory_(row.productId,id,row.stock,0); clearRuntimeCaches_(); log_('Save Variant','Products',row.variantName,user.username); return ok_(row,'บันทึกตัวเลือกสินค้าแล้ว');
-  } catch (e) { return fail_(safeError_(e)); }
+    return withLock_(function(){
+      var user=requireAdmin_(token,'products.manage');data=data||{};
+      var now=now_(),id=text_(data.id,100)||newId_('VAR'),productId=text_(data.productId,100);
+      if(!productId)throw new Error('กรุณาเลือกสินค้า');
+      var product=readTable_('Products',false).filter(function(p){return String(p.id)===productId;})[0];
+      if(!product)throw new Error('ไม่พบสินค้าแม่');
+      var old=readTable_('ProductVariants',false).filter(function(v){return String(v.id)===id;})[0];
+      if(old&&String(old.mergedIntoVariantId||'').trim())throw new Error('SKU นี้ถูกรวมกับ SKU หลักแล้ว กรุณาแก้ไข SKU หลักแทน');
+      var sku=text_(data.sku,80)||('VAR-'+Utilities.getUuid().replace(/-/g,'').substring(0,10).toUpperCase()),attributes=data.attributes||{};
+      var row={id:id,productId:productId,sku:sku,variantName:text_(data.variantName,160),attributes:JSON.stringify(attributes),price:Math.max(0,number_(data.price,0)),salePrice:Math.max(0,number_(data.salePrice,0)),stock:Math.max(0,number_(data.stock,0)),status:text_(data.status||'Active',30),mergedIntoVariantId:'',createdAt:old?old.createdAt:now,updatedAt:now};
+      if(!row.variantName)throw new Error('กรุณาระบุชื่อสี/ไซส์ของตัวเลือก');
+      var variants=readTable_('ProductVariants',false);
+      var duplicateSku=variants.some(function(v){return String(v.id)!==id&&String(v.sku||'').toLowerCase()===sku.toLowerCase();})||
+        readTable_('Products',false).some(function(p){return String(p.sku||'').toLowerCase()===sku.toLowerCase();});
+      if(duplicateSku)throw new Error('SKU นี้มีอยู่แล้วในสินค้า/ตัวเลือกสินค้า');
+      assertUniqueProductVariantCombination_(productId,id,row.variantName,attributes,row.status);
+      upsertById_('ProductVariants',row);ensureInventory_(productId,id,row.stock,0);clearRuntimeCaches_();
+      log_('Save Variant','Products',row.variantName,user.username);
+      return ok_(row,'บันทึกตัวเลือกสินค้าแล้ว');
+    });
+  }catch(e){return fail_(safeError_(e));}
 }
 function deleteProductVariant(token,id) {
   try {
@@ -2046,6 +2054,32 @@ function variantMatrixParseAttributes_(value) {
 function variantMatrixCombinationKey_(attrs) {
   var keys=Object.keys(attrs||{}).filter(function(key){return !/^(image|imageurl|image_url|hex|colorhex|color_hex|รูป)$/i.test(key);}).sort(function(a,b){return a.toLowerCase().localeCompare(b.toLowerCase());});
   return keys.map(function(key){return key.toLowerCase()+'='+String(attrs[key]||'').trim().toLowerCase();}).join('|');
+}
+function productVariantCombinationKey_(variant) {
+  variant=variant||{};
+  var attrs={};try{attrs=variantMatrixParseAttributes_(variant.attributes||{});}catch(e){}
+  var key=variantMatrixCombinationKey_(attrs);
+  if(key)return key;
+  var name=String(variant.variantName||'').trim().toLowerCase().replace(/\s+/g,' ');
+  return name?'name='+name:'';
+}
+function assertUniqueProductVariantCombination_(productId,variantId,variantName,attributes,status) {
+  var candidate={id:String(variantId||''),productId:String(productId||''),variantName:String(variantName||''),attributes:attributes||{},status:status||'Active'};
+  if(!productVariantIsActive_(candidate))return true;
+  var key=productVariantCombinationKey_(candidate);
+  if(!key)return true;
+  var duplicate=readTable_('ProductVariants',false).filter(function(v){
+    return String(v.productId||'')===String(productId||'')&&String(v.id||'')!==String(variantId||'')&&
+      !String(v.mergedIntoVariantId||'').trim()&&productVariantIsActive_(v)&&productVariantCombinationKey_(v)===key;
+  })[0];
+  if(duplicate)throw new Error('ชุดสี/ไซส์นี้มีอยู่แล้วในสินค้านี้ ('+String(duplicate.variantName||duplicate.sku||duplicate.id)+') กรุณาแก้ไข SKU เดิมแทนการเพิ่มซ้ำ');
+  return true;
+}
+function productVariantDisplayName_(variant) {
+  variant=variant||{};
+  if(String(variant.variantName||'').trim())return String(variant.variantName).trim();
+  var attrs={};try{attrs=variantMatrixParseAttributes_(variant.attributes||{});}catch(e){}
+  return Object.keys(attrs).filter(function(key){return key!=='imageUrl';}).map(function(key){return key+': '+attrs[key];}).join(' / ')||'—';
 }
 function saveProductVariantMatrixCore_(data,storeId,actorName) {
   data=data||{};
@@ -2516,7 +2550,25 @@ function ensureInventory_(productId,variantId,quantity,minimum) {
   var rows=readTable_('Inventory',false); var item=rows.filter(function(x){return String(x.productId||'').trim()===String(productId||'').trim() && String(x.variantId||'').trim()===String(variantId||'').trim();})[0];
   if(!item) appendRecord_('Inventory',{id:newId_('INV'),productId:productId,variantId:variantId||'',quantity:Math.max(0,number_(quantity,0)),reserved:0,minimumStock:number_(minimum,0),updatedAt:now_()});
 }
-function inventoryRow_(productId,variantId) { return readTable_('Inventory',false).filter(function(x){return String(x.productId||'').trim()===String(productId||'').trim() && String(x.variantId||'').trim()===String(variantId||'').trim();})[0] || null; }
+function canonicalInventoryVariantId_(productId,variantId) {
+  var current=String(variantId||'').trim(),product=String(productId||'').trim();
+  if(!current)return '';
+  var variants=readTable_('ProductVariants',true),seen=Object.create(null);
+  for(var i=0;i<12&&current&&!seen[current];i++){
+    seen[current]=true;
+    var row=variants.filter(function(v){return String(v.id||'').trim()===current&&String(v.productId||'').trim()===product;})[0];
+    if(!row||!String(row.mergedIntoVariantId||'').trim())break;
+    current=String(row.mergedIntoVariantId).trim();
+  }
+  return current;
+}
+function inventoryRow_(productId,variantId) {
+  var canonicalId=canonicalInventoryVariantId_(productId,variantId);
+  return readTable_('Inventory',false).filter(function(x){
+    return String(x.productId||'').trim()===String(productId||'').trim()&&
+      String(x.variantId||'').trim()===String(canonicalId||'').trim();
+  })[0]||null;
+}
 function availableStock_(productId,variantId) { var r=inventoryRow_(productId,variantId); if(!r){var p=readTable_('Products',true).filter(function(x){return x.id===productId;})[0];return p?number_(p.stock,0):0;} return Math.max(0,number_(r.quantity,0)-number_(r.reserved,0)); }
 function reserveStock_(productId,variantId,qty,orderId,by) {
   var row=inventoryRow_(productId,variantId); if(!row){var base=variantId?readTable_('ProductVariants',false).filter(function(v){return v.id===variantId&&v.productId===productId;})[0]:readTable_('Products',false).filter(function(p){return p.id===productId;})[0];ensureInventory_(productId,variantId,base?number_(base.stock,0):0,0);row=inventoryRow_(productId,variantId);}
@@ -2553,48 +2605,132 @@ function settleOrderStock_(orderId,returnStock) {
     }
   });
 }
+function reconcileDuplicateProductVariants_() {
+  var cache=CacheService.getScriptCache(),marker='inventory_variant_reconcile_v1';
+  try{if(cache.get(marker)==='1')return {merged:0,cached:true};}catch(e){}
+  ensureTableColumns_('ProductVariants',['mergedIntoVariantId']);
+  var variants=readTable_('ProductVariants',false),groups=Object.create(null);
+  // First collapse duplicate Inventory rows for the exact same product + variant.
+  var inventory=readTable_('Inventory',false),inventoryGroups=Object.create(null),exactRowsMerged=0;
+  inventory.forEach(function(row){
+    var key=JSON.stringify([String(row.productId||'').trim(),String(row.variantId||'').trim()]);
+    if(!inventoryGroups[key])inventoryGroups[key]=[];
+    inventoryGroups[key].push(row);
+  });
+  Object.keys(inventoryGroups).forEach(function(key){
+    var rows=inventoryGroups[key];if(rows.length<2)return;
+    var keep=rows[0],latest=rows[0];
+    rows.forEach(function(row){
+      if(new Date(row.updatedAt||0).getTime()>new Date(latest.updatedAt||0).getTime())latest=row;
+    });
+    var reserved=rows.reduce(function(sum,row){return sum+Math.max(0,number_(row.reserved,0));},0);
+    var minimum=rows.reduce(function(max,row){return Math.max(max,number_(row.minimumStock,0));},0);
+    updateRecord_('Inventory',keep.id,{quantity:Math.max(0,number_(latest.quantity,0)),reserved:reserved,minimumStock:minimum,updatedAt:latest.updatedAt||now_()});
+    rows.slice(1).forEach(function(row){updateRecord_('Inventory',row.id,{quantity:0,reserved:0,updatedAt:now_()});exactRowsMerged++;});
+  });
+  inventory=readTable_('Inventory',false);
+  variants.forEach(function(v){
+    if(!productVariantIsActive_(v)||String(v.mergedIntoVariantId||'').trim())return;
+    var key=productVariantCombinationKey_(v);if(!key)return;
+    var groupKey=JSON.stringify([String(v.productId||''),key]);
+    if(!groups[groupKey])groups[groupKey]=[];
+    groups[groupKey].push(v);
+  });
+  var duplicateGroups=Object.keys(groups).filter(function(key){return groups[key].length>1;});
+  var merged=0,aliasMap=Object.create(null),now=now_();
+  if(duplicateGroups.length){
+    var carts=readTable_('Carts',false);
+    duplicateGroups.forEach(function(groupKey){
+      var group=groups[groupKey],productId=String(group[0].productId||'');
+      group.sort(function(a,b){
+        var ad=new Date(a.createdAt||0).getTime()||0,bd=new Date(b.createdAt||0).getTime()||0;
+        return ad-bd||String(a.id).localeCompare(String(b.id));
+      });
+      var canonical=group[0],variantIds=group.map(function(v){return String(v.id);});
+      var rowsForGroup=inventory.filter(function(row){return String(row.productId||'')===productId&&variantIds.indexOf(String(row.variantId||''))>=0;});
+      var quantity=0,reserved=0,minimum=0;
+      group.forEach(function(v){
+        var own=rowsForGroup.filter(function(row){return String(row.variantId||'')===String(v.id);});
+        if(own.length){
+          quantity+=Math.max(0,number_(own[0].quantity,0));
+          reserved+=Math.max(0,number_(own[0].reserved,0));
+          minimum=Math.max(minimum,number_(own[0].minimumStock,0));
+        }else quantity+=Math.max(0,number_(v.stock,0));
+      });
+      var canonicalRows=rowsForGroup.filter(function(row){return String(row.variantId||'')===String(canonical.id);});
+      if(canonicalRows.length){
+        updateRecord_('Inventory',canonicalRows[0].id,{quantity:quantity,reserved:reserved,minimumStock:minimum,updatedAt:now});
+      }else{
+        appendRecord_('Inventory',{id:newId_('INV'),productId:productId,variantId:String(canonical.id),quantity:quantity,reserved:reserved,minimumStock:minimum,updatedAt:now});
+      }
+      group.slice(1).forEach(function(duplicate){
+        aliasMap[String(duplicate.id)]=String(canonical.id);
+        rowsForGroup.filter(function(row){return String(row.variantId||'')===String(duplicate.id);}).forEach(function(row){
+          updateRecord_('Inventory',row.id,{quantity:0,reserved:0,updatedAt:now});
+        });
+        updateRecord_('ProductVariants',duplicate.id,{status:'Archived',stock:0,mergedIntoVariantId:String(canonical.id),updatedAt:now});
+        merged++;
+      });
+      updateRecord_('ProductVariants',canonical.id,{stock:quantity,mergedIntoVariantId:'',updatedAt:now});
+    });
+    if(Object.keys(aliasMap).length){
+      carts.forEach(function(cart){
+        var items=safeArray_(safeJson_(cart.items,[])),changed=false;
+        items.forEach(function(item){
+          var oldId=String(item.variantId||'');
+          if(aliasMap[oldId]){item.variantId=aliasMap[oldId];changed=true;}
+        });
+        if(changed)updateRecord_('Carts',cart.id,{items:JSON.stringify(items),updatedAt:now});
+      });
+    }
+  }
+  if(merged||exactRowsMerged){
+    clearRuntimeCaches_();
+    log_('Normalize Inventory SKUs','Inventory','รวมชุดสี/ไซส์ซ้ำ '+merged+' SKU และรวมแถวคลังซ้ำ '+exactRowsMerged+' แถว','System');
+  }
+  try{cache.put(marker,'1',1800);}catch(e){}
+  return {merged:merged,exactRowsMerged:exactRowsMerged,cached:false};
+}
 function inventoryRowsForDisplay_(inventoryRows,variants) {
   var source=safeArray_(inventoryRows),variantRows=safeArray_(variants);
-  var variantsById=Object.create(null),activeCountByProduct=Object.create(null),seen=Object.create(null);
+  var variantsById=Object.create(null),activeCountByProduct=Object.create(null),seen=Object.create(null),result=[];
   variantRows.forEach(function(variant){
     var variantId=String(variant.id||'').trim(),productId=String(variant.productId||'').trim();
     if(variantId)variantsById[variantId]=variant;
-    if(productId&&productVariantIsActive_(variant))activeCountByProduct[productId]=(activeCountByProduct[productId]||0)+1;
+    if(productId&&productVariantIsActive_(variant)&&!String(variant.mergedIntoVariantId||'').trim())activeCountByProduct[productId]=(activeCountByProduct[productId]||0)+1;
   });
-  return source.filter(function(row){
+  source.forEach(function(row){
     var productId=String(row.productId||'').trim(),variantId=String(row.variantId||'').trim();
-    if(!productId)return false;
-    // Parent stock is not a separate SKU once the product is managed by variants.
-    if(!variantId&&activeCountByProduct[productId]>0)return false;
-    // The inventory engine updates the first matching product/SKU row. Use that
-    // same canonical row in the UI and suppress older duplicate sheet rows.
-    var key=JSON.stringify([productId,variantId]);
-    if(seen[key])return false;
-    seen[key]=true;
-    if(variantId){
-      var variant=variantsById[variantId];
-      var hasStock=number_(row.quantity,0)>0||number_(row.reserved,0)>0;
-      if(variant&&!productVariantIsActive_(variant)&&!hasStock)return false;
-      if(!variant&&!hasStock)return false;
-    }
-    return true;
+    if(!productId)return;
+    if(!variantId&&activeCountByProduct[productId]>0)return;
+    var variant=variantId?variantsById[variantId]:null;
+    if(variant&&String(variant.mergedIntoVariantId||'').trim())return;
+    var hasStock=number_(row.quantity,0)>0||number_(row.reserved,0)>0;
+    if(variant&&!productVariantIsActive_(variant)&&!hasStock)return;
+    if(!variant&&variantId&&!hasStock)return;
+    var key=JSON.stringify([productId,variantId]);if(seen[key])return;seen[key]=true;
+    result.push(row);
   });
+  return result;
 }
 function getInventory(token) {
   try {
-    requireAdmin_(token,'inventory.view');
-    var products=readTable_('Products',false),variants=readTable_('ProductVariants',false);
-    var rows=inventoryRowsForDisplay_(readTable_('Inventory',false),variants);
-    rows=rows.map(function(r){
-      var p=products.filter(function(x){return String(x.id)===String(r.productId);})[0]||{};
-      var v=variants.filter(function(x){return String(x.id)===String(r.variantId||'');})[0]||{};
-      r.productName=p.name||'';
-      r.variantName=v.variantName||'';
-      r.sku=v.sku||p.sku||'';
-      r.available=Math.max(0,number_(r.quantity,0)-number_(r.reserved,0));
-      return r;
+    return withLock_(function(){
+      requireAdmin_(token,'inventory.view');
+      reconcileDuplicateProductVariants_();
+      var products=readTable_('Products',false),variants=readTable_('ProductVariants',false);
+      var rows=inventoryRowsForDisplay_(readTable_('Inventory',false),variants);
+      rows=rows.map(function(r){
+        var p=products.filter(function(x){return String(x.id)===String(r.productId);})[0]||{};
+        var v=variants.filter(function(x){return String(x.id)===String(r.variantId||'');})[0]||{};
+        r.productName=p.name||'';
+        r.variantName=productVariantDisplayName_(v);
+        r.sku=v.sku||p.sku||'';
+        r.available=Math.max(0,number_(r.quantity,0)-number_(r.reserved,0));
+        return r;
+      });
+      return ok_(rows);
     });
-    return ok_(rows);
   } catch(e){return fail_(safeError_(e));}
 }
 function updateStock(token,data){return adjustStock(token,data);}
@@ -3513,7 +3649,37 @@ function sellerSaveProductVariantMatrix(customerToken,data) {
   try {var x=requireSeller_(customerToken);var result=saveProductVariantMatrixCore_(data,x.store.id,x.customer.username);return ok_(result,'บันทึกชุดตัวเลือกสินค้าแล้ว');}
   catch(e){return fail_(safeError_(e));}
 }
-function sellerSaveProductVariant(customerToken,data) {try{var x=requireSeller_(customerToken);data=data||{};var p=readTable_('Products',false).filter(function(v){return v.id===data.productId&&v.sellerId===x.store.id;})[0];if(!p)throw new Error('ไม่พบสินค้าในร้านของคุณ');var id=text_(data.id,100)||newId_('VAR'),old=readTable_('ProductVariants',false).filter(function(v){return v.id===id;})[0];if(old&&old.productId!==p.id)throw new Error('ไม่มีสิทธิ์แก้ไขตัวเลือกสินค้านี้');var sku=text_(data.sku,80)||('VAR-'+Utilities.getUuid().replace(/-/g,'').substring(0,10).toUpperCase()),name=text_(data.variantName,120),stock=Math.max(0,Math.floor(number_(data.stock,0))),price=Math.max(0,number_(data.price,0));if(!name||price<=0)throw new Error('กรุณาระบุชื่อ Variant และราคา');if(readTable_('Products',false).some(function(v){return String(v.sku||'').toLowerCase()===sku.toLowerCase()&&v.sellerId===x.store.id;})||readTable_('ProductVariants',false).some(function(v){return v.id!==id&&String(v.sku).toLowerCase()===sku.toLowerCase();}))throw new Error('SKU นี้ถูกใช้แล้ว');var inv=inventoryRow_(p.id,id);if(inv&&stock<number_(inv.reserved,0))throw new Error('สต็อกใหม่ต่ำกว่าจำนวนที่จองไว้');var now=now_(),row={id:id,productId:p.id,sku:sku,variantName:name,attributes:JSON.stringify(data.attributes||{}),price:price,salePrice:Math.max(0,number_(data.salePrice,0)),stock:stock,status:text_(data.status||'Active',30),createdAt:old?old.createdAt:now,updatedAt:now};upsertById_('ProductVariants',row);if(!inv)ensureInventory_(p.id,id,stock,0);else if(number_(inv.quantity,0)!==stock){var delta=stock-number_(inv.quantity,0);updateRecord_('Inventory',inv.id,{quantity:stock,updatedAt:now});appendRecord_('InventoryMovements',{id:newId_('MOV'),productId:p.id,variantId:id,type:'Adjustment',quantity:delta,referenceId:'',reason:'Seller updated variant stock',createdBy:x.customer.username,createdAt:now});}clearRuntimeCaches_();return ok_(row,'บันทึกตัวเลือกสินค้าแล้ว');}catch(e){return fail_(safeError_(e));}}
+function sellerSaveProductVariant(customerToken,data) {
+  try {
+    return withLock_(function(){
+      var x=requireSeller_(customerToken);data=data||{};
+      var p=readTable_('Products',false).filter(function(v){return String(v.id)===String(data.productId||'')&&String(v.sellerId)===String(x.store.id);})[0];
+      if(!p)throw new Error('ไม่พบสินค้าในร้านของคุณ');
+      var id=text_(data.id,100)||newId_('VAR'),old=readTable_('ProductVariants',false).filter(function(v){return String(v.id)===id;})[0];
+      if(old&&String(old.productId)!==String(p.id))throw new Error('ไม่มีสิทธิ์แก้ไขตัวเลือกสินค้านี้');
+      if(old&&String(old.mergedIntoVariantId||'').trim())throw new Error('SKU นี้ถูกรวมกับ SKU หลักแล้ว กรุณาแก้ไข SKU หลักแทน');
+      var sku=text_(data.sku,80)||('VAR-'+Utilities.getUuid().replace(/-/g,'').substring(0,10).toUpperCase());
+      var name=text_(data.variantName,120),stock=Math.max(0,Math.floor(number_(data.stock,0))),price=Math.max(0,number_(data.price,0)),attributes=data.attributes||{},status=text_(data.status||'Active',30);
+      if(!name||price<=0)throw new Error('กรุณาระบุชื่อสี/ไซส์และราคาที่ถูกต้อง');
+      var variants=readTable_('ProductVariants',false);
+      if(readTable_('Products',false).some(function(v){return String(v.sku||'').toLowerCase()===sku.toLowerCase()&&String(v.sellerId)===String(x.store.id);})||
+         variants.some(function(v){return String(v.id)!==id&&String(v.sku||'').toLowerCase()===sku.toLowerCase();}))throw new Error('SKU นี้ถูกใช้แล้ว');
+      assertUniqueProductVariantCombination_(p.id,id,name,attributes,status);
+      var inv=inventoryRow_(p.id,id);
+      if(inv&&stock<number_(inv.reserved,0))throw new Error('สต็อกใหม่ต่ำกว่าจำนวนที่จองไว้');
+      var now=now_(),row={id:id,productId:p.id,sku:sku,variantName:name,attributes:JSON.stringify(attributes),price:price,salePrice:Math.max(0,number_(data.salePrice,0)),stock:stock,status:status,mergedIntoVariantId:'',createdAt:old?old.createdAt:now,updatedAt:now};
+      upsertById_('ProductVariants',row);
+      if(!inv)ensureInventory_(p.id,id,stock,0);
+      else if(number_(inv.quantity,0)!==stock){
+        var delta=stock-number_(inv.quantity,0);
+        updateRecord_('Inventory',inv.id,{quantity:stock,updatedAt:now});
+        appendRecord_('InventoryMovements',{id:newId_('MOV'),productId:p.id,variantId:id,type:'Adjustment',quantity:delta,referenceId:'',reason:'Seller updated variant stock',createdBy:x.customer.username,createdAt:now});
+      }
+      clearRuntimeCaches_();
+      return ok_(row,'บันทึกตัวเลือกสินค้าแล้ว');
+    });
+  }catch(e){return fail_(safeError_(e));}
+}
 function sellerDeleteProductVariant(customerToken,variantId) {
   try {
     var x=requireSeller_(customerToken),v=readTable_('ProductVariants',false).filter(function(z){return String(z.id)===String(variantId);})[0];
@@ -4163,6 +4329,7 @@ function getAdminGridPage(token, moduleName, options) {
     var config = moduleMap[String(moduleName || '')];
     if (!config) throw new Error('ไม่รองรับตารางที่ร้องขอ');
     requireAdmin_(token, config.permission);
+    if(moduleName==='inventory')withLock_(function(){reconcileDuplicateProductVariants_();});
 
     var rows = readTable_(config.table, true).map(function(row, index) {
       var copy = JSON.parse(JSON.stringify(row));
@@ -4196,7 +4363,7 @@ function getAdminGridPage(token, moduleName, options) {
         var p = products.filter(function(v) { return String(v.id) === String(x.productId); })[0] || {};
         var variant = productVariants.filter(function(v) { return String(v.id) === String(x.variantId); })[0] || {};
         x.productName = p.name || '';
-        x.variantName = variant.variantName || '';
+        x.variantName = productVariantDisplayName_(variant);
         x.sku = variant.sku || p.sku || '';
         x.available = Math.max(0, number_(x.quantity, 0) - number_(x.reserved, 0));
       });
