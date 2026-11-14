@@ -5406,27 +5406,36 @@ function adjustInventoryDialog(productId,variantId){
     function variantMatrixUpdateCombinationInfo(){
       var box=document.getElementById('vmCombinationInfo');if(!box)return;
       try{
-        var rows=Array.prototype.slice.call(document.querySelectorAll('#vmGroupList .vm-group-row')),groups=[];
+        var rows=Array.prototype.slice.call(document.querySelectorAll('#vmGroupList .vm-group-row')),groups=[],seen=Object.create(null);
         rows.forEach(function(row){groups.push({
           name:variantMatrixNormalizeGroupName((row.querySelector('.vm-group-name')||{}).value||''),
           values:variantMatrixParseValues((row.querySelector('.vm-group-values')||{}).value||'')
         });});
-        if(groups.some(function(g){return !g.name||!g.values.length;})){
-          box.textContent='กรอกชื่อกลุ่มและรายการตัวเลือกให้ครบทุกกลุ่ม · ตัวอย่าง สี 3 รายการ × ไซส์ 4 รายการ = 12 SKU';
+        var addButton=document.getElementById('vmAddGroupButton');
+        if(addButton)addButton.disabled=groups.length>=2;
+        if(groups.length>2){box.textContent='กำหนดได้สูงสุด 2 กลุ่มเท่านั้น คือ สี และ ไซส์ · ลบกลุ่มอื่นออกก่อนสร้าง SKU';box.classList.add('is-over-limit');return;}
+        if(groups.some(function(g){return ['สี','ไซส์'].indexOf(g.name)<0;})){
+          box.textContent='รองรับเฉพาะกลุ่ม สี และ ไซส์ เท่านั้น · ไม่รองรับ รุ่น แพ็กเกจ หรือกลุ่มอื่น';
+          box.classList.add('is-over-limit');return;
+        }
+        if(groups.some(function(g){var key=g.name.toLowerCase();if(seen[key])return true;seen[key]=true;return !g.name||!g.values.length;})){
+          box.textContent='กรอกชื่อกลุ่มและรายการตัวเลือกให้ครบ และห้ามใช้ชื่อกลุ่มซ้ำ · ตัวอย่าง สี 3 รายการ × ไซส์ 4 รายการ = 12 SKU';
           box.classList.remove('is-over-limit');return;
         }
         var count=groups.reduce(function(n,g){return n*g.values.length;},1);
         var formula=groups.map(function(g){return g.name+' '+g.values.length+' รายการ';}).join(' × ');
-        box.textContent=formula+' = '+count+' SKU'+(count>200?' · เกินขีดจำกัด 200 SKU':' · พร้อมสร้างตาราง');
+        box.textContent=formula+' = '+count+' SKU'+(count>200?' · เกินขีดจำกัด 200 SKU':' · สร้างได้ไม่เกินจำนวนนี้');
         box.classList.toggle('is-over-limit',count>200);
       }catch(e){box.textContent='ตรวจสอบกลุ่มตัวเลือกอีกครั้ง';}
     }
     function variantMatrixReadGroups(){
       var rows=Array.prototype.slice.call(document.querySelectorAll('#vmGroupList .vm-group-row')),groups=[],seen=Object.create(null);
+      if(rows.length>2)throw new Error('กำหนดกลุ่มตัวเลือกได้สูงสุด 2 กลุ่ม คือ สี และ ไซส์ เท่านั้น');
       rows.forEach(function(row){
         var rawName=String((row.querySelector('.vm-group-name')||{}).value||'').trim();
         var name=variantMatrixNormalizeGroupName(rawName),values=variantMatrixParseValues((row.querySelector('.vm-group-values')||{}).value||'');
         if(!rawName)throw new Error('กรุณาระบุชื่อกลุ่มตัวเลือกทุกกลุ่ม');
+        if(['สี','ไซส์'].indexOf(name)<0)throw new Error('รองรับเฉพาะกลุ่ม สี และ ไซส์ เท่านั้น');
         var key=name.toLowerCase();if(seen[key])throw new Error('ชื่อกลุ่มตัวเลือกซ้ำกันหลังปรับมาตรฐาน: '+name);
         seen[key]=true;if(!values.length)throw new Error('กรุณาระบุค่าตัวเลือกของกลุ่ม '+name);
         groups.push({name:name,values:values});
@@ -5472,9 +5481,14 @@ function adjustInventoryDialog(productId,variantId){
     function variantMatrixAddGroup(){
       var rows=Array.prototype.slice.call(document.querySelectorAll('#vmGroupList .vm-group-row'));
       var groups=rows.map(function(row){return {name:(row.querySelector('.vm-group-name')||{}).value||'',values:variantMatrixParseValues((row.querySelector('.vm-group-values')||{}).value||'')};});
-      groups.push({name:groups.length===0?'สี':(groups.length===1?'ไซส์':''),values:[]});APP.variantMatrixGroups=groups;
+      if(groups.length>=2){var message='กำหนดได้สูงสุด 2 กลุ่มเท่านั้น คือ สี และ ไซส์';if(Swal&&typeof Swal.showValidationMessage==='function')Swal.showValidationMessage(message);return false;}
+      var used=groups.map(function(g){return variantMatrixNormalizeGroupName(g.name);});
+      var nextName=['สี','ไซส์'].filter(function(name){return used.indexOf(name)<0;})[0];
+      if(!nextName)throw new Error('มีครบทั้งกลุ่มสีและไซส์แล้ว');
+      groups.push({name:nextName,values:[]});APP.variantMatrixGroups=groups;
       var host=document.getElementById('vmGroupList');if(host)host.innerHTML=variantMatrixGroupsHtml();
       variantMatrixUpdateCombinationInfo();
+      return true;
     }
     function variantMatrixRemoveGroup(index){
       var rows=Array.prototype.slice.call(document.querySelectorAll('#vmGroupList .vm-group-row'));
@@ -5542,6 +5556,7 @@ function adjustInventoryDialog(productId,variantId){
           var group=groups[depth];group.values.forEach(function(value){var next={};Object.keys(attrs).forEach(function(k){next[k]=attrs[k];});next[group.name]=value;walk(depth+1,next);});
         }
         walk(0,{});
+        if(combos.length!==combinationCount)throw new Error('จำนวนชุดผสมไม่ตรงกับจำนวนสีและไซส์ กรุณาตรวจสอบรายการตัวเลือก');
         var nextRows=combos.map(function(attrs){
           var label=groups.map(function(g){return g.name+': '+attrs[g.name];}).join(' / '),key=variantMatrixKey(attrs);
           var existing=oldByKey[key]||originalByKey[key]||null;
@@ -5576,10 +5591,18 @@ function adjustInventoryDialog(productId,variantId){
         var groups=variantMatrixReadGroups(),rows=safeArray(APP.variantMatrixRows);
         if(!APP.variantMatrixBuiltSignature||variantMatrixGroupsSignature(groups)!==APP.variantMatrixBuiltSignature)throw new Error('มีการแก้ไขกลุ่มตัวเลือก กรุณากด “สร้างชุดตัวเลือก” ก่อนบันทึก');
         if(!rows.length)throw new Error('กรุณาสร้างชุดตัวเลือกอย่างน้อย 1 SKU');
-        var groupNames=groups.map(function(g){return g.name;});
+        var groupNames=groups.map(function(g){return g.name;}),expectedCount=groups.reduce(function(n,g){return n*g.values.length;},1);
+        if(rows.length>expectedCount)throw new Error('จำนวน SKU ('+rows.length+') เกินจำนวนชุดสี × ไซส์ ('+expectedCount+') ไม่อนุญาตให้บันทึกแถวเกิน');
+        var allowedValues=Object.create(null);
+        groups.forEach(function(group){allowedValues[group.name]=Object.create(null);group.values.forEach(function(value){allowedValues[group.name][String(value).toLowerCase()]=true;});});
         var payloadRows=rows.map(function(row,index){
           var attrs={};
-          groupNames.forEach(function(name){if(row.attributes&&row.attributes[name]!==undefined)attrs[name]=String(row.attributes[name]);});
+          groupNames.forEach(function(name){
+            var value=row.attributes&&row.attributes[name]!==undefined?String(row.attributes[name]).trim():'';
+            if(!value)throw new Error('SKU แถวที่ '+(index+1)+' ไม่มีค่า '+name);
+            if(!allowedValues[name][value.toLowerCase()])throw new Error('SKU แถวที่ '+(index+1)+' มีค่า '+name+' ที่ไม่ได้กำหนดไว้');
+            attrs[name]=value;
+          });
           if(row.imageUrl)attrs.imageUrl=String(row.imageUrl).trim();
           else if(row.attributes&&row.attributes.imageUrl)attrs.imageUrl=row.attributes.imageUrl;
           if(Object.keys(attrs).filter(function(k){return k!=='imageUrl';}).length!==groups.length)throw new Error('กลุ่มตัวเลือกมีการเปลี่ยนแปลง กรุณากด “สร้างชุดตัวเลือก” อีกครั้ง');
@@ -5633,10 +5656,10 @@ function adjustInventoryDialog(productId,variantId){
           var productImage=product.coverImage?'<img src="'+imageUrl(product.coverImage)+'" alt="" onerror="this.style.display=\'none\'">':'<i class="fa-solid fa-box"></i>';
           var html='<div class="vm-manager">'+
             '<div class="vm-product-summary"><div class="vm-product-picture">'+productImage+'</div><div class="vm-product-meta"><b>'+esc(name)+'</b><span>SKU หลัก <strong>'+esc(sku)+'</strong></span><small>รหัสตัวเลือกใหม่จะสร้างจาก SKU หลักให้อัตโนมัติ</small></div><div class="vm-existing-count"><strong>'+rows.length+'</strong><small>SKU ที่มีอยู่</small></div></div>'+
-            '<section class="vm-workflow-step"><div class="vm-step-heading"><span class="vm-step-number">1</span><div><b>กำหนดกลุ่มตัวเลือก</b><small>เช่น สี, ไซส์, รุ่น หรือแพ็กเกจ · เพิ่มได้ตามต้องการ</small></div></div>'+
-              '<p class="vm-step-help">พิมพ์ชื่อกลุ่มและค่าที่ลูกค้าจะเลือก คั่นแต่ละค่าด้วย Enter หรือเครื่องหมายจุลภาค</p>'+
+            '<section class="vm-workflow-step"><div class="vm-step-heading"><span class="vm-step-number">1</span><div><b>กำหนดกลุ่มตัวเลือก</b><small>เพิ่มได้เฉพาะ 2 กลุ่ม: สี และ ไซส์ · ไม่สร้าง SKU เกินจำนวนชุดผสม</small></div></div>'+
+              '<p class="vm-step-help">ระบุสีและไซซ์ที่ลูกค้าเลือกซื้อได้จริง ระบบจะสร้าง 1 SKU ต่อ 1 ชุดผสมที่ไม่ซ้ำเท่านั้น</p>'+
               '<div id="vmGroupList" class="vm-group-list">'+variantMatrixGroupsHtml()+'</div>'+
-              '<button type="button" class="vm-add-group" onclick="variantMatrixAddGroup()"><i class="fa-solid fa-plus"></i> เพิ่มกลุ่มตัวเลือก</button>'+
+              '<button type="button" id="vmAddGroupButton" class="vm-add-group" onclick="variantMatrixAddGroup()"><i class="fa-solid fa-plus"></i> เพิ่มกลุ่มสี / ไซส์ (สูงสุด 2 กลุ่ม)</button>'+
               '<div class="vm-combination-info" id="vmCombinationInfo">ตัวอย่าง: สี × ไซส์ = จำนวนชุดตัวเลือกทั้งหมด</div>'+
             '</section>'+
             '<section class="vm-workflow-step"><div class="vm-step-heading"><span class="vm-step-number">2</span><div><b>สร้างตาราง SKU</b><small>ระบบจะสร้างทุกชุดผสมให้อัตโนมัติ และเก็บข้อมูลเดิมของชุดที่มีอยู่</small></div></div>'+

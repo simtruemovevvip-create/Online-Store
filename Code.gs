@@ -1997,7 +1997,7 @@ function saveProductVariant(token,data) {
       if(!product)throw new Error('ไม่พบสินค้าแม่');
       var old=readTable_('ProductVariants',false).filter(function(v){return String(v.id)===id;})[0];
       if(old&&String(old.mergedIntoVariantId||'').trim())throw new Error('SKU นี้ถูกรวมกับ SKU หลักแล้ว กรุณาแก้ไข SKU หลักแทน');
-      var sku=text_(data.sku,80)||('VAR-'+Utilities.getUuid().replace(/-/g,'').substring(0,10).toUpperCase()),attributes=data.attributes||{};
+      var sku=text_(data.sku,80)||('VAR-'+Utilities.getUuid().replace(/-/g,'').substring(0,10).toUpperCase()),attributes=assertColorSizeVariantAttributes_(data.attributes||{});
       var row={id:id,productId:productId,sku:sku,variantName:text_(data.variantName,160),attributes:JSON.stringify(attributes),price:Math.max(0,number_(data.price,0)),salePrice:Math.max(0,number_(data.salePrice,0)),stock:Math.max(0,number_(data.stock,0)),status:text_(data.status||'Active',30),mergedIntoVariantId:'',createdAt:old?old.createdAt:now,updatedAt:now};
       if(!row.variantName)throw new Error('กรุณาระบุชื่อสี/ไซส์ของตัวเลือก');
       var variants=readTable_('ProductVariants',false);
@@ -2051,6 +2051,14 @@ function variantMatrixParseAttributes_(value) {
   });
   return result;
 }
+function assertColorSizeVariantAttributes_(value) {
+  var attrs=variantMatrixParseAttributes_(value||{});
+  var keys=Object.keys(attrs).filter(function(key){return key!=='imageUrl';});
+  if(!keys.length)throw new Error('SKU ทุกแถวต้องระบุสีหรือไซส์อย่างน้อย 1 อย่าง');
+  if(keys.length>2||keys.some(function(key){return ['สี','ไซส์'].indexOf(key)<0;}))
+    throw new Error('ระบบรองรับตัวเลือกสินค้าเฉพาะ สี และ ไซส์ เท่านั้น (สูงสุด 2 กลุ่ม)');
+  return attrs;
+}
 function variantMatrixCombinationKey_(attrs) {
   var keys=Object.keys(attrs||{}).filter(function(key){return !/^(image|imageurl|image_url|hex|colorhex|color_hex|รูป)$/i.test(key);}).sort(function(a,b){return a.toLowerCase().localeCompare(b.toLowerCase());});
   return keys.map(function(key){return key.toLowerCase()+'='+String(attrs[key]||'').trim().toLowerCase();}).join('|');
@@ -2064,7 +2072,8 @@ function productVariantCombinationKey_(variant) {
   return name?'name='+name:'';
 }
 function assertUniqueProductVariantCombination_(productId,variantId,variantName,attributes,status) {
-  var candidate={id:String(variantId||''),productId:String(productId||''),variantName:String(variantName||''),attributes:attributes||{},status:status||'Active'};
+  attributes=assertColorSizeVariantAttributes_(attributes||{});
+  var candidate={id:String(variantId||''),productId:String(productId||''),variantName:String(variantName||''),attributes:attributes,status:status||'Active'};
   if(!productVariantIsActive_(candidate))return true;
   var key=productVariantCombinationKey_(candidate);
   if(!key)return true;
@@ -2110,10 +2119,10 @@ function saveProductVariantMatrixCore_(data,storeId,actorName) {
     });
     var usedIds=Object.create(null),combinationSeen=Object.create(null),skuSeen=Object.create(null);
     var productSkus=readTable_('Products',false),otherVariantSkus=allVariants.filter(function(v){return String(v.productId)!==productId;});
-    var prepared=[],dimensionSignature='';
+    var prepared=[],dimensionSignature='',dimensionValues={'สี':Object.create(null),'ไซส์':Object.create(null)};
     incoming.forEach(function(input,index){
       input=input||{};
-      var attrs=variantMatrixParseAttributes_(input.attributes),key=variantMatrixCombinationKey_(attrs);
+      var attrs=assertColorSizeVariantAttributes_(input.attributes),key=variantMatrixCombinationKey_(attrs);
       if(!key)throw new Error('SKU ลำดับที่ '+(index+1)+' ต้องมีข้อมูลตัวเลือกอย่างน้อย 1 รายการ');
       if(combinationSeen[key])throw new Error('พบชุดตัวเลือกซ้ำกัน: '+key);
       combinationSeen[key]=true;
@@ -2143,6 +2152,8 @@ function saveProductVariantMatrixCore_(data,storeId,actorName) {
         if(!attrs.imageUrl&&oldAttrs.imageUrl)attrs.imageUrl=oldAttrs.imageUrl;
       }
       var optionNames=Object.keys(attrs).filter(function(k){return k!=='imageUrl';});
+      if(optionNames.length>2||optionNames.some(function(name){return ['สี','ไซส์'].indexOf(name)<0;}))throw new Error('ระบบรองรับตัวเลือกสินค้าเฉพาะ สี และ ไซส์ เท่านั้น');
+      optionNames.forEach(function(name){dimensionValues[name][String(attrs[name]).trim().toLowerCase()]=true;});
       var signature=optionNames.slice().sort(function(a,b){return a.toLowerCase().localeCompare(b.toLowerCase());}).map(function(k){return k.toLowerCase();}).join('|');
       if(dimensionSignature&&dimensionSignature!==signature)throw new Error('ทุก SKU ต้องใช้ชื่อกลุ่มตัวเลือกชุดเดียวกัน เช่น สี และ ไซส์');
       dimensionSignature=signature;
@@ -2157,6 +2168,10 @@ function saveProductVariantMatrixCore_(data,storeId,actorName) {
         old:old||null,inventory:inv||null
       });
     });
+    var expectedCombinationCount=1;
+    ['สี','ไซส์'].forEach(function(name){var count=Object.keys(dimensionValues[name]).length;if(count)expectedCombinationCount*=count;});
+    if(expectedCombinationCount>200)throw new Error('จำนวนชุดสี × ไซส์ รวม '+expectedCombinationCount+' SKU เกินขีดจำกัด 200 SKU');
+    if(prepared.length>expectedCombinationCount)throw new Error('จำนวนแถว SKU ('+prepared.length+') เกินจำนวนชุดสี × ไซส์ ('+expectedCombinationCount+')');
     var preparedIds=Object.create(null);
     prepared.forEach(function(item){preparedIds[String(item.id)]=true;});
     prepared.forEach(function(item){
@@ -3659,7 +3674,7 @@ function sellerSaveProductVariant(customerToken,data) {
       if(old&&String(old.productId)!==String(p.id))throw new Error('ไม่มีสิทธิ์แก้ไขตัวเลือกสินค้านี้');
       if(old&&String(old.mergedIntoVariantId||'').trim())throw new Error('SKU นี้ถูกรวมกับ SKU หลักแล้ว กรุณาแก้ไข SKU หลักแทน');
       var sku=text_(data.sku,80)||('VAR-'+Utilities.getUuid().replace(/-/g,'').substring(0,10).toUpperCase());
-      var name=text_(data.variantName,120),stock=Math.max(0,Math.floor(number_(data.stock,0))),price=Math.max(0,number_(data.price,0)),attributes=data.attributes||{},status=text_(data.status||'Active',30);
+      var name=text_(data.variantName,120),stock=Math.max(0,Math.floor(number_(data.stock,0))),price=Math.max(0,number_(data.price,0)),attributes=assertColorSizeVariantAttributes_(data.attributes||{}),status=text_(data.status||'Active',30);
       if(!name||price<=0)throw new Error('กรุณาระบุชื่อสี/ไซส์และราคาที่ถูกต้อง');
       var variants=readTable_('ProductVariants',false);
       if(readTable_('Products',false).some(function(v){return String(v.sku||'').toLowerCase()===sku.toLowerCase()&&String(v.sellerId)===String(x.store.id);})||
