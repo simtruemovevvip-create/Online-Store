@@ -2545,20 +2545,66 @@ function beginApiLoading(text){
     }
 
 function loadPublicData(onComplete){
-      var criticalPending=3,criticalComplete=false,completedCallback=false;
-      function isPublicHome(){return (APP.accessMode==='guest'||APP.accessMode==='customer')&&APP.currentView==='home';}
+      var criticalPending=3,criticalComplete=false,completedCallback=false,secondaryStarted=false;
+      var loadId=Number(APP.publicDataLoadRequestId||0)+1;
+      APP.publicDataLoadRequestId=loadId;
+      APP.homeDataInitialPending=true;
+      APP.homePublicProductsLoaded=false;
+      APP.homeDailyDiscoverLoaded=false;
+      APP.homeDailyDiscoverLoading=false;
+      function isCurrentLoad(){return Number(APP.publicDataLoadRequestId||0)===loadId;}
+      function isPublicHome(){return isCurrentLoad()&&(APP.accessMode==='guest'||APP.accessMode==='customer')&&APP.currentView==='home';}
       function renderPublicHome(){if(isPublicHome())renderHome();}
-      function finishCritical(){criticalPending--;if(criticalPending<=0&&!criticalComplete){criticalComplete=true;renderPublicHome();if(!completedCallback&&typeof onComplete==='function'){completedCallback=true;onComplete();}}}
-      apiCall('getCategories',[{}],function(r){if(r&&r.success)applySharedCategoryRows(safeArray(r.data),false);else{APP.categories=[];APP.sharedCategories=[];APP.sharedCategoriesFetchedAt=Date.now();}finishCritical();},false,'',true);
-      apiCall('getBanners',[{}],function(r){APP.banners=r.success?safeArray(r.data):[];finishCritical();},false,'',true);
-      apiCall('getProducts',[{page:1,pageSize:100,sort:'relevance'}],function(r){APP.products=r.success&&r.data?safeArray(r.data.items):[];APP.homePublicProductsLoaded=!!(r&&r.success);finishCritical();},false,'',true);
-      apiCall('getPromotions',[{}],function(r){APP.promotions=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
-      apiCall('getMarketplaceStores',[{page:1,pageSize:12}],function(r){APP.stores=r.success&&r.data?safeArray(r.data.items):[];if(criticalComplete)renderPublicHome();},false,'',true);
-      apiCall('getMarketplaceFlashDeals',[],function(r){APP.flashDeals=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
-      apiCall('getMarketplaceVouchers',[],function(r){APP.vouchers=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();refreshVisibleProductCardOffers();},false,'',true);
-      apiCall('getMarketplaceLiveRooms',[],function(r){APP.liveRooms=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
-      apiCall('recordVisitor',[localStorage.getItem('visitor_key')||(function(){var k=makeKey();localStorage.setItem('visitor_key',k);return k;})(),navigator.userAgent],function(){},false,'',true);
-      refreshCartCount();
+      function finishCritical(){
+        if(!isCurrentLoad()||criticalComplete)return;
+        criticalPending--;
+        // Refresh the real page after each response rather than waiting for the slowest call.
+        renderPublicHome();
+        if(criticalPending<=0){
+          criticalComplete=true;
+          APP.homeDataInitialPending=false;
+          renderPublicHome();
+          if(!completedCallback&&typeof onComplete==='function'){
+            completedCallback=true;
+            try{onComplete();}catch(callbackError){console.error('Public data completion callback failed',callbackError);}
+          }
+        }
+      }
+      function startSecondaryLoads(){
+        if(secondaryStarted||!isCurrentLoad())return;
+        secondaryStarted=true;
+        // Keep nonessential marketplace requests out of the first request burst.
+        apiCall('getPromotions',[{}],function(r){if(!isCurrentLoad())return;APP.promotions=r&&r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
+        apiCall('getMarketplaceStores',[{page:1,pageSize:12}],function(r){if(!isCurrentLoad())return;APP.stores=r&&r.success&&r.data?safeArray(r.data.items):[];if(criticalComplete)renderPublicHome();},false,'',true);
+        apiCall('getMarketplaceFlashDeals',[],function(r){if(!isCurrentLoad())return;APP.flashDeals=r&&r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
+        apiCall('getMarketplaceVouchers',[],function(r){if(!isCurrentLoad())return;APP.vouchers=r&&r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();refreshVisibleProductCardOffers();},false,'',true);
+        apiCall('getMarketplaceLiveRooms',[],function(r){if(!isCurrentLoad())return;APP.liveRooms=r&&r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
+        var visitorKey=localStorage.getItem('visitor_key');
+        if(!visitorKey){visitorKey=makeKey();localStorage.setItem('visitor_key',visitorKey);}
+        apiCall('recordVisitor',[visitorKey,navigator.userAgent],function(){},false,'',true);
+        refreshCartCount();
+      }
+      // Paint the homepage immediately so a slow Sheets query cannot block navigation.
+      renderPublicHome();
+      apiCall('getCategories',[{}],function(r){
+        if(!isCurrentLoad())return;
+        if(r&&r.success)applySharedCategoryRows(safeArray(r.data),false);
+        else{APP.categories=[];APP.sharedCategories=[];APP.sharedCategoriesFetchedAt=Date.now();}
+        finishCritical();
+      },false,'',true);
+      apiCall('getBanners',[{}],function(r){
+        if(!isCurrentLoad())return;
+        APP.banners=r&&r.success?safeArray(r.data):[];
+        finishCritical();
+      },false,'',true);
+      apiCall('getProducts',[{page:1,pageSize:100,sort:'relevance'}],function(r){
+        if(!isCurrentLoad())return;
+        APP.products=r&&r.success&&r.data?safeArray(r.data.items):[];
+        APP.homePublicProductsLoaded=!!(r&&r.success);
+        finishCritical();
+      },false,'',true);
+      // Delay the secondary data calls slightly to reduce Apps Script concurrency at startup.
+      window.setTimeout(startSecondaryLoads,900);
     }
     function toggleMobileNav(){document.getElementById('mainNav').classList.toggle('open');}
     function toggleTheme(){document.body.classList.toggle('dark');var dark=document.body.classList.contains('dark');localStorage.setItem('store_theme',dark?'dark':'light');var icon=document.getElementById('themeIcon');if(icon)icon.className=dark?'fa-regular fa-sun':'fa-regular fa-moon';}
@@ -3078,8 +3124,9 @@ function loadPublicData(onComplete){
       if (visible.hero) initHomeHeroSwiper();
       if (visible.categories) initHomeCategoryCarousel();
       if (visible.flashSale || visible.topProducts) initHomeDealSections();
-      if (visible.mall) loadHomeShopeeMall();
-      if (visible.dailyDiscover) loadHomeDailyDiscover();
+      // Wait for the first public data batch before starting another full Products query.
+      if (visible.mall && !APP.homeDataInitialPending) loadHomeShopeeMall();
+      if (visible.dailyDiscover && !APP.homeDataInitialPending) loadHomeDailyDiscover();
     }
     var homeShopeeMallTimer=null;
     function homeMallProductEnabled(product){
@@ -3253,10 +3300,14 @@ function loadPublicData(onComplete){
         if(cachedHost){cachedHost.innerHTML=renderHomeShopeeMall();renderHomeShopeeMallBrands();initHomeShopeeMallCarousel();}
         return;
       }
+      // Multiple homepage renders must reuse one in-flight Products request.
+      if(APP.mallProductsRequestPending)return;
+      APP.mallProductsRequestPending=true;
       APP.mallProductsRequestId=Number(APP.mallProductsRequestId||0)+1;
       var requestId=APP.mallProductsRequestId;
       apiCall('getProducts',[{page:1,pageSize:100,sellerTypes:['mall'],storeIds:safeArray(safeJson(APP.settings&&APP.settings.mallStoreIds,[])),sort:'best_seller'}],function(result){
         if(requestId!==APP.mallProductsRequestId)return;
+        APP.mallProductsRequestPending=false;
         APP.mallProducts=result&&result.success&&result.data?safeArray(result.data.items):[];
         APP.mallProductsLoaded=true;
         if(APP.currentView!=='home')return;
@@ -3293,18 +3344,36 @@ function loadPublicData(onComplete){
     function loadHomeDailyDiscover(){
       var host=document.getElementById('homeDailyDiscoverGrid');
       if(!host)return;
+      if(APP.homeDailyDiscoverLoaded){
+        host.innerHTML=renderDailyDiscoverGrid(safeArray(APP.homeDailyDiscoverProducts));
+        return;
+      }
+      // Ignore repeated render requests while the first discovery request is pending.
+      if(APP.homeDailyDiscoverLoading)return;
+      if(APP.homePublicProductsLoaded){
+        APP.homeDailyDiscoverProducts=safeArray(APP.products).slice(0,30);
+        APP.homeDailyDiscoverLoaded=true;
+        host.innerHTML=renderDailyDiscoverGrid(APP.homeDailyDiscoverProducts);
+        return;
+      }
+      APP.homeDailyDiscoverLoading=true;
       APP.homeDailyDiscoverRequestId=Number(APP.homeDailyDiscoverRequestId||0)+1;
       var requestId=APP.homeDailyDiscoverRequestId;
-      if(APP.homePublicProductsLoaded){host.innerHTML=renderDailyDiscoverGrid(safeArray(APP.products).slice(0,30));return;}
       apiCall('getProducts',[{page:1,pageSize:30,sort:'relevance'}],function(r){
-        if(APP.currentView!=='home'||requestId!==APP.homeDailyDiscoverRequestId)return;
+        if(requestId!==APP.homeDailyDiscoverRequestId)return;
+        APP.homeDailyDiscoverLoading=false;
+        if(r&&r.success){
+          APP.homeDailyDiscoverProducts=safeArray(r.data&&r.data.items);
+          APP.homeDailyDiscoverLoaded=true;
+        }
+        if(APP.currentView!=='home')return;
         var target=document.getElementById('homeDailyDiscoverGrid');
         if(!target)return;
         if(!r||!r.success){
-          target.innerHTML='<div class="daily-discover-error">โหลดสินค้าไม่สำเร็จ <button type="button" onclick="loadHomeDailyDiscover()">ลองอีกครั้ง</button></div>';
+          target.innerHTML='<div class="daily-discover-error">โหลดสินค้าไม่สำเร็จ <button type="button" onclick="APP.homeDailyDiscoverLoaded=false;loadHomeDailyDiscover()">ลองอีกครั้ง</button></div>';
           return;
         }
-        target.innerHTML=renderDailyDiscoverGrid(safeArray(r.data&&r.data.items));
+        target.innerHTML=renderDailyDiscoverGrid(APP.homeDailyDiscoverProducts);
       },false,'',true);
     }
     function showRecommendedProducts(page){
