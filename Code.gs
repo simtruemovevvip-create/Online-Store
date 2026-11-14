@@ -352,7 +352,7 @@ function getOrCreateFolder_(parent, name) {
 
 function clearRuntimeCaches_() {
   var cache = CacheService.getScriptCache();
-  ['table_Settings','table_Products','table_Categories','table_Banners','table_Promotions','table_Inventory',
+  ['table_Settings','table_Products','table_Categories','table_Banners','table_Promotions','table_Inventory','table_ProductVariants',
    'table_Orders','table_OrderItems','table_Reviews','table_Favorites','product_public_metrics_v1','product_public_metrics_v2','dashboard','public_settings'].forEach(function(key) {
     try { cache.remove(key); } catch (e) {}
   });
@@ -2000,7 +2000,7 @@ function saveProductVariant(token, data) {
     if (!row.variantName) throw new Error('กรุณาระบุชื่อของตัวเลือก');
     var duplicateVariantSku = readTable_('ProductVariants',false).some(function(v) { return String(v.id)!==String(id) && String(v.sku).toLowerCase()===row.sku.toLowerCase(); }) || readTable_('Products',false).some(function(p) { return String(p.sku).toLowerCase()===row.sku.toLowerCase(); });
     if (duplicateVariantSku) throw new Error('SKU นี้มีอยู่แล้วในสินค้า/ตัวเลือกสินค้า');
-    upsertById_('ProductVariants',row); ensureInventory_(row.productId,id,row.stock,0); log_('Save Variant','Products',row.variantName,user.username); return ok_(row,'บันทึกตัวเลือกสินค้าแล้ว');
+    upsertById_('ProductVariants',row); ensureInventory_(row.productId,id,row.stock,0); clearRuntimeCaches_(); log_('Save Variant','Products',row.variantName,user.username); return ok_(row,'บันทึกตัวเลือกสินค้าแล้ว');
   } catch (e) { return fail_(safeError_(e)); }
 }
 function deleteProductVariant(token,id) {
@@ -2015,6 +2015,7 @@ function deleteProductVariant(token,id) {
     }
     deleteRows_('ProductVariants',function(x){return String(x.id)===String(id);});
     deleteRows_('Inventory',function(x){return String(x.productId)===String(variant.productId)&&String(x.variantId)===String(id);});
+    clearRuntimeCaches_();
     log_('Delete Variant','Products',id,user.username);return ok_(true,'ลบตัวเลือกแล้ว');
   }catch(e){return fail_(safeError_(e));}
 }
@@ -2512,10 +2513,10 @@ function createOrder(data) {
 
 /* ------------------------------- INVENTORY ------------------------------- */
 function ensureInventory_(productId,variantId,quantity,minimum) {
-  var rows=readTable_('Inventory',false); var item=rows.filter(function(x){return x.productId===productId && String(x.variantId||'')===String(variantId||'');})[0];
+  var rows=readTable_('Inventory',false); var item=rows.filter(function(x){return String(x.productId||'').trim()===String(productId||'').trim() && String(x.variantId||'').trim()===String(variantId||'').trim();})[0];
   if(!item) appendRecord_('Inventory',{id:newId_('INV'),productId:productId,variantId:variantId||'',quantity:Math.max(0,number_(quantity,0)),reserved:0,minimumStock:number_(minimum,0),updatedAt:now_()});
 }
-function inventoryRow_(productId,variantId) { return readTable_('Inventory',false).filter(function(x){return x.productId===productId && String(x.variantId||'')===String(variantId||'');})[0] || null; }
+function inventoryRow_(productId,variantId) { return readTable_('Inventory',false).filter(function(x){return String(x.productId||'').trim()===String(productId||'').trim() && String(x.variantId||'').trim()===String(variantId||'').trim();})[0] || null; }
 function availableStock_(productId,variantId) { var r=inventoryRow_(productId,variantId); if(!r){var p=readTable_('Products',true).filter(function(x){return x.id===productId;})[0];return p?number_(p.stock,0):0;} return Math.max(0,number_(r.quantity,0)-number_(r.reserved,0)); }
 function reserveStock_(productId,variantId,qty,orderId,by) {
   var row=inventoryRow_(productId,variantId); if(!row){var base=variantId?readTable_('ProductVariants',false).filter(function(v){return v.id===variantId&&v.productId===productId;})[0]:readTable_('Products',false).filter(function(p){return p.id===productId;})[0];ensureInventory_(productId,variantId,base?number_(base.stock,0):0,0);row=inventoryRow_(productId,variantId);}
