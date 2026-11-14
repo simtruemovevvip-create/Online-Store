@@ -54,6 +54,7 @@ var SCHEMA_ = {
   FlashDeals: ['id','name','sellerId','productId','dealPrice','quota','soldCount','startAt','endAt','status','createdAt','updatedAt'],
   CollectedVouchers: ['id','customerId','couponId','collectedAt','usedAt'],
   ChatThreads: ['id','customerId','sellerId','productId','lastMessage','lastMessageAt','status','createdAt','updatedAt'],
+  SellerCustomerNotes: ['id','sellerId','customerId','tags','note','createdAt','updatedAt'],
   ChatMessages: ['id','threadId','senderId','senderType','message','attachmentUrl','clientMessageId','isRead','readAt','deletedAt','deletedBy','createdAt'],
   ReturnRequests: ['id','orderId','orderItemId','customerId','sellerId','quantity','reason','details','evidence','status','sellerResponse','adminResponse','createdAt','updatedAt','resolvedAt'],
   CoinTransactions: ['id','customerId','orderId','type','amount','description','createdAt'],
@@ -2221,15 +2222,36 @@ function slug_(value) { return text_(value,200).toLowerCase().replace(/[^a-z0-9�
 
 /* ---------------------------------- CART --------------------------------- */
 function cartRow_(sessionId, customerId) {
-  var rows = readTable_('Carts',false);
-  var bySession = rows.filter(function(c) { return String(c.sessionId) === String(sessionId); })[0];
-  if (bySession) return bySession;
-  return customerId ? (rows.filter(function(c) { return String(c.customerId) === String(customerId); })[0] || null) : null;
+  var rows = readTable_('Carts', false);
+  if (customerId) {
+    var owned = rows.filter(function(c) { return String(c.customerId || '') === String(customerId); });
+    owned.sort(function(a, b) { return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime(); });
+    return owned[0] || null;
+  }
+  var guest = rows.filter(function(c) {
+    return !String(c.customerId || '').trim() && String(c.sessionId || '') === String(sessionId || '');
+  });
+  guest.sort(function(a, b) { return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime(); });
+  return guest[0] || null;
 }
 function saveCart_(sessionId, customerId, items) {
   var old = cartRow_(sessionId, customerId);
-  var row = { id:old ? old.id : newId_('CRT'), customerId:customerId || (old ? old.customerId : ''), sessionId:sessionId, items:JSON.stringify(items), updatedAt:now_() };
-  upsertById_('Carts',row); return row;
+  var row = {
+    id: old ? old.id : newId_('CRT'),
+    customerId: customerId || '',
+    sessionId: text_(sessionId, 120),
+    items: JSON.stringify(items),
+    updatedAt: now_()
+  };
+  upsertById_('Carts', row);
+  return row;
+}
+function cartCustomer_(customerToken, portalMode) {
+  var mode = String(portalMode || '').toLowerCase();
+  if (customerToken && (mode === 'seller' || mode === 'owner')) {
+    throw new Error('ตะกร้าสินค้าแยกจาก Seller Center และ Owner Portal กรุณาเข้าสู่โหมดลูกค้าก่อนใช้งานตะกร้า');
+  }
+  return customerToken ? requireCustomer_(customerToken) : null;
 }
 function cartDetails_(items) {
   ensureTableColumns_('Products',['quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart']);
@@ -2251,61 +2273,122 @@ function cartDetails_(items) {
   });
   return { items:result, subtotal:subtotal, grossSubtotal:grossSubtotal, quantityPromoDiscount:Math.round(quantityPromoDiscountTotal*100)/100, count:result.reduce(function(sum,x){return sum+x.quantity;},0) };
 }
-function getCart(sessionId, customerToken) {
+function getCart(sessionId, customerToken, portalMode) {
   try {
-    var customer = customerToken ? requireCustomer_(customerToken) : null;
-    var sid = text_(sessionId,120); if (!sid) throw new Error('ไม่พบรหัสตะกร้า');
-    var row = cartRow_(sid,customer ? customer.id : '');
-    var items = row ? safeArray_(safeJson_(row.items,[])) : [];
+    var customer = cartCustomer_(customerToken, portalMode);
+    var sid = text_(sessionId, 120);
+    if (!sid) throw new Error('ไม่พบรหัสตะกร้า');
+    var row = cartRow_(sid, customer ? customer.id : '');
+    var items = row ? safeArray_(safeJson_(row.items, [])) : [];
     return ok_(cartDetails_(items));
-  } catch(e) { return fail_(safeError_(e)); }
+  } catch (e) { return fail_(safeError_(e)); }
 }
-function addToCart(sessionId, productId, variantId, quantity, customerToken) {
+function addToCart(sessionId, productId, variantId, quantity, customerToken, portalMode) {
   try {
-    var customer = customerToken ? requireCustomer_(customerToken) : null;
-    var p = readTable_('Products',false).filter(function(x){return x.id===productId && x.status==='Active';})[0];
-    if(!p) throw new Error('ไม่พบสินค้าหรือสินค้าปิดขาย');
-    if(p.sellerId&&!readTable_('Stores',false).some(function(st){return st.id===p.sellerId&&st.status==='Active';})) throw new Error('ร้านค้านี้ยังไม่เปิดให้สั่งซื้อ');
-    var activeVariants=readTable_('ProductVariants',false).filter(function(x){return String(x.productId)===String(productId)&&productVariantIsActive_(x);});
-    var v = variantId ? activeVariants.filter(function(x){return x.id===variantId;})[0] : null;
-    if(variantId && !v) throw new Error('ไม่พบตัวเลือกสินค้า');
-    if(activeVariants.length&&!variantId) throw new Error('กรุณาเลือกตัวเลือกสินค้าก่อนเพิ่มลงตะกร้า');
-    var qty = Math.max(1,Math.floor(number_(quantity,1)));
-    var stock = availableStock_(productId,variantId || ''); if(stock < qty) throw new Error('สินค้าในสต็อกไม่เพียงพอ');
-    var sid = text_(sessionId,120); if(!sid) throw new Error('ไม่พบ Session ตะกร้า');
-    var row = cartRow_(sid,customer ? customer.id : ''); var items = row ? safeArray_(safeJson_(row.items,[])) : [];
-    var found = items.filter(function(x){return x.productId===productId && String(x.variantId||'')===String(variantId||'');})[0];
-    if(found) found.quantity = Math.min(stock,number_(found.quantity,0)+qty); else items.push({productId:productId,variantId:variantId || '',quantity:qty});
-    saveCart_(sid,customer ? customer.id : '',items); return ok_(cartDetails_(items),'เพิ่มสินค้าลงตะกร้าแล้ว');
-  } catch(e) { return fail_(safeError_(e)); }
+    var customer = cartCustomer_(customerToken, portalMode);
+    var p = readTable_('Products', false).filter(function(x) { return x.id === productId && x.status === 'Active'; })[0];
+    if (!p) throw new Error('ไม่พบสินค้าหรือสินค้าปิดขาย');
+    if (p.sellerId && !readTable_('Stores', false).some(function(st) { return st.id === p.sellerId && st.status === 'Active'; })) throw new Error('ร้านค้านี้ยังไม่เปิดให้สั่งซื้อ');
+    var activeVariants = readTable_('ProductVariants', false).filter(function(x) { return String(x.productId) === String(productId) && productVariantIsActive_(x); });
+    var v = variantId ? activeVariants.filter(function(x) { return x.id === variantId; })[0] : null;
+    if (variantId && !v) throw new Error('ไม่พบตัวเลือกสินค้า');
+    if (activeVariants.length && !variantId) throw new Error('กรุณาเลือกตัวเลือกสินค้าก่อนเพิ่มลงตะกร้า');
+    var qty = Math.max(1, Math.floor(number_(quantity, 1)));
+    var stock = availableStock_(productId, variantId || '');
+    if (stock < qty) throw new Error('สินค้าในสต็อกไม่เพียงพอ');
+    var sid = text_(sessionId, 120);
+    if (!sid) throw new Error('ไม่พบ Session ตะกร้า');
+    var row = cartRow_(sid, customer ? customer.id : '');
+    var items = row ? safeArray_(safeJson_(row.items, [])) : [];
+    var found = items.filter(function(x) { return x.productId === productId && String(x.variantId || '') === String(variantId || ''); })[0];
+    if (found) found.quantity = Math.min(stock, number_(found.quantity, 0) + qty);
+    else items.push({ productId: productId, variantId: variantId || '', quantity: qty });
+    saveCart_(sid, customer ? customer.id : '', items);
+    return ok_(cartDetails_(items), 'เพิ่มสินค้าลงตะกร้าแล้ว');
+  } catch (e) { return fail_(safeError_(e)); }
 }
-function updateCartItem(sessionId, productId, variantId, quantity, customerToken) {
+function updateCartItem(sessionId, productId, variantId, quantity, customerToken, portalMode) {
   try {
-    var customer = customerToken ? requireCustomer_(customerToken) : null; var sid=text_(sessionId,120);
-    var row=cartRow_(sid,customer ? customer.id : ''); if(!row) throw new Error('ไม่พบตะกร้า');
-    var items=safeArray_(safeJson_(row.items,[])); var qty=Math.floor(number_(quantity,1));
-    items=items.filter(function(x){return !(x.productId===productId && String(x.variantId||'')===String(variantId||''));});
-    if(qty>0){var stock=availableStock_(productId,variantId||'');if(qty>stock)throw new Error('จำนวนสินค้าเกินสต็อก');items.push({productId:productId,variantId:variantId||'',quantity:qty});}
-    saveCart_(sid,customer ? customer.id : '',items); return ok_(cartDetails_(items));
-  } catch(e){return fail_(safeError_(e));}
+    var customer = cartCustomer_(customerToken, portalMode);
+    var sid = text_(sessionId, 120);
+    if (!sid) throw new Error('ไม่พบ Session ตะกร้า');
+    var row = cartRow_(sid, customer ? customer.id : '');
+    if (!row) throw new Error('ไม่พบตะกร้า');
+    var items = safeArray_(safeJson_(row.items, []));
+    var qty = Math.floor(number_(quantity, 1));
+    items = items.filter(function(x) {
+      return !(x.productId === productId && String(x.variantId || '') === String(variantId || ''));
+    });
+    if (qty > 0) {
+      var stock = availableStock_(productId, variantId || '');
+      if (qty > stock) throw new Error('จำนวนสินค้าเกินสต็อก');
+      items.push({ productId: productId, variantId: variantId || '', quantity: qty });
+    }
+    saveCart_(sid, customer ? customer.id : '', items);
+    return ok_(cartDetails_(items));
+  } catch (e) { return fail_(safeError_(e)); }
 }
-function removeCartItem(sessionId,productId,variantId,customerToken){return updateCartItem(sessionId,productId,variantId,0,customerToken);}
-function clearCart(sessionId,customerToken){try{var c=customerToken?requireCustomer_(customerToken):null;var sid=text_(sessionId,120);var row=cartRow_(sid,c?c.id:'');if(row)updateRecord_('Carts',row.id,{items:'[]',updatedAt:now_()});return ok_(true,'ล้างตะกร้าแล้ว');}catch(e){return fail_(safeError_(e));}}
-function mergeGuestCart(sessionId,customerToken){
-  try{return withLock_(function(){
-    var customer=requireCustomer_(customerToken),sid=text_(sessionId,120);if(!sid)throw new Error('ไม่พบ Session ตะกร้า');
-    var carts=readTable_('Carts',false),guest=carts.filter(function(x){return String(x.sessionId)===sid;})[0]||null;
-    var member=carts.filter(function(x){return String(x.customerId)===String(customer.id);})[0]||null;
-    var merged=[],index={};
-    function addRows(rows){safeArray_(rows).forEach(function(item){var key=String(item.productId)+'|'+String(item.variantId||''),qty=Math.max(1,Math.floor(number_(item.quantity,1)));if(index[key])index[key].quantity+=qty;else{var copy={productId:item.productId,variantId:item.variantId||'',quantity:qty};index[key]=copy;merged.push(copy);}});}
-    if(member&&(!guest||member.id!==guest.id))addRows(safeJson_(member.items,[]));
-    if(guest)addRows(safeJson_(guest.items,[]));
-    merged=merged.map(function(item){item.quantity=Math.min(item.quantity,availableStock_(item.productId,item.variantId));return item;}).filter(function(item){return item.quantity>0;});
-    if(guest)saveCart_(sid,customer.id,merged);
-    else if(member)updateRecord_('Carts',member.id,{sessionId:sid,items:JSON.stringify(merged),updatedAt:now_()});
-    if(member&&guest&&member.id!==guest.id)deleteRows_('Carts',function(x){return x.id===member.id;});
-    return ok_(cartDetails_(merged),'รวมตะกร้าสินค้าแล้ว');
-  });}catch(e){return fail_(safeError_(e));}
+function removeCartItem(sessionId, productId, variantId, customerToken, portalMode) {
+  return updateCartItem(sessionId, productId, variantId, 0, customerToken, portalMode);
+}
+function clearCart(sessionId, customerToken, portalMode) {
+  try {
+    var customer = cartCustomer_(customerToken, portalMode);
+    var sid = text_(sessionId, 120);
+    var row = cartRow_(sid, customer ? customer.id : '');
+    if (row) updateRecord_('Carts', row.id, { items: '[]', updatedAt: now_() });
+    return ok_(true, 'ล้างตะกร้าแล้ว');
+  } catch (e) { return fail_(safeError_(e)); }
+}
+function mergeGuestCart(sessionId, customerToken, portalMode) {
+  try {
+    return withLock_(function() {
+      if (portalMode && String(portalMode).toLowerCase() !== 'customer') {
+        throw new Error('รวมตะกร้าได้เฉพาะเมื่อเข้าสู่ระบบในโหมดลูกค้า');
+      }
+      var customer = requireCustomer_(customerToken);
+      var sid = text_(sessionId, 120);
+      if (!sid) throw new Error('ไม่พบ Session ตะกร้า');
+      var carts = readTable_('Carts', false);
+      var guest = carts.filter(function(row) {
+        return !String(row.customerId || '').trim() && String(row.sessionId || '') === sid;
+      })[0] || null;
+      var memberRows = carts.filter(function(row) { return String(row.customerId || '') === String(customer.id); });
+      memberRows.sort(function(a, b) {
+        return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+      });
+      var member = memberRows[0] || null;
+      var merged = [], index = Object.create(null);
+      function addRows(rows) {
+        safeArray_(rows).forEach(function(item) {
+          var key = String(item.productId) + '|' + String(item.variantId || '');
+          var qty = Math.max(1, Math.floor(number_(item.quantity, 1)));
+          if (index[key]) index[key].quantity += qty;
+          else {
+            var copy = { productId: item.productId, variantId: item.variantId || '', quantity: qty };
+            index[key] = copy;
+            merged.push(copy);
+          }
+        });
+      }
+      if (member) addRows(safeJson_(member.items, []));
+      if (guest && (!member || guest.id !== member.id)) addRows(safeJson_(guest.items, []));
+      merged = merged.map(function(item) {
+        item.quantity = Math.min(item.quantity, availableStock_(item.productId, item.variantId));
+        return item;
+      }).filter(function(item) { return item.quantity > 0; });
+      var target = member || guest;
+      if (target) updateRecord_('Carts', target.id, {
+        customerId: customer.id, sessionId: sid, items: JSON.stringify(merged), updatedAt: now_()
+      });
+      if (guest && target && String(guest.id) !== String(target.id)) {
+        deleteRows_('Carts', function(row) {
+          return String(row.id) === String(guest.id) && !String(row.customerId || '').trim();
+        });
+      }
+      return ok_(cartDetails_(merged), 'รวมตะกร้าสินค้าแล้ว');
+    });
+  } catch (e) { return fail_(safeError_(e)); }
 }
 
 /* ------------------------------- CHECKOUT -------------------------------- */
@@ -3352,6 +3435,104 @@ function sellerSaveProduct(customerToken,data) {
 }
 function sellerDeleteProduct(customerToken,productId) {try{var x=requireSeller_(customerToken),p=readTable_('Products',false).filter(function(v){return v.id===productId&&v.sellerId===x.store.id;})[0];if(!p)throw new Error('ไม่พบสินค้าในร้านของคุณ');var used=readTable_('OrderItems',false).some(function(i){return i.productId===productId;});if(used)updateRecord_('Products',productId,{status:'Archived',updatedAt:now_()});else deleteRows_('Products',function(v){return v.id===productId&&v.sellerId===x.store.id;});clearRuntimeCaches_();return ok_(true,used?'เก็บสินค้าเข้าคลังแล้ว เนื่องจากมีประวัติคำสั่งซื้อ':'ลบสินค้าแล้ว');}catch(e){return fail_(safeError_(e));}}
 function sellerGetOrders(customerToken,filters) {try{var x=requireSeller_(customerToken),sid=x.store.id;filters=filters||{};var rows=readTable_('SellerOrders',false).filter(function(o){return o.sellerId===sid;});if(filters.status)rows=rows.filter(function(o){return o.status===filters.status;});var parents=readTable_('Orders',false),items=readTable_('OrderItems',false);return ok_(rows.map(function(o){var parent=parents.filter(function(p){return p.id===o.parentOrderId;})[0]||{};return {id:o.id,parentOrderId:o.parentOrderId,orderNumber:o.orderNumber,parentOrderNumber:parent.orderNumber,customerName:parent.customerName,phone:parent.phone,shippingAddress:o.shippingAddress,subtotal:o.subtotal,shippingFee:o.shippingFee,status:o.status,carrier:o.carrier,trackingNumber:o.trackingNumber,paymentMethod:parent.paymentMethod,paymentStatus:parent.paymentStatus,createdAt:o.createdAt,items:items.filter(function(i){return i.sellerOrderId===o.id&&i.sellerId===sid;})};}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt);}));}catch(e){return fail_(safeError_(e));}}
+function ensureSellerCustomerNotesSheet_() {
+  var ss = getSpreadsheet_(), name = 'SellerCustomerNotes', sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.getRange(1, 1, 1, SCHEMA_.SellerCustomerNotes.length).setValues([SCHEMA_.SellerCustomerNotes]);
+    sh.setFrozenRows(1);
+  } else ensureTableColumns_(name, SCHEMA_.SellerCustomerNotes);
+  return sh;
+}
+function sellerGetCustomers(customerToken, filters) {
+  try {
+    var x = requireSeller_(customerToken), storeId = String(x.store.id);
+    filters = filters || {};
+    ensureSellerCustomerNotesSheet_();
+    var sellerOrders = readTable_('SellerOrders', false).filter(function(order) { return String(order.sellerId) === storeId; });
+    var orderIds = Object.create(null);
+    sellerOrders.forEach(function(order) { orderIds[String(order.parentOrderId)] = true; });
+    var parentOrders = readTable_('Orders', false).filter(function(order) { return !!orderIds[String(order.id)] && !!String(order.customerId || ''); });
+    var rowsById = Object.create(null);
+    function ensureCustomerRow(customerId) {
+      var id = String(customerId || '');
+      if (!id) return null;
+      if (!rowsById[id]) rowsById[id] = {
+        customerId:id,customerName:'',email:'',phone:'',orderCount:0,totalSpent:0,lastOrderAt:'',lastOrderNumber:'',tags:'',note:''
+      };
+      return rowsById[id];
+    }
+    var customers = readTable_('Customers', true), customerById = Object.create(null);
+    customers.forEach(function(customer) { customerById[String(customer.id)] = customer; });
+    parentOrders.forEach(function(parent) {
+      var row = ensureCustomerRow(parent.customerId);
+      if (!row) return;
+      var sellerOrder = sellerOrders.filter(function(order) { return String(order.parentOrderId) === String(parent.id); })[0];
+      var customer = customerById[String(parent.customerId)] || {};
+      row.customerName = row.customerName || [customer.firstname,customer.lastname].filter(Boolean).join(' ') || parent.customerName || customer.username || 'ลูกค้า';
+      row.email = row.email || customer.email || parent.email || '';
+      row.phone = row.phone || customer.phone || parent.phone || '';
+      if (sellerOrder) {
+        row.orderCount++;
+        row.totalSpent += Math.max(0, number_(sellerOrder.subtotal,0) - number_(sellerOrder.discountAmount,0));
+        var stamp = sellerOrder.createdAt || parent.createdAt || '';
+        if (!row.lastOrderAt || new Date(stamp).getTime() > new Date(row.lastOrderAt).getTime()) {
+          row.lastOrderAt = stamp;
+          row.lastOrderNumber = sellerOrder.orderNumber || parent.orderNumber || '';
+        }
+      }
+    });
+    readTable_('ChatThreads', false).filter(function(thread) { return String(thread.sellerId) === storeId; }).forEach(function(thread) {
+      var row = ensureCustomerRow(thread.customerId);
+      if (!row) return;
+      var customer = customerById[String(thread.customerId)] || {};
+      row.customerName = row.customerName || [customer.firstname,customer.lastname].filter(Boolean).join(' ') || customer.username || 'ลูกค้า';
+      row.email = row.email || customer.email || '';
+      row.phone = row.phone || customer.phone || '';
+    });
+    readTable_('SellerCustomerNotes', false).filter(function(note) { return String(note.sellerId) === storeId; }).forEach(function(note) {
+      var row = rowsById[String(note.customerId)];
+      if (row) { row.tags = note.tags || ''; row.note = note.note || ''; }
+    });
+    var rows = Object.keys(rowsById).map(function(id) { return rowsById[id]; });
+    var q = text_(filters.search,120).toLowerCase();
+    if (q) rows = rows.filter(function(row) {
+      return [row.customerName,row.email,row.phone,row.lastOrderNumber,row.tags,row.note].join(' ').toLowerCase().indexOf(q) >= 0;
+    });
+    rows.sort(function(a,b) { return new Date(b.lastOrderAt || 0).getTime() - new Date(a.lastOrderAt || 0).getTime(); });
+    return ok_(rows);
+  } catch (e) { return fail_(safeError_(e)); }
+}
+function sellerSaveCustomerNote(customerToken, data) {
+  try {
+    var x = requireSeller_(customerToken), storeId = String(x.store.id);
+    data = data || {};
+    var customerId = text_(data.customerId,100);
+    if (!customerId) throw new Error('ไม่พบรหัสลูกค้า');
+    var hasOrder = readTable_('SellerOrders',false).some(function(order) {
+      if (String(order.sellerId) !== storeId) return false;
+      return readTable_('Orders',false).some(function(parent) {
+        return String(parent.id) === String(order.parentOrderId) && String(parent.customerId) === customerId;
+      });
+    });
+    var hasChat = readTable_('ChatThreads',false).some(function(thread) {
+      return String(thread.sellerId) === storeId && String(thread.customerId) === customerId;
+    });
+    if (!hasOrder && !hasChat) throw new Error('ร้านค้าของคุณไม่มีประวัติการซื้อหรือแชตกับลูกค้ารายนี้');
+    ensureSellerCustomerNotesSheet_();
+    var current = readTable_('SellerCustomerNotes',false).filter(function(note) {
+      return String(note.sellerId) === storeId && String(note.customerId) === customerId;
+    })[0] || null;
+    var stamp = now_();
+    var row = {
+      id:current ? current.id : newId_('SCN'),sellerId:storeId,customerId:customerId,
+      tags:text_(data.tags,300),note:text_(data.note,1500),
+      createdAt:current ? current.createdAt : stamp,updatedAt:stamp
+    };
+    upsertById_('SellerCustomerNotes',row);
+    return ok_(row,'บันทึกข้อมูลลูกค้าของร้านแล้ว');
+  } catch (e) { return fail_(safeError_(e)); }
+}
 function sellerUpdateOrder(customerToken,sellerOrderId,status,carrier,trackingNumber) {try{return withLock_(function(){var x=requireSeller_(customerToken),o=readTable_('SellerOrders',false).filter(function(v){return v.id===sellerOrderId&&v.sellerId===x.store.id;})[0];if(!o)throw new Error('ไม่พบคำสั่งซื้อของร้าน');var parent=readTable_('Orders',false).filter(function(v){return v.id===o.parentOrderId;})[0];if(!parent)throw new Error('ไม่พบคำสั่งซื้อหลัก');var allowed={'Processing':['Packed'],'Packed':['Shipped'],'Shipped':['Delivered']};if(!allowed[o.status]||allowed[o.status].indexOf(status)<0)throw new Error('ไม่สามารถเปลี่ยนสถานะจาก '+o.status+' เป็น '+status);if(['Packed','Shipped','Delivered'].indexOf(status)>=0&&parent.paymentMethod!=='cod'&&parent.paymentStatus!=='Verified')throw new Error('ต้องยืนยันการชำระเงินก่อนจัดส่ง');var tr=text_(trackingNumber,120),ca=text_(carrier,100);if(status==='Shipped'&&(!tr||!ca))throw new Error('กรุณาระบุบริษัทขนส่งและเลข Tracking');var changes={status:status,carrier:ca,trackingNumber:tr,updatedAt:now_()};if(status==='Shipped')changes.shippedAt=now_();if(status==='Delivered')changes.deliveredAt=now_();updateRecord_('SellerOrders',o.id,changes);var siblings=readTable_('SellerOrders',false).filter(function(v){return v.parentOrderId===parent.id;}),rank={'Awaiting Payment':0,'Processing':1,'Packed':2,'Shipped':3,'Delivered':4,'Completed':5,'Cancelled':-1};var minRank=siblings.length?Math.min.apply(null,siblings.map(function(v){return rank[v.status]===undefined?0:rank[v.status];})):0;var parentStatus=minRank>=4?'Delivered':(minRank>=3?'Shipped':(minRank>=2?'Packed':(minRank>=1?'Processing':parent.orderStatus)));var parentChanges={orderStatus:parentStatus,shippingStatus:parentStatus,updatedAt:now_()};if(status==='Shipped')parentChanges.trackingNumber=tr;updateRecord_('Orders',parent.id,parentChanges);if(parent.customerId)notify_('customer',parent.customerId,'อัปเดตการจัดส่ง','ร้าน '+x.store.shopName+' อัปเดตคำสั่งซื้อ '+parent.orderNumber+' เป็น '+status,'order',parent.id);log_('Seller Order Status','Marketplace',o.orderNumber+' => '+status,x.customer.username);return ok_(true,'อัปเดตคำสั่งซื้อแล้ว');});}catch(e){return fail_(safeError_(e));}}
 function sellerSaveVoucher(customerToken,data) {try{var x=requireSeller_(customerToken);data=data||{};var code=text_(data.code,60).toUpperCase();if(!code)throw new Error('กรุณาระบุโค้ดคูปอง');var id=text_(data.id,100)||newId_('CPN'),old=readTable_('Coupons',false).filter(function(c){return c.id===id;})[0];if(old&&old.sellerId!==x.store.id)throw new Error('ไม่มีสิทธิ์แก้ไขคูปองนี้');if(readTable_('Coupons',false).some(function(c){return c.id!==id&&String(c.code).toUpperCase()===code;}))throw new Error('โค้ดคูปองนี้ถูกใช้แล้ว');var row={id:id,code:code,title:text_(data.title||code,140),discountType:data.discountType==='percent'?'percent':'amount',discountValue:Math.max(0,number_(data.discountValue,0)),minimumOrder:Math.max(0,number_(data.minimumOrder,0)),maximumDiscount:Math.max(0,number_(data.maximumDiscount,0)),usageLimit:Math.max(0,number_(data.usageLimit,0)),usagePerCustomer:Math.max(0,number_(data.usagePerCustomer,1)),usedCount:old?number_(old.usedCount,0):0,startDate:text_(data.startDate,60),endDate:text_(data.endDate,60),sellerId:x.store.id,status:text_(data.status||'Active',30),createdAt:old?old.createdAt:now_()};if(row.discountValue<=0)throw new Error('จำนวนส่วนลดต้องมากกว่า 0');upsertById_('Coupons',row);return ok_(row,'บันทึก Voucher ร้านค้าแล้ว');}catch(e){return fail_(safeError_(e));}}
 function sellerGetVouchers(customerToken) {try{var x=requireSeller_(customerToken),rows=readTable_('Coupons',false).filter(function(c){return c.sellerId===x.store.id;});rows.sort(function(a,b){return new Date(b.createdAt||0)-new Date(a.createdAt||0);});return ok_(rows);}catch(e){return fail_(safeError_(e));}}
