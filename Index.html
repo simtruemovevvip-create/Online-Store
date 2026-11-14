@@ -1955,12 +1955,45 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     }
     document.addEventListener('click',captureActionTarget,true);
     document.addEventListener('submit',function(event){var form=event.target,button=form&&form.querySelector?form.querySelector('button[type=submit],input[type=submit]'):null;if(button){APP.lastActionButton=button;APP.lastActionAt=Date.now();APP.lastActionIsNavigation=false;}},true);
-    function beginApiLoading(text){
+    function beginApiActivity(name,label){
+      APP.apiActivityCount=Number(APP.apiActivityCount||0)+1;
+      APP.apiActivityLabel=String(label||'กำลังโหลดข้อมูล...');
+      var root=document.getElementById('globalApiActivity');
+      if(!root&&document.body){
+        var style=document.getElementById('globalApiActivityStyle');
+        if(!style){
+          style=document.createElement('style');style.id='globalApiActivityStyle';
+          style.textContent='@keyframes globalApiProgressMove{0%{transform:translateX(-130%)}100%{transform:translateX(340%)}}#globalApiActivity{position:fixed;inset:0 0 auto;height:3px;z-index:2147483000;pointer-events:none;display:none}#globalApiActivity .global-api-line{height:100%;width:100%;overflow:hidden;background:transparent}#globalApiActivity .global-api-line i{display:block;width:38%;height:100%;background:linear-gradient(90deg,#ee4d2d,#ff9b66,#ee4d2d);transform:translateX(-130%);animation:globalApiProgressMove 1.1s ease-in-out infinite}#globalApiActivity .global-api-pill{position:fixed;right:14px;top:10px;display:flex;align-items:center;gap:8px;padding:7px 11px;border:1px solid rgba(148,163,184,.28);border-radius:999px;background:rgba(255,255,255,.96);color:#334155;box-shadow:0 5px 18px rgba(15,23,42,.13);font:600 11px/1.2 system-ui,-apple-system,sans-serif;white-space:nowrap;max-width:min(320px,calc(100vw - 28px));backdrop-filter:blur(8px)}#globalApiActivity .global-api-dot{width:7px;height:7px;border-radius:50%;background:#ee4d2d;box-shadow:0 0 0 4px rgba(238,77,45,.12);flex:0 0 7px}';
+          document.head.appendChild(style);
+        }
+        root=document.createElement('div');root.id='globalApiActivity';root.setAttribute('role','status');root.setAttribute('aria-live','polite');
+        root.innerHTML='<div class="global-api-line"><i></i></div><div class="global-api-pill"><span class="global-api-dot"></span><span id="globalApiActivityLabel">กำลังโหลดข้อมูล...</span></div>';
+        document.body.appendChild(root);
+      }
+      if(root){
+        root.style.display='block';
+        var labelNode=document.getElementById('globalApiActivityLabel');
+        if(labelNode)labelNode.textContent=APP.apiActivityCount>1?'กำลังทำงาน '+APP.apiActivityCount+' รายการ':APP.apiActivityLabel;
+      }
+      return {active:true,name:String(name||'')};
+    }
+    function endApiActivity(handle){
+      if(!handle||!handle.active)return;
+      handle.active=false;
+      APP.apiActivityCount=Math.max(0,Number(APP.apiActivityCount||0)-1);
+      var root=document.getElementById('globalApiActivity');
+      if(!root)return;
+      if(APP.apiActivityCount<=0){root.style.display='none';return;}
+      var labelNode=document.getElementById('globalApiActivityLabel');
+      if(labelNode)labelNode.textContent='กำลังทำงาน '+APP.apiActivityCount+' รายการ';
+    }
+
+function beginApiLoading(text){
       var button=APP.lastActionButton,age=Date.now()-Number(APP.lastActionAt||0),isFresh=button&&age<1400&&document.documentElement.contains(button);
       var navigation=!!(isFresh&&APP.lastActionIsNavigation);APP.lastActionButton=null;APP.lastActionAt=0;APP.lastActionIsNavigation=false;
       if(isFresh&&!navigation){var handle={type:'button',button:button,html:button.innerHTML,disabled:button.disabled};button.disabled=true;button.setAttribute('aria-busy','true');button.innerHTML='<span class="inline-spinner" aria-hidden="true"></span><span>'+esc(text||'กำลังโหลด...')+'</span>';button.classList.add('is-loading');return handle;}
       /* Super Admin page navigation is rendered with in-panel skeletons. Never cover the whole portal. */
-      if(APP.currentView==='admin')return {type:'none'};
+      if(APP.currentView==='admin'||APP.currentView==='seller')return {type:'none'};
       APP.pageLoadingCount++;loading(true,text||'กำลังโหลดข้อมูล...');return {type:'page'};
     }
     function endApiLoading(handle){
@@ -2019,9 +2052,10 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
       var requestAdminPage=guardAdminPage?APP.adminPage:'';
       var requestAdminId=guardAdminPage?Number(APP.adminRequestId||0):0;
       var isStaleAdminPage=function(){return guardAdminPage&&(APP.currentView!=='admin'||APP.adminPage!==requestAdminPage||Number(APP.adminRequestId||0)!==requestAdminId);};
+      var apiActivityHandle=beginApiActivity(name,loadingText||(showLoading?'กำลังประมวลผล...':'กำลังโหลดข้อมูล...'));
       var loadHandle=(!guardAdminPage&&(showLoading||pendingNavigation))?beginApiLoading(loadingText||(pendingNavigation?'กำลังเปิดหน้า...':'กำลังประมวลผล...')):null;
       var requestFinished=false,requestTimer=null;
-      function finishRequest(){if(requestFinished)return false;requestFinished=true;if(requestTimer)clearTimeout(requestTimer);endApiLoading(loadHandle);return true;}
+      function finishRequest(){if(requestFinished)return false;requestFinished=true;if(requestTimer)clearTimeout(requestTimer);endApiLoading(loadHandle);endApiActivity(apiActivityHandle);return true;}
       function deliverApiResult(result){try{done(result);}catch(callbackError){console.error('API callback failed: '+name,callbackError);if(!silentError)alertError('เกิดข้อผิดพลาดขณะเปิดหน้า กรุณาลองใหม่อีกครั้ง');}}
       function finishPortalSkeleton(){if(portalSkeletonRequest){try{customerPortalFinishSkeleton(portalSkeletonRequest);}catch(skeletonError){console.warn('Portal skeleton cleanup failed',skeletonError);}}}
       if(loadHandle&&loadHandle.type!=='none'){
@@ -2380,12 +2414,47 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
       document.getElementById('brandName').textContent=s.storeName||'Online Store';document.getElementById('brandSub').textContent=s.storeNameEn||'SHOP ONLINE';var brandMark=document.querySelector('.brand-mark');if(brandMark){brandMark.innerHTML=s.logo?'<img src="'+esc(s.logo)+'" alt="Store logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;background:#fff" >':'<i class="fa-solid fa-store"></i>'; }var adminLogo=document.querySelector('.admin-sidebar-brand-logo');if(adminLogo){adminLogo.innerHTML=s.logo?'<img src="'+esc(s.logo)+'" alt="Store logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;background:#fff">':'<i class="fa-solid fa-store"></i>';}var adminBrandTitle=document.getElementById('adminBrandTitle');if(adminBrandTitle)adminBrandTitle.textContent=s.storeName||'Marketplace Admin';var adminBrandSub=document.getElementById('adminBrandSub');if(adminBrandSub)adminBrandSub.textContent=s.storeNameEn||'CONTROL CENTER';document.getElementById('footerStoreName').textContent=s.storeName||'Online Store';document.getElementById('footerDescription').innerHTML=sanitizeRichEditorHtml(s.storeDescription||'');document.getElementById('footerAddress').textContent=s.address||'';document.getElementById('footerPhone').textContent=s.phone||'';document.getElementById('footerText').innerHTML=sanitizeRichEditorHtml(s.footerText||('© '+(s.storeName||'Online Store')+'. All rights reserved.'));var announcementBar=document.getElementById('announcementBar');if(announcementBar)announcementBar.textContent='';document.title=s.seoTitle||s.storeName||'Online Store';var favicon=document.getElementById('storeFavicon');if(!favicon){favicon=document.createElement('link');favicon.id='storeFavicon';favicon.rel='icon';document.head.appendChild(favicon);}var configuredFavicon=s.setFaviconUrl||s.favicon||'';applyStoreFavicon_(configuredFavicon);
       var socials=[];if(s.facebook)socials.push('<a style="display:inline-block;margin-right:10px" href="'+safeHref(s.facebook,'#')+'" target="_blank"><i class="fa-brands fa-facebook"></i></a>');if(s.instagram)socials.push('<a style="display:inline-block;margin-right:10px" href="'+safeHref(s.instagram,'#')+'" target="_blank"><i class="fa-brands fa-instagram"></i></a>');if(s.line)socials.push('<a style="display:inline-block;margin-right:10px" href="'+safeHref(s.line,'#')+'" target="_blank"><i class="fa-brands fa-line"></i></a>');document.getElementById('socialLinks').innerHTML=socials.join(' ');
     }
-    function loadPublicData(onComplete){
+    function applySharedCategoryRows(rows,includeInactive){
+      var list=safeArray(rows).filter(function(c){return c&&c.id&&c.name;});
+      list.sort(function(a,b){return Number(a.order||0)-Number(b.order||0)||String(a.name||'').localeCompare(String(b.name||''),'th');});
+      APP.sharedCategories=list;
+      APP.sharedCategoriesFetchedAt=Date.now();
+      APP.sharedCategoriesIncludeInactive=!!includeInactive;
+      APP.categories=list.filter(function(c){return String(c.status||'Active')==='Active';});
+      if(includeInactive){APP.adminCategories=list.slice();APP.adminCategoriesLoaded=true;}
+      return list;
+    }
+    function refreshSharedCategories(includeInactive,callback,force){
+      includeInactive=!!includeInactive;
+      var canReadInactive=includeInactive&&!!APP.adminToken&&APP.currentView==='admin';
+      var fresh=Array.isArray(APP.sharedCategories)&&Number(APP.sharedCategoriesFetchedAt||0)>0&&Date.now()-Number(APP.sharedCategoriesFetchedAt||0)<45000;
+      if(!force&&fresh&&(!canReadInactive||APP.sharedCategoriesIncludeInactive)){
+        if(typeof callback==='function')callback(true,safeArray(APP.sharedCategories));
+        return;
+      }
+      var options=canReadInactive?{includeInactive:true,token:APP.adminToken}:{};
+      apiCall('getCategories',[options],function(r){
+        if(!r||!r.success){if(typeof callback==='function')callback(false,[]);return;}
+        var list=applySharedCategoryRows(safeArray(r.data),canReadInactive);
+        if(typeof callback==='function')callback(true,list);
+      },false,'กำลังโหลดหมวดหมู่สินค้า...',true);
+    }
+    function sharedCategoryLabel(category,categories){
+      if(!category)return '';
+      var list=safeArray(categories&&categories.length?categories:APP.sharedCategories);
+      var parent=list.filter(function(c){return String(c.id)===String(category.parentId||'');})[0];
+      return parent?String(parent.name||'')+' / '+String(category.name||''):String(category.name||'');
+    }
+    function sharedCategoryIsActive(category){
+      return !!category&&String(category.status||'Active')==='Active';
+    }
+
+function loadPublicData(onComplete){
       var criticalPending=3,criticalComplete=false,completedCallback=false;
       function isPublicHome(){return (APP.accessMode==='guest'||APP.accessMode==='customer')&&APP.currentView==='home';}
       function renderPublicHome(){if(isPublicHome())renderHome();}
       function finishCritical(){criticalPending--;if(criticalPending<=0&&!criticalComplete){criticalComplete=true;renderPublicHome();if(!completedCallback&&typeof onComplete==='function'){completedCallback=true;onComplete();}}}
-      apiCall('getCategories',[{}],function(r){APP.categories=r.success?safeArray(r.data):[];finishCritical();},false,'',true);
+      apiCall('getCategories',[{}],function(r){if(r&&r.success)applySharedCategoryRows(safeArray(r.data),false);else{APP.categories=[];APP.sharedCategories=[];APP.sharedCategoriesFetchedAt=Date.now();}finishCritical();},false,'',true);
       apiCall('getBanners',[{}],function(r){APP.banners=r.success?safeArray(r.data):[];finishCritical();},false,'',true);
       apiCall('getProducts',[{page:1,pageSize:100,sort:'relevance'}],function(r){APP.products=r.success&&r.data?safeArray(r.data.items):[];APP.homePublicProductsLoaded=!!(r&&r.success);finishCritical();},false,'',true);
       apiCall('getPromotions',[{}],function(r){APP.promotions=r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
@@ -4570,7 +4639,7 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     function runAdminModalMutation(page,api,args){
       return new Promise(function(resolve){
         var popup=Swal.getPopup(),saved=getCurrentModalMutationReceipt(api,page);
-        function reloadAfterSave(result){adminRefreshModuleAfterMutation(page,function(ok,message){if(!ok){Swal.showValidationMessage('บันทึกข้อมูลแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ: '+message+' กดปุ่มอีกครั้งเพื่อโหลดข้อมูลใหม่โดยไม่บันทึกซ้ำ');resolve(false);return;}clearCurrentModalMutationReceipt(popup);toast(result.message||'บันทึกข้อมูลสำเร็จ','success');resolve({success:true});});}
+        function reloadAfterSave(result){function refreshGrid(){adminRefreshModuleAfterMutation(page,function(ok,message){if(!ok){Swal.showValidationMessage('บันทึกข้อมูลแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ: '+message+' กดปุ่มอีกครั้งเพื่อโหลดข้อมูลใหม่โดยไม่ทำรายการซ้ำ');resolve(false);return;}clearCurrentModalMutationReceipt(popup);toast(result.message||'บันทึกข้อมูลสำเร็จ','success');resolve({success:true});});}if(page==='categories'){APP.adminCategoriesLoaded=false;refreshSharedCategories(true,function(){refreshGrid();},true);return;}refreshGrid();}
         if(saved){popup=saved.popup;reloadAfterSave(saved.receipt.result);return;}
         apiCall(api,args,function(result){if(!result||!result.success){Swal.showValidationMessage(result&&result.message?result.message:'ไม่สามารถบันทึกข้อมูลได้');resolve(false);return;}popup=Swal.getPopup()||popup;var payload=args&&args.length?args[args.length-1]:null;if(api.indexOf('save')===0&&payload&&typeof payload==='object'&&!Array.isArray(payload)&&!payload.id){var gridState=ADMIN_GRID_STATES['admin_'+page];if(gridState)gridState.options.page=1;}setCurrentModalMutationReceipt(popup,api,page,result);reloadAfterSave(result);},false);
       });
@@ -4718,9 +4787,9 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     function adminEditorIsOn(value){return value===true||value===1||String(value||'').toLowerCase()==='true'||String(value||'').toLowerCase()==='active'||String(value||'').toLowerCase()==='yes'||String(value||'')==='1';}
     function parseAdminEditorList(value){if(Array.isArray(value))return value.map(String);var raw=String(value||'').trim();if(!raw)return [];try{var parsed=JSON.parse(raw);if(Array.isArray(parsed))return parsed.map(String);}catch(e){}return raw.split(',').map(function(x){return x.trim();}).filter(Boolean);}
     function adminEditorOptions(key,row){
-      var cats=safeArray(APP.adminCategories&&APP.adminCategories.length?APP.adminCategories:APP.categories),products=safeArray(APP.adminProducts&&APP.adminProducts.length?APP.adminProducts:APP.products),stores=safeArray(APP.adminStores&&APP.adminStores.length?APP.adminStores:APP.stores),opts=[];
-      if(key==='categoryId'){opts=[['','เลือกหมวดหมู่']].concat(cats.filter(function(x){return x.status==='Active'||String(row.categoryId||'')===String(x.id);}).map(function(x){return [x.id,x.name];}));}
-      else if(key==='parentId'){opts=[['','ไม่มีหมวดหมู่หลัก (หมวดหมู่หลัก)']].concat(cats.filter(function(x){return x.id!==row.id&&(x.status==='Active'||String(row.parentId||'')===String(x.id));}).map(function(x){return [x.id,x.name];}));}
+      var cats=safeArray(APP.sharedCategories&&APP.sharedCategories.length?APP.sharedCategories:(APP.adminCategories&&APP.adminCategories.length?APP.adminCategories:APP.categories)),products=safeArray(APP.adminProducts&&APP.adminProducts.length?APP.adminProducts:APP.products),stores=safeArray(APP.adminStores&&APP.adminStores.length?APP.adminStores:APP.stores),opts=[];
+      if(key==='categoryId'){opts=[['','เลือกหมวดหมู่']].concat(cats.filter(function(x){return x.status==='Active'||String(row.categoryId||'')===String(x.id);}).map(function(x){return [x.id,sharedCategoryLabel(x,cats)+(sharedCategoryIsActive(x)?'':' (ปิดใช้งาน)')];}));}
+      else if(key==='parentId'){opts=[['','ไม่มีหมวดหมู่หลัก (หมวดหมู่หลัก)']].concat(cats.filter(function(x){return x.id!==row.id&&(x.status==='Active'||String(row.parentId||'')===String(x.id));}).map(function(x){return [x.id,sharedCategoryLabel(x,cats)+(sharedCategoryIsActive(x)?'':' (ปิดใช้งาน)')];}));}
       else if(key==='type'||key==='discountType'){opts=[['percent','เปอร์เซ็นต์ (%)'],['amount','จำนวนเงิน']];}
       else if(key==='role'){opts=[['Super Admin','Super Admin'],['Admin','Admin'],['Product Manager','Product Manager'],['Order Manager','Order Manager'],['Editor','Editor'],['Customer Support','Customer Support']];}
       else if(key==='position'){opts=[['main','Main Banner'],['promotion','Promotion Banner'],['category','Category Banner'],['sidebar','Sidebar Banner'],['popup','Popup Announcement']];}
@@ -4728,7 +4797,7 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
       else if(key==='sellerId'){opts=[['','ส่วนกลาง / Marketplace']].concat(stores.map(function(x){return [x.id,x.shopName||x.name||x.id];}));}
       else if(key==='currency'){opts=[['THB','THB - บาทไทย'],['MMK','MMK - จ๊าตเมียนมา'],['USD','USD - ดอลลาร์สหรัฐ'],['SGD','SGD - ดอลลาร์สิงคโปร์'],['MYR','MYR - ริงกิตมาเลเซีย'],['JPY','JPY - เยนญี่ปุ่น'],['EUR','EUR - ยูโร'],['GBP','GBP - ปอนด์สเตอร์ลิง']];}
       else if(key==='productIds'){var selected=parseAdminEditorList(row.productIds);opts=products.map(function(x){return [x.id,x.name+' ('+(x.sku||'ไม่มี SKU')+')'];});return {multiple:true,options:opts,selected:selected};}
-      else if(key==='categoryIds'){var selectedCats=parseAdminEditorList(row.categoryIds);opts=cats.map(function(x){return [x.id,x.name];});return {multiple:true,options:opts,selected:selectedCats};}
+      else if(key==='categoryIds'){var selectedCats=parseAdminEditorList(row.categoryIds);opts=cats.filter(sharedCategoryIsActive).map(function(x){return [x.id,sharedCategoryLabel(x,cats)];});return {multiple:true,options:opts,selected:selectedCats};}
       else return null;
       return {multiple:false,options:opts,selected:[String(row[key]===undefined?'':row[key])]};
     }
@@ -4836,7 +4905,7 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
         openEditorNow(page,id,true);
       });
     }
-    function ensureAdminEditorReferences(page,callback){var jobs=[];var needsCategories=['products','categories','promotions'].indexOf(page)>=0;var needsProducts=page==='promotions';var needsStores=['promotions','coupons'].indexOf(page)>=0;if(needsCategories&&!APP.adminCategoriesLoaded)jobs.push(function(done){apiCall('getCategories',[{token:APP.adminToken,includeInactive:true}],function(r){if(r&&r.success)APP.adminCategories=safeArray(r.data);APP.adminCategoriesLoaded=true;done();});});if(needsProducts&&!APP.adminProductsLoaded)jobs.push(function(done){apiCall('getProductsAdmin',[{token:APP.adminToken,page:1,pageSize:500}],function(r){if(r&&r.success){var x=r.data||{};APP.adminProducts=safeArray(x.items||x);}APP.adminProductsLoaded=true;done();});});if(needsStores&&!APP.adminStoresLoaded)jobs.push(function(done){apiCall('adminGetSellers',[APP.adminToken,{}],function(r){if(r&&r.success)APP.adminStores=safeArray(r.data);APP.adminStoresLoaded=true;done();});});if(!jobs.length){callback();return;}var pending=jobs.length;jobs.forEach(function(job){job(function(){pending--;if(pending===0)callback();});});}
+    function ensureAdminEditorReferences(page,callback){var jobs=[];var needsCategories=['products','categories','promotions'].indexOf(page)>=0;var needsProducts=page==='promotions';var needsStores=['promotions','coupons'].indexOf(page)>=0;if(needsCategories&&!APP.adminCategoriesLoaded)jobs.push(function(done){refreshSharedCategories(true,function(ok,rows){if(ok){APP.adminCategories=rows.slice();APP.adminCategoriesLoaded=true;}else APP.adminCategoriesLoaded=false;done();},true);});if(needsProducts&&!APP.adminProductsLoaded)jobs.push(function(done){apiCall('getProductsAdmin',[{token:APP.adminToken,page:1,pageSize:500}],function(r){if(r&&r.success){var x=r.data||{};APP.adminProducts=safeArray(x.items||x);APP.adminProductsLoaded=true;}else APP.adminProductsLoaded=false;done();});});if(needsStores&&!APP.adminStoresLoaded)jobs.push(function(done){apiCall('adminGetSellers',[APP.adminToken,{}],function(r){if(r&&r.success){APP.adminStores=safeArray(r.data);APP.adminStoresLoaded=true;}else APP.adminStoresLoaded=false;done();});});if(!jobs.length){callback();return;}var pending=jobs.length;jobs.forEach(function(job){job(function(){pending--;if(pending===0)callback();});});}
     function openEditorNow(page,id,updateExisting){
       var cfg=MODULE_CONFIG[page];if(!cfg)return;
       var row=id?safeArray(APP.adminData).filter(function(x){return String(x.id)===String(id);})[0]||{}:{};
@@ -5810,13 +5879,13 @@ function adjustInventoryDialog(productId,variantId){
       APP.sellerProducts=safeArray(rows);APP.sellerProductPage=1;APP.sellerProductPageSize=Number(APP.sellerProductPageSize||10);APP.sellerProductStatus=APP.sellerProductStatus||'all';APP.sellerProductQuery='';
       var html='<div class="seller-page-heading"><div><span class="seller-eyebrow">CATALOG MANAGEMENT</span><h1>สินค้าของฉัน</h1><p>จัดการรายการสินค้า ราคา สต็อก รูปภาพ และสถานะการขาย</p></div><button class="btn btn-primary" onclick="sellerProductDialog(null)"><i class="fa-solid fa-plus"></i> เพิ่มสินค้าใหม่</button></div>'+
         '<div class="seller-product-toolbar"><div class="seller-product-search"><i class="fa-solid fa-magnifying-glass"></i><input id="sellerProductSearch" type="search" placeholder="ค้นหาชื่อสินค้า หรือ SKU..." oninput="sellerFilterProducts()"></div><select id="sellerProductStatus" onchange="sellerFilterProducts()"><option value="all">ทุกสถานะ</option><option value="Active">เปิดขาย</option><option value="Inactive">ปิดขาย</option><option value="Archived">เก็บเข้าคลัง</option></select><select id="sellerProductPageSize" onchange="sellerSetProductPageSize(this.value)"><option value="10">10 รายการ</option><option value="25">25 รายการ</option><option value="50">50 รายการ</option><option value="100">100 รายการ</option></select></div>'+
-        '<section class="seller-panel seller-products-panel"><div class="seller-table-heading"><div><h2>รายการสินค้า</h2><p id="sellerProductCount">กำลังแสดงข้อมูลสินค้า</p></div><button class="btn btn-outline btn-small" onclick="sellerRefreshCurrentPage()"><i class="fa-solid fa-rotate"></i> รีเฟรช</button></div><div class="seller-table-wrap"><table class="market-table seller-data-table"><thead><tr><th>สินค้า</th><th>SKU</th><th>หมวดหมู่</th><th>ราคา</th><th>สต็อก</th><th>สถานะ</th><th>อัปเดตล่าสุด</th><th>จัดการ</th></tr></thead><tbody id="sellerProductRows"></tbody></table></div><div class="seller-table-footer"><span id="sellerProductRange">0 รายการ</span><div class="seller-pagination" id="sellerProductPagination"></div></div></section>';
+        '<section class="seller-panel seller-products-panel"><div class="seller-table-heading"><div><h2>รายการสินค้า</h2><p id="sellerProductCount">กำลังแสดงข้อมูลสินค้า</p></div><button class="btn btn-outline btn-small" onclick="sellerRefreshCurrentPage()"><i class="fa-solid fa-rotate"></i> รีเฟรช</button></div><div class="seller-table-wrap"><table class="market-table seller-data-table"><thead><tr><th>สินค้า</th><th>SKU</th><th>หมวดหมู่</th><th>ราคา</th><th>สต็อก</th><th>สถานะ</th><th>อัปเดตล่าสุด</th><th>จัดการ</th></tr></thead><tbody id="sellerProductRows"></tbody></table></div><div class="seller-table-footer"><span id="sellerProductRange">0 รายการ</span><nav class="seller-pagination" id="sellerProductPagination" aria-label="เปลี่ยนหน้าสินค้าของฉัน"></nav></div></section>';
       var host=document.getElementById('sellerContent');if(host)host.innerHTML=html;sellerRenderProductRows();
     }
     function sellerFilterProducts(){var s=document.getElementById('sellerProductSearch'),f=document.getElementById('sellerProductStatus');APP.sellerProductQuery=s?s.value.trim().toLowerCase():'';APP.sellerProductStatus=f?f.value:'all';APP.sellerProductPage=1;sellerRenderProductRows();}
     function sellerSetProductPageSize(value){APP.sellerProductPageSize=Math.max(1,Math.min(100,Number(value)||10));APP.sellerProductPage=1;sellerRenderProductRows();}
     function sellerSetProductPage(page){APP.sellerProductPage=Number(page)||1;sellerRenderProductRows();}
-    function sellerCategoryLabel(id){var c=safeArray(APP.categories).filter(function(x){return String(x.id)===String(id);})[0];return c?c.name:'ไม่ระบุหมวดหมู่';}
+    function sellerCategoryLabel(id,fallback){var source=safeArray(APP.sharedCategories&&APP.sharedCategories.length?APP.sharedCategories:APP.categories),c=source.filter(function(x){return String(x.id)===String(id);})[0];return c?c.name:(fallback||'ไม่ระบุหมวดหมู่');}
     function sellerRenderProductRows(){
       var body=document.getElementById('sellerProductRows');if(!body)return;
       var q=APP.sellerProductQuery||'',status=APP.sellerProductStatus||'all';
@@ -5827,9 +5896,9 @@ function adjustInventoryDialog(productId,variantId){
         var state=String(p.status||'Active'),stateLabel=state==='Active'?'เปิดขาย':(state==='Archived'?'เก็บเข้าคลัง':'ปิดขาย'),stateClass=state==='Active'?'is-active':(state==='Archived'?'is-archived':'is-inactive');
         var image=p.coverImage?'<img src="'+imageUrl(p.coverImage)+'" alt="'+esc(p.name)+'" onerror="imageFallback(this)">':'<span class="seller-product-placeholder"><i class="fa-regular fa-image"></i></span>';
         var stockDisplay=Number(p.variantCount||0)>0?Number(p.totalVariantAvailableStock||0):Number(p.stock||0);
-        return '<tr><td><div class="seller-product-cell"><div class="seller-product-thumb">'+image+'</div><div class="seller-product-name"><b>'+esc(p.name||'ไม่ระบุชื่อสินค้า')+'</b><small>'+esc(p.brand||p.summary||'')+(Number(p.variantCount||0)>0?' · '+sellerFormatCount(p.variantCount)+' SKU':'')+'</small></div></div></td><td>'+esc(p.sku||'—')+'</td><td>'+esc(sellerCategoryLabel(p.categoryId))+'</td><td><b>'+money(Number(p.salePrice)>0?p.salePrice:p.price)+'</b>'+(Number(p.salePrice)>0?'<small class="seller-old-price">'+money(p.price)+'</small>':'')+'</td><td><span class="seller-stock-pill '+(stockDisplay>0?'':'is-empty')+'">'+sellerFormatCount(stockDisplay)+' '+esc(p.unit||'ชิ้น')+'</span></td><td><span class="seller-status-pill '+stateClass+'"><i></i>'+stateLabel+'</span></td><td>'+esc(String(p.updatedAt||p.createdAt||'—').substring(0,16))+'</td><td><div class="seller-row-actions"><button type="button" title="แก้ไขสินค้า" onclick="sellerProductDialog(\''+esc(p.id)+'\')"><i class="fa-solid fa-pen"></i></button><button type="button" class="seller-variant-action" title="จัดการตัวเลือกสินค้า / SKU" aria-label="จัดการตัวเลือกสินค้า" onclick="sellerManageVariants(\''+esc(p.id)+'\')"><i class="fa-solid fa-layer-group"></i><span>ตัวเลือก</span></button><button type="button" class="is-danger" title="ลบสินค้า" onclick="sellerDeleteProductAction(\''+esc(p.id)+'\')"><i class="fa-regular fa-trash-can"></i></button></div></td></tr>';
+        return '<tr><td><div class="seller-product-cell"><div class="seller-product-thumb">'+image+'</div><div class="seller-product-name"><b>'+esc(p.name||'ไม่ระบุชื่อสินค้า')+'</b><small>'+esc(p.brand||p.summary||'')+(Number(p.variantCount||0)>0?' · '+sellerFormatCount(p.variantCount)+' SKU':'')+'</small></div></div></td><td>'+esc(p.sku||'—')+'</td><td>'+esc(sellerCategoryLabel(p.categoryId,p.categoryName))+'</td><td><b>'+money(Number(p.salePrice)>0?p.salePrice:p.price)+'</b>'+(Number(p.salePrice)>0?'<small class="seller-old-price">'+money(p.price)+'</small>':'')+'</td><td><span class="seller-stock-pill '+(stockDisplay>0?'':'is-empty')+'">'+sellerFormatCount(stockDisplay)+' '+esc(p.unit||'ชิ้น')+'</span></td><td><span class="seller-status-pill '+stateClass+'"><i></i>'+stateLabel+'</span></td><td>'+esc(String(p.updatedAt||p.createdAt||'—').substring(0,16))+'</td><td><div class="seller-row-actions"><button type="button" title="แก้ไขสินค้า" onclick="sellerProductDialog(\''+esc(p.id)+'\')"><i class="fa-solid fa-pen"></i></button><button type="button" class="seller-variant-action" title="จัดการตัวเลือกสินค้า / SKU" aria-label="จัดการตัวเลือกสินค้า" onclick="sellerManageVariants(\''+esc(p.id)+'\')"><i class="fa-solid fa-layer-group"></i><span>ตัวเลือก</span></button><button type="button" class="is-danger" title="ลบสินค้า" onclick="sellerDeleteProductAction(\''+esc(p.id)+'\')"><i class="fa-regular fa-trash-can"></i></button></div></td></tr>';
       }).join(''):'<tr><td colspan="8"><div class="seller-empty-table"><i class="fa-solid fa-box-open"></i><b>ไม่พบสินค้า</b><small>ลองเปลี่ยนคำค้นหา หรือลงขายสินค้าใหม่</small><button class="btn btn-primary btn-small" onclick="sellerProductDialog(null)">เพิ่มสินค้า</button></div></td></tr>';
-      var total=rows.length,from=total?start+1:0,to=Math.min(start+size,total),count=document.getElementById('sellerProductCount'),range=document.getElementById('sellerProductRange'),pg=document.getElementById('sellerProductPagination');
+      var total=rows.length,from=total?start+1:0,to=Math.min(start+size,total),count=document.getElementById('sellerProductCount'),range=document.getElementById('sellerProductRange'),pagerNodes=document.querySelectorAll('#sellerContent .seller-products-panel .seller-pagination');for(var pagerIndex=1;pagerIndex<pagerNodes.length;pagerIndex++)pagerNodes[pagerIndex].remove();var pg=document.getElementById('sellerProductPagination');
       if(count)count.textContent='แสดง '+sellerFormatCount(total)+' รายการตามเงื่อนไขค้นหา';if(range)range.textContent=from+'–'+to+' จาก '+sellerFormatCount(total)+' รายการ';
       var sizeSelect=document.getElementById('sellerProductPageSize');if(sizeSelect)sizeSelect.value=String(size);var statusSelect=document.getElementById('sellerProductStatus');if(statusSelect)statusSelect.value=status;
       if(pg){var buttons='';buttons+='<button type="button" '+(APP.sellerProductPage<=1?'disabled':'')+' onclick="sellerSetProductPage(1)" aria-label="หน้าแรก"><i class="fa-solid fa-angles-left"></i></button>';buttons+='<button type="button" '+(APP.sellerProductPage<=1?'disabled':'')+' onclick="sellerSetProductPage('+(APP.sellerProductPage-1)+')" aria-label="ก่อนหน้า"><i class="fa-solid fa-angle-left"></i></button>';var first=Math.max(1,APP.sellerProductPage-2),last=Math.min(pages,first+4);first=Math.max(1,last-4);for(var n=first;n<=last;n++)buttons+='<button type="button" class="'+(n===APP.sellerProductPage?'active':'')+'" onclick="sellerSetProductPage('+n+')">'+n+'</button>';buttons+='<button type="button" '+(APP.sellerProductPage>=pages?'disabled':'')+' onclick="sellerSetProductPage('+(APP.sellerProductPage+1)+')" aria-label="ถัดไป"><i class="fa-solid fa-angle-right"></i></button>';buttons+='<button type="button" '+(APP.sellerProductPage>=pages?'disabled':'')+' onclick="sellerSetProductPage('+pages+')" aria-label="หน้าสุดท้าย"><i class="fa-solid fa-angles-right"></i></button>';pg.innerHTML=buttons;}
@@ -5934,9 +6003,12 @@ function adjustInventoryDialog(productId,variantId){
       productGalleryUploadFiles(fileInput,textareaId,'seller','spGalleryPreview','spGalleryCount','spGalleryUploadStatus');
     }
 
-    function sellerProductDialog(id){
+    function sellerProductDialog(id){refreshSharedCategories(false,function(ok){if(!ok){alertError('โหลดหมวดหมู่สินค้ากลางไม่สำเร็จ กรุณาลองอีกครั้ง');return;}sellerProductDialogReady(id);},false);}
+    function sellerProductDialogReady(id){
       var p=id?safeArray(APP.sellerProducts).filter(function(x){return String(x.id)===String(id);})[0]||{}:{};
-      var categoryOptions=safeArray(APP.categories).filter(function(c){return c.status==='Active'||!c.status;}).map(function(c){return '<option value="'+esc(c.id)+'" '+(String(p.categoryId||'')===String(c.id)?'selected':'')+'>'+esc(c.name)+'</option>';}).join('');
+      var sharedCategories=safeArray(APP.sharedCategories).filter(sharedCategoryIsActive);
+      var categoryOptions=sharedCategories.map(function(c){return '<option value="'+esc(c.id)+'" '+(String(p.categoryId||'')===String(c.id)?'selected':'')+'>'+esc(sharedCategoryLabel(c,APP.sharedCategories))+'</option>';}).join('');
+      if(p.categoryId&&!sharedCategories.some(function(c){return String(c.id)===String(p.categoryId);}))categoryOptions='<option value="'+esc(p.categoryId)+'" selected disabled>'+esc((p.categoryName||'หมวดหมู่เดิม')+' (ปิดใช้งาน · ใช้ได้เฉพาะสินค้าเดิม)')+'</option>'+categoryOptions;
       if(!categoryOptions)categoryOptions='<option value="">ยังไม่มีหมวดหมู่ที่เปิดใช้งาน</option>';
       var imageLines=[];try{imageLines=Array.isArray(p.images)?p.images:JSON.parse(p.images||'[]');}catch(e){imageLines=[];}
       var html='<div class="seller-product-editor"><div class="seller-editor-note"><i class="fa-solid fa-circle-info"></i><span>กรอกข้อมูลสินค้าให้ครบถ้วน รูปภาพหลักจะแสดงเป็นภาพหน้าปกบนหน้าร้าน ส่วนรูปเพิ่มเติมใส่ได้สูงสุด 10 รูป<small style="display:block;margin-top:4px">หลังบันทึกสินค้า ให้กลับไปที่รายการสินค้าแล้วกดปุ่ม “ตัวเลือก” เพื่อกำหนดสี ไซส์ รุ่น ราคา และสต็อกของแต่ละแบบ</small></span></div>'+
