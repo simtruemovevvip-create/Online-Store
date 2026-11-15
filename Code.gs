@@ -47,7 +47,7 @@ var SCHEMA_ = {
   PasswordResets: ['id','tokenHash','accountType','userId','expiresAt','usedAt','createdAt'],
   QrLoginChallenges: ['id','challengeHash','status','approvedCustomerId','expiresAt','createdAt','approvedAt','consumedAt'],
   Newsletters: ['id','email','status','createdAt'],
-  Stores: ['id','ownerCustomerId','shopName','slug','description','logo','banner','email','phone','address','status','rating','followerCount','commissionRate','approvedAt','createdAt','updatedAt'],
+  Stores: ['id','ownerCustomerId','shopName','slug','description','logo','banner','email','phone','address','status','rating','followerCount','commissionRate','approvedAt','createdAt','updatedAt','storeType','isOfficial'],
   StoreFollows: ['id','customerId','storeId','createdAt'],
   SellerOrders: ['id','parentOrderId','orderNumber','sellerId','subtotal','discountAmount','commissionRate','commissionAmount','netAmount','shippingFee','shippingAddress','status','carrier','trackingNumber','shippedAt','deliveredAt','createdAt','updatedAt'],
   SellerPayouts: ['id','sellerId','sellerOrderId','grossAmount','discountAmount','commissionAmount','netAmount','status','payoutReference','paidAt','createdAt','updatedAt'],
@@ -2601,7 +2601,7 @@ function createOrder(data) {
         if(sellerId!=='PLATFORM'&&!store)throw new Error('ร้านค้าของสินค้ารายการหนึ่งไม่พร้อมรับคำสั่งซื้อ');
         if(usedCoupon&&usedCoupon.sellerId){group.discountAmount=sellerId===usedCoupon.sellerId?number_(q.discount,0):0;}
         else {group.discountAmount=index===groupKeys.length-1?Math.max(0,number_(q.discount,0)-allocatedDiscount):Math.round(number_(q.discount,0)*group.subtotal/Math.max(1,q.subtotal)*100)/100;allocatedDiscount+=group.discountAmount;}
-        var rate=store&&store.commissionRate!==''?number_(store.commissionRate,number_(getSettingValue_('marketplaceCommissionRate'),5)):number_(getSettingValue_('marketplaceCommissionRate'),5);
+        var rate=sellerId==='PLATFORM'?0:(store&&store.commissionRate!==''?number_(store.commissionRate,number_(getSettingValue_('marketplaceCommissionRate'),5)):number_(getSettingValue_('marketplaceCommissionRate'),5));
         var commission=Math.round(Math.max(0,group.subtotal-group.discountAmount)*rate)/100;
         var ship=index===groupKeys.length-1?Math.max(0,q.shippingFee-allocatedShipping):Math.round(q.shippingFee*group.subtotal/Math.max(1,q.subtotal)*100)/100;allocatedShipping+=ship;
         var sellerOrder={id:group.id,parentOrderId:orderId,orderNumber:orderNo+'-'+(index+1),sellerId:sellerId,subtotal:group.subtotal,discountAmount:group.discountAmount,commissionRate:rate,commissionAmount:commission,netAmount:Math.max(0,group.subtotal-group.discountAmount-commission),shippingFee:ship,shippingAddress:JSON.stringify(address),status:order.paymentMethod==='cod'?'Processing':'Awaiting Payment',carrier:'',trackingNumber:'',shippedAt:'',deliveredAt:'',createdAt:now,updatedAt:now};
@@ -3601,7 +3601,8 @@ function requireSeller_(customerToken) {
 function publicStore_(s) {
   return {id:s.id,shopName:s.shopName,slug:s.slug,description:s.description,logo:s.logo,banner:s.banner,
     email:s.email,phone:s.phone,address:s.address,
-    rating:number_(s.rating,0),followerCount:number_(s.followerCount,0),status:s.status,createdAt:s.createdAt};
+    rating:number_(s.rating,0),followerCount:number_(s.followerCount,0),status:s.status,createdAt:s.createdAt,
+    storeType:String(s.storeType||''),isOfficial:parseBool_(s.isOfficial)||String(s.id)==='PLATFORM'};
 }
 function getStoreChatResponseRate_(storeId) {
   try {
@@ -3708,7 +3709,8 @@ function getMarketplaceStores(options) {
       return {
         id:store.id,shopName:store.shopName,slug:store.slug,description:store.description,
         logo:store.logo,banner:store.banner,rating:Math.round(rating * 10) / 10,
-        followerCount:metrics.followers,productCount:metrics.products
+        followerCount:metrics.followers,productCount:metrics.products,
+        isOfficial:parseBool_(store.isOfficial)||String(store.id)==='PLATFORM',storeType:String(store.storeType||'')
       };
     });
     rows.sort(function(a,b) { return b.followerCount - a.followerCount; });
@@ -3860,11 +3862,87 @@ function applySeller(customerToken,data) {
   }catch(e){return fail_(safeError_(e));}
 }
 function getMyStore(customerToken) {try{var c=requireCustomer_(customerToken),st=findRecordByExactColumn_('Stores','ownerCustomerId',c.id);return ok_(st?publicStore_(st):null);}catch(e){return fail_(safeError_(e));}}
+/* --------------------- PLATFORM OFFICIAL STORE ---------------------------- */
+/** Only a Super Admin can operate the platform-owned store. */
+function requirePlatformOwner_(token) {
+  var user=requireAdmin_(token,'sellers.manage');
+  if(!/^super\s*admin$/i.test(String(user.role||''))) throw new Error('เมนูร้านค้าทางการอนุญาตเฉพาะ Super Admin');
+  return user;
+}
+function ensureOfficialStoreColumns_() {
+  ensureTableColumns_('Stores',['storeType','isOfficial']);
+}
+function adminGetOfficialStore(token) {
+  try {
+    requirePlatformOwner_(token);
+    ensureOfficialStoreColumns_();
+    var store=readTable_('Stores',true).filter(function(x){return String(x.id)==='PLATFORM'&&parseBool_(x.isOfficial);})[0]||null;
+    var products=readTable_('Products',true).filter(function(x){return String(x.sellerId)==='PLATFORM';});
+    var orders=readTable_('SellerOrders',true).filter(function(x){return String(x.sellerId)==='PLATFORM';});
+    var complete=orders.filter(function(x){return ['Delivered','Completed'].indexOf(String(x.status))>=0;});
+    var pending=orders.filter(function(x){return ['Awaiting Payment','Processing','Packed','Shipped','In Transit'].indexOf(String(x.status))>=0;});
+    var sales=complete.reduce(function(sum,x){return sum+Math.max(0,number_(x.subtotal,0)-number_(x.discountAmount,0));},0);
+    var followers=store?readTable_('StoreFollows',true).filter(function(x){return String(x.storeId)==='PLATFORM';}).length:0;
+    return ok_({
+      store:store?publicStore_(store):null,
+      metrics:{productCount:products.length,activeProducts:products.filter(function(x){return String(x.status)==='Active';}).length,orderCount:orders.length,pendingOrders:pending.length,completedOrders:complete.length,completedSales:sales,followers:followers},
+      storeId:'PLATFORM'
+    },'โหลดข้อมูลร้านค้าทางการแล้ว');
+  } catch(e) { return fail_(safeError_(e)); }
+}
+function adminSaveOfficialStore(token,data) {
+  try {
+    var user=requirePlatformOwner_(token);
+    ensureOfficialStoreColumns_();
+    data=data||{};
+    var old=readTable_('Stores',false).filter(function(x){return String(x.id)==='PLATFORM';})[0]||null;
+    if(old&&String(old.ownerCustomerId||'').trim()&&!parseBool_(old.isOfficial)) throw new Error('รหัส PLATFORM ถูกใช้กับร้านค้าทั่วไป ไม่สามารถนำมาใช้เป็นร้านค้าทางการได้');
+    var name=text_(data.shopName||'Platform Official Store',120);
+    var slug=slug_(data.slug||'platform-official-store');
+    if(!name)throw new Error('กรุณาระบุชื่อร้านค้าทางการ');
+    if(readTable_('Stores',false).some(function(x){return String(x.id)!=='PLATFORM'&&String(x.slug||'')===slug;})) throw new Error('URL ร้านค้านี้ถูกใช้แล้ว กรุณาเปลี่ยน Slug');
+    var logo=text_(data.logo,1000),banner=text_(data.banner,1000);
+    if((logo&&!/^https:\/\//i.test(logo))||(banner&&!/^https:\/\//i.test(banner))) throw new Error('URL โลโก้และแบนเนอร์ต้องขึ้นต้นด้วย https://');
+    var row={
+      id:'PLATFORM',ownerCustomerId:'',shopName:name,slug:slug,
+      description:sanitizeHtml_(data.description||''),logo:logo,banner:banner,
+      email:text_(data.email,160).toLowerCase(),phone:text_(data.phone,40),address:text_(data.address,500),
+      status:'Active',rating:old?number_(old.rating,0):0,followerCount:old?number_(old.followerCount,0):0,
+      commissionRate:'0',approvedAt:old&&old.approvedAt?old.approvedAt:now_(),
+      createdAt:old&&old.createdAt?old.createdAt:now_(),updatedAt:now_(),
+      storeType:'platform',isOfficial:true
+    };
+    if(old)updateRecord_('Stores','PLATFORM',row);else appendRecord_('Stores',row);
+    log_(old?'Update Platform Official Store':'Create Platform Official Store','Marketplace',name,user.username);
+    clearRuntimeCaches_();
+    return ok_({store:publicStore_(row)},old?'บันทึกข้อมูลร้านค้าทางการแล้ว':'สร้างร้านค้าทางการแล้ว');
+  } catch(e) { return fail_(safeError_(e)); }
+}
+function savePlatformProduct(token,data) {
+  try {
+    requirePlatformOwner_(token);
+    var store=readTable_('Stores',true).filter(function(x){return String(x.id)==='PLATFORM'&&parseBool_(x.isOfficial)&&String(x.status)==='Active';})[0];
+    if(!store)throw new Error('กรุณาสร้างและเปิดใช้งานร้านค้าทางการก่อนเพิ่มสินค้า');
+    data=data||{};
+    data.sellerId='PLATFORM';
+    return saveProduct(token,data);
+  } catch(e) { return fail_(safeError_(e)); }
+}
+function deletePlatformProduct(token,productId) {
+  try {
+    requirePlatformOwner_(token);
+    var product=readTable_('Products',false).filter(function(x){return String(x.id)===String(productId)&&String(x.sellerId)==='PLATFORM';})[0];
+    if(!product)throw new Error('ไม่พบสินค้าในร้านค้าทางการ');
+    return deleteProduct(token,productId);
+  } catch(e) { return fail_(safeError_(e)); }
+}
+/* -------------------------------------------------------------------------- */
+
 function adminGetSellers(token,filters) {
   try {
     requireAdmin_(token,'sellers.manage');
     filters=filters||{};
-    var rows=readTable_('Stores',true);
+    var rows=readTable_('Stores',true).filter(function(x){return !parseBool_(x.isOfficial)&&String(x.id)!=='PLATFORM';});
     if(filters.status)rows=rows.filter(function(x){return x.status===filters.status;});
     var customers=readTable_('Customers',true),customersById=Object.create(null);
     customers.forEach(function(customer){customersById[String(customer.id)]=customer;});
@@ -4928,6 +5006,7 @@ function getAdminGridPage(token, moduleName, options) {
       shipping: {table:'ShippingMethods', permission:'shipping.view', search:['id','name','method'], status:'status', totals:[]},
       customers: {table:'Customers', permission:'customers.view', search:['id','username','firstname','lastname','phone','email'], status:'status', totals:[]},
       sellers: {table:'Stores', permission:'sellers.manage', search:['id','shopName','ownerName','ownerEmail','ownerPhone','slug'], status:'status', totals:['followerCount']},
+      officialProducts: {table:'Products', permission:'products.view', search:['id','sku','barcode','name','brand','categoryId'], status:'status', totals:['stock']},
       flashDeals: {table:'FlashDeals', permission:'promotions.manage', search:['id','name','shopName','productName','sellerId','productId'], status:'status', totals:['quota','soldCount','remaining']},
       marketplaceReturns: {table:'ReturnRequests', permission:'returns.manage', search:['id','orderId','orderItemId','reason','details','status'], status:'status', totals:['quantity']},
       marketplacePayouts: {table:'SellerPayouts', permission:'payouts.manage', search:['id','sellerOrderId','shopName','payoutReference','status'], status:'status', totals:['grossAmount','discountAmount','commissionAmount','netAmount']},
@@ -4942,7 +5021,7 @@ function getAdminGridPage(token, moduleName, options) {
     };
     var config = moduleMap[String(moduleName || '')];
     if (!config) throw new Error('ไม่รองรับตารางที่ร้องขอ');
-    requireAdmin_(token, config.permission);
+    if(moduleName==='officialProducts') requirePlatformOwner_(token); else requireAdmin_(token, config.permission);
     var fastPage = getAdminGridPageFast_(moduleName, config, options);
     if (fastPage) return fastPage;
     if(moduleName==='inventory')withLock_(function(){reconcileDuplicateProductVariants_();});
@@ -4954,7 +5033,7 @@ function getAdminGridPage(token, moduleName, options) {
     });
 
     // Join display-only fields with O(1) lookup maps instead of filtering full sheets for every row.
-    if (moduleName === 'products') {
+    if (moduleName === 'products' || moduleName === 'officialProducts') {
       var inventoryRows = readTable_('Inventory', true);
       var variants = readTable_('ProductVariants', true);
       var categories = readTable_('Categories', true);
@@ -5045,6 +5124,8 @@ function getAdminGridPage(token, moduleName, options) {
         x.productName = p.name || '';
       });
     }
+
+    if(moduleName==='officialProducts') rows=rows.filter(function(row){return String(row.sellerId||'')==='PLATFORM';});
 
     // Strip credentials, but preserve the source index internally until sorting is complete.
     rows = rows.map(function(row) {
