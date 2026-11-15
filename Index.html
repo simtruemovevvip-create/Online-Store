@@ -7200,6 +7200,226 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     /* ---------------- END UNIFIED MARKETPLACE SKELETON LOADING ---------------- */
 
     (function(){
+
+    /* ---------------- SPA NAVIGATION + SHORT-LIVED READ CACHE ---------------- */
+    (function installStoreSpaNavigation(){
+      var STORE_SPA_NAV_CACHE_V1 = window.STORE_SPA_NAV_CACHE_V1 || {};
+      window.STORE_SPA_NAV_CACHE_V1 = STORE_SPA_NAV_CACHE_V1;
+      var STORE_SPA_READ_TTL = {
+        getSettings:60000,
+        getCategories:45000,
+        getProducts:20000,
+        getProductById:45000,
+        getProductVariants:45000,
+        getBanners:60000,
+        getPromotions:60000,
+        getMarketplaceStores:20000,
+        getMarketplaceStore:30000,
+        getMarketplaceFlashDeals:20000,
+        getMarketplaceVouchers:30000,
+        getMarketplaceLiveRooms:30000,
+        getCart:8000,
+        getCustomerOrders:15000,
+        getAddresses:60000,
+        getCustomerPreferences:60000,
+        getCustomerBankAccounts:60000,
+        getMyNotifications:15000,
+        getCustomerWallet:15000,
+        getMyVouchers:30000,
+        getCustomerReturns:15000,
+        getFollowedStores:30000
+      };
+      var STORE_SPA_MUTATION = /^(save|delete|update|add|remove|clear|create|submit|verify|reject|approve|set|toggle|confirm|cancel|adjust|upload|register|customerLogin|sellerLogin|systemOwnerLogin|customerSocialLogin|customerLogout|logout|collect|follow|read|mark|apply|resolve|respond|send|request|restore|reconcile|change|reset|consume|settle|move|import|adminSet|adminResolve|sellerSave|sellerDelete|sellerUpdate)/i;
+      var STORE_SPA_ORIGINAL_API = apiCall;
+      var STORE_SPA_REPLAYING = false;
+      var STORE_SPA_LAST_USER_ACTION = 0;
+      var STORE_SPA_MAX_CACHE_ENTRIES = 90;
+
+      function storeSpaClone(value){
+        try{return JSON.parse(JSON.stringify(value));}catch(error){return value;}
+      }
+      function storeSpaCacheIdentity(){
+        return [
+          String(APP.accessMode||'guest'),
+          String(APP.adminToken||''),
+          String(APP.customerToken||''),
+          String(APP.sessionId||'')
+        ].join('|');
+      }
+      function storeSpaCacheKey(name,args){
+        var serialized='';
+        try{serialized=JSON.stringify(args||[]);}catch(error){serialized='';}
+        return storeSpaCacheIdentity()+'|'+String(name||'')+'|'+serialized;
+      }
+      function storeSpaClearReadCache(){
+        Object.keys(STORE_SPA_NAV_CACHE_V1).forEach(function(key){delete STORE_SPA_NAV_CACHE_V1[key];});
+      }
+      function storeSpaTrimReadCache(){
+        var keys=Object.keys(STORE_SPA_NAV_CACHE_V1);
+        if(keys.length<=STORE_SPA_MAX_CACHE_ENTRIES)return;
+        keys.sort(function(a,b){
+          return Number(STORE_SPA_NAV_CACHE_V1[a].at||0)-Number(STORE_SPA_NAV_CACHE_V1[b].at||0);
+        }).slice(0,keys.length-STORE_SPA_MAX_CACHE_ENTRIES).forEach(function(key){
+          delete STORE_SPA_NAV_CACHE_V1[key];
+        });
+      }
+
+      /* Read-only page data is kept in memory only. Mutations clear it immediately. */
+      apiCall=function(name,args,callback,showLoading,loadingText,silentError){
+        var ttl=STORE_SPA_READ_TTL[name];
+        var canCache=!!ttl&&APP.accessMode!=='owner'&&APP.accessMode!=='seller';
+        if(canCache){
+          var key=storeSpaCacheKey(name,args),entry=STORE_SPA_NAV_CACHE_V1[key];
+          if(entry&&Date.now()-Number(entry.at||0)<=ttl){
+            var cachedResult=storeSpaClone(entry.result);
+            if(typeof callback==='function')window.setTimeout(function(){callback(cachedResult);},0);
+            return;
+          }
+          return STORE_SPA_ORIGINAL_API(name,args,function(result){
+            if(result&&result.success){
+              STORE_SPA_NAV_CACHE_V1[key]={at:Date.now(),result:storeSpaClone(result)};
+              storeSpaTrimReadCache();
+            }
+            if(typeof callback==='function')callback(result);
+          },showLoading,loadingText,silentError);
+        }
+        if(STORE_SPA_MUTATION.test(String(name||'')))storeSpaClearReadCache();
+        return STORE_SPA_ORIGINAL_API(name,args,callback,showLoading,loadingText,silentError);
+      };
+
+      function storeSpaRouteSignature(route){
+        try{return JSON.stringify(route||{});}catch(error){return '';}
+      }
+      function storeSpaPushRoute(route){
+        if(!route||STORE_SPA_REPLAYING||Date.now()-STORE_SPA_LAST_USER_ACTION>5000)return;
+        try{
+          var current=window.history.state;
+          if(current&&current.__storeSpa&&storeSpaRouteSignature(current.route)===storeSpaRouteSignature(route))return;
+          window.history.pushState({__storeSpa:true,route:route},'',window.location.href);
+        }catch(error){
+          console.warn('[Online Store] SPA history update skipped',error);
+        }
+      }
+      function storeSpaWrapRoute(name,makeRoute){
+        var original=window[name];
+        if(typeof original!=='function'||original.__storeSpaWrapped)return;
+        var wrapped=function(){
+          var args=Array.prototype.slice.call(arguments);
+          var result=original.apply(this,args);
+          try{storeSpaPushRoute(makeRoute.apply(this,args));}catch(error){
+            console.warn('[Online Store] SPA route capture skipped for '+name,error);
+          }
+          return result;
+        };
+        wrapped.__storeSpaWrapped=true;
+        wrapped.__storeSpaOriginal=original;
+        window[name]=wrapped;
+      }
+
+      /* The original functions still render each page; wrappers only add browser history. */
+      var routeDefinitions={
+        goHome:function(){return {type:'public',page:'home'};},
+        showAllProducts:function(query,sort){return {type:'public',page:'products',query:String(query||''),sort:String(sort||'relevance')};},
+        viewProduct:function(id){return {type:'public',page:'product',id:String(id||'')};},
+        showStores:function(){return {type:'public',page:'stores'};},
+        showStorePage:function(id){return {type:'public',page:'store',id:String(id||'')};},
+        showFlashDeals:function(){return {type:'public',page:'flash'};},
+        showMarketplaceVouchers:function(){return {type:'public',page:'vouchers'};},
+        showLiveRooms:function(){return {type:'public',page:'live'};},
+        showPromotions:function(){return {type:'public',page:'promotions'};},
+        showAbout:function(){return {type:'public',page:'about'};},
+        showContact:function(){return {type:'public',page:'contact'};},
+        showPolicy:function(key){return {type:'public',page:'policy',key:String(key||'returnPolicy')};},
+        showRecommendedProducts:function(page){return {type:'public',page:'recommended',pageNumber:Number(page||1)};},
+        openCart:function(){return {type:'public',page:'cart'};},
+        openCheckout:function(){return {type:'public',page:'checkout'};},
+        openAccount:function(){return {type:'customer',page:'purchase'};},
+        customerPortalNavigate:function(page){return {type:'customer',page:String(page||'purchase')};},
+        openSellerCenter:function(){return {type:'seller',page:'dashboard'};},
+        loadSellerPage:function(page){return {type:'seller',page:String(page||'dashboard')};},
+        openAdmin:function(){return {type:'owner',page:'dashboard'};},
+        loadAdminPage:function(page){return {type:'owner',page:String(page||'dashboard')};}
+      };
+      Object.keys(routeDefinitions).forEach(function(name){storeSpaWrapRoute(name,routeDefinitions[name]);});
+
+      function storeSpaRestoreDefault(){
+        if(APP.accessMode==='owner'&&APP.adminToken){
+          applyAccessMode('owner');renderAdminShell();loadAdminPage('dashboard');return;
+        }
+        if(APP.accessMode==='seller'&&APP.customerToken){
+          if(APP.sellerStore&&APP.sellerStore.status==='Active'){
+            applyAccessMode('seller');renderSellerShell();loadSellerPage('dashboard');return;
+          }
+          openSellerCenter();return;
+        }
+        if(APP.accessMode==='customer'&&APP.customerToken){
+          applyAccessMode('customer');customerPortalNavigate('purchase');return;
+        }
+        if(APP.sharedProductId){applyAccessMode('guest');viewProduct(APP.sharedProductId);return;}
+        applyAccessMode('guest');goHome();
+      }
+      function storeSpaApplyRoute(route){
+        STORE_SPA_REPLAYING=true;
+        try{
+          if(!route||route.type==='default'){storeSpaRestoreDefault();return;}
+          if(route.type==='owner'){
+            if(!APP.adminToken){openSystemOwnerLogin();return;}
+            applyAccessMode('owner');renderAdminShell();loadAdminPage(route.page||'dashboard');return;
+          }
+          if(route.type==='seller'){
+            if(!APP.customerToken){openSellerAuth();return;}
+            if(APP.sellerStore&&APP.sellerStore.status==='Active'){
+              applyAccessMode('seller');renderSellerShell();loadSellerPage(route.page||'dashboard');return;
+            }
+            openSellerCenter();return;
+          }
+          if(route.type==='customer'){
+            if(!APP.customerToken){openCustomerAuth('login');return;}
+            applyAccessMode('customer');customerPortalNavigate(route.page||'purchase');return;
+          }
+          if(route.type!=='public')return;
+          if(route.page==='home')goHome();
+          else if(route.page==='products')showAllProducts(route.query||'',route.sort||'relevance');
+          else if(route.page==='product'&&route.id)viewProduct(route.id);
+          else if(route.page==='stores')showStores();
+          else if(route.page==='store'&&route.id)showStorePage(route.id);
+          else if(route.page==='flash')showFlashDeals();
+          else if(route.page==='vouchers')showMarketplaceVouchers();
+          else if(route.page==='live')showLiveRooms();
+          else if(route.page==='promotions')showPromotions();
+          else if(route.page==='about')showAbout();
+          else if(route.page==='contact')showContact();
+          else if(route.page==='policy')showPolicy(route.key||'returnPolicy');
+          else if(route.page==='recommended')showRecommendedProducts(route.pageNumber||1);
+          else if(route.page==='cart')openCart();
+          else if(route.page==='checkout')openCheckout();
+        }catch(error){
+          console.error('[Online Store] Could not restore SPA page',error);
+          alertError('ไม่สามารถย้อนกลับไปยังหน้าก่อนหน้าได้ กรุณาเลือกเมนูอีกครั้ง');
+        }finally{
+          window.setTimeout(function(){STORE_SPA_REPLAYING=false;},0);
+        }
+      }
+
+      document.addEventListener('click',function(event){
+        var target=event.target;
+        if(target&&target.closest&&target.closest('button,a,[role="button"]'))STORE_SPA_LAST_USER_ACTION=Date.now();
+      },true);
+      document.addEventListener('submit',function(){STORE_SPA_LAST_USER_ACTION=Date.now();},true);
+
+      try{
+        var existingState=window.history.state;
+        if(!existingState||!existingState.__storeSpa){
+          window.history.replaceState({__storeSpa:true,route:{type:'default'}},'',window.location.href);
+        }
+      }catch(error){}
+      window.addEventListener('popstate',function(event){
+        var state=event&&event.state;
+        storeSpaApplyRoute(state&&state.__storeSpa?state.route:{type:'default'});
+      });
+    })();
+    /* ---------------- END SPA NAVIGATION + SHORT-LIVED READ CACHE ---------------- */
+
       var appStartupStarted=false;
       var tableEnhancerStarted=false;
 
