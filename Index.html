@@ -2475,6 +2475,10 @@ function beginApiLoading(text){
         case 'getMarketplaceStores': requestPromise=gsRun('getMarketplaceStores',args[0]); break;
         case 'getMarketplaceStore': requestPromise=gsRun('getMarketplaceStore',args[0],args[1]); break;
         case 'getMarketplaceStorefront': requestPromise=gsRun('getMarketplaceStorefront',args[0],args[1],args[2],args[3],args[4],args[5]); break;
+        case 'adminGetOfficialStore': requestPromise=gsRun('adminGetOfficialStore',args[0]); break;
+        case 'adminSaveOfficialStore': requestPromise=gsRun('adminSaveOfficialStore',args[0],args[1]); break;
+        case 'savePlatformProduct': requestPromise=gsRun('savePlatformProduct',args[0],args[1]); break;
+        case 'deletePlatformProduct': requestPromise=gsRun('deletePlatformProduct',args[0],args[1]); break;
         case 'applySeller': requestPromise=gsRun('applySeller',args[0],args[1]); break;
         case 'getMyStore': requestPromise=gsRun('getMyStore',args[0]); break;
         case 'adminGetSellers': requestPromise=gsRun('adminGetSellers',args[0],args[1]); break;
@@ -4827,7 +4831,8 @@ function loadPublicData(onComplete){
       {id:'dashboard',label:'แดชบอร์ด',icon:'fa-gauge-high',group:'ภาพรวม'},
       {id:'products',label:'สินค้า',icon:'fa-box'}, {id:'categories',label:'หมวดหมู่',icon:'fa-layer-group'}, {id:'inventory',label:'คลังสินค้า',icon:'fa-warehouse'},
       {id:'orders',label:'คำสั่งซื้อ',icon:'fa-receipt'}, {id:'payments',label:'การชำระเงิน',icon:'fa-credit-card'}, {id:'shipping',label:'การจัดส่ง',icon:'fa-truck'},
-      {id:'customers',label:'ลูกค้า',icon:'fa-users'}, {id:'sellers',label:'ผู้ขายและร้านค้า',icon:'fa-store'}, {id:'flashDeals',label:'แฟลชดีล',icon:'fa-bolt'}, {id:'marketplaceReturns',label:'คืนสินค้า/คืนเงิน',icon:'fa-rotate-left'}, {id:'marketplacePayouts',label:'จ่ายเงินผู้ขาย',icon:'fa-wallet'}, {id:'promotions',label:'โปรโมชั่น',icon:'fa-bolt'}, {id:'coupons',label:'คูปอง',icon:'fa-ticket'},
+      {id:'customers',label:'ลูกค้า',icon:'fa-users'}, {id:'sellers',label:'ผู้ขายและร้านค้า',icon:'fa-store'},
+      {id:'officialStore',label:'ร้านค้าทางการ',icon:'fa-shop',group:'ตั้งค่าร้าน'}, {id:'officialProducts',label:'สินค้าร้านค้าทางการ',icon:'fa-box-open'}, {id:'flashDeals',label:'แฟลชดีล',icon:'fa-bolt'}, {id:'marketplaceReturns',label:'คืนสินค้า/คืนเงิน',icon:'fa-rotate-left'}, {id:'marketplacePayouts',label:'จ่ายเงินผู้ขาย',icon:'fa-wallet'}, {id:'promotions',label:'โปรโมชั่น',icon:'fa-bolt'}, {id:'coupons',label:'คูปอง',icon:'fa-ticket'},
       {id:'reviews',label:'รีวิว',icon:'fa-star'}, {id:'banners',label:'แบนเนอร์',icon:'fa-images'}, {id:'reports',label:'รายงาน',icon:'fa-chart-column',group:'ตั้งค่าร้าน'},
       {id:'settings',label:'ตั้งค่าร้านค้า',icon:'fa-gear'}, {id:'users',label:'ผู้ใช้งานและสิทธิ์',icon:'fa-user-shield'}, {id:'logs',label:'บันทึกกิจกรรม',icon:'fa-list-check'},
       {id:'newsletters',label:'ผู้รับข่าวสาร',icon:'fa-envelope'}, {id:'demo',label:'ข้อมูลตัวอย่าง',icon:'fa-flask'}, {id:'backup',label:'สำรองข้อมูล',icon:'fa-database'}
@@ -4876,9 +4881,9 @@ function loadPublicData(onComplete){
     }
     var ADMIN_LANGUAGE=localStorage.getItem('owner_admin_language')||'th';
     var ADMIN_TRANSLATIONS={
-      th:{role:'เจ้าของระบบ',caption:'จัดการแพลตฟอร์มทั้งหมด',sidebar:'เมนูจัดการระบบ',upload:'อัปโหลด',notifications:'การแจ้งเตือนระบบ',viewLogs:'ดูประวัติกิจกรรมทั้งหมด',logout:'ออกจากระบบ',language:'ภาษา',dashboardSub:'ภาพรวมและสถานะของ Marketplace',pageSub:'จัดการ',empty:'ไม่มีการแจ้งเตือนใหม่',loading:'กำลังโหลดการแจ้งเตือน...',notificationError:'ไม่สามารถโหลดการแจ้งเตือนได้',noAccount:'เจ้าของระบบ',groups:{'ภาพรวม':'ภาพรวม','ตั้งค่าร้าน':'ตั้งค่าร้าน'},menus:{dashboard:'แดชบอร์ด',products:'สินค้า',categories:'หมวดหมู่',inventory:'คลังสินค้า',orders:'คำสั่งซื้อ',payments:'การชำระเงิน',shipping:'การจัดส่ง',customers:'ลูกค้า',sellers:'ผู้ขายและร้านค้า',flashDeals:'แฟลชดีล',marketplaceReturns:'คืนสินค้า/คืนเงิน',marketplacePayouts:'จ่ายเงินผู้ขาย',promotions:'โปรโมชั่น',coupons:'คูปอง',reviews:'รีวิว',banners:'แบนเนอร์',reports:'รายงาน',settings:'ตั้งค่าร้านค้า',users:'ผู้ใช้งานและสิทธิ์',logs:'บันทึกกิจกรรม',newsletters:'ผู้รับข่าวสาร',demo:'ข้อมูลตัวอย่าง',backup:'สำรองข้อมูล'}},
-      en:{role:'System Owner',caption:'Manage the entire marketplace',sidebar:'Workspace menu',upload:'Upload',notifications:'System notifications',viewLogs:'View all activity logs',logout:'Sign out',language:'Language',dashboardSub:'Marketplace overview and status',pageSub:'Manage',empty:'No new notifications',loading:'Loading notifications...',notificationError:'Could not load notifications',noAccount:'เจ้าของระบบ',groups:{'ภาพรวม':'OVERVIEW','ตั้งค่าร้าน':'MANAGEMENT'},menus:{dashboard:'แดชบอร์ด',products:'Products',categories:'Categories',inventory:'Inventory',orders:'Orders',payments:'Payments',shipping:'Shipping',customers:'Customers',sellers:'Sellers & Stores',flashDeals:'แฟลชดีล',marketplaceReturns:'Returns & Refunds',marketplacePayouts:'Seller Payouts',promotions:'Promotions',coupons:'Coupons',reviews:'Reviews',banners:'Banners',reports:'Reports',settings:'Store Settings',users:'Users & Permissions',logs:'Activity Logs',newsletters:'Subscribers',demo:'Demo Data',backup:'Backups'}},
-      my:{role:'စနစ်ပိုင်ရှင်',caption:'Marketplace စီမံခန့်ခွဲမှု',sidebar:'လုပ်ငန်းခွင် မီနူး',upload:'ဖိုင်တင်ရန်',notifications:'စနစ်အသိပေးချက်များ',viewLogs:'လုပ်ဆောင်မှုမှတ်တမ်းအားလုံး',logout:'ထွက်ရန်',language:'ဘာသာစကား',dashboardSub:'Marketplace အခြေအနေနှင့် အနှစ်ချုပ်',pageSub:'စီမံရန်',empty:'အသိပေးချက်အသစ် မရှိပါ',loading:'အသိပေးချက်များ ဖွင့်နေသည်...',notificationError:'အသိပေးချက်များ မရယူနိုင်ပါ',noAccount:'စနစ်ပိုင်ရှင်',groups:{'ภาพรวม':'အနှစ်ချုပ်','ตั้งค่าร้าน':'စီမံခန့်ခွဲမှု'},menus:{dashboard:'ဒက်ရှ်ဘုတ်',products:'ကုန်ပစ္စည်းများ',categories:'အမျိုးအစားများ',inventory:'လက်ကျန်ပစ္စည်း',orders:'အော်ဒါများ',payments:'ငွေပေးချေမှု',shipping:'ပို့ဆောင်မှု',customers:'ဖောက်သည်များ',sellers:'ရောင်းချသူနှင့် ဆိုင်များ',flashDeals:'แฟลชดีล',marketplaceReturns:'ပြန်အမ်းခြင်း',marketplacePayouts:'ရောင်းချသူငွေပေးချေမှု',promotions:'ပရိုမိုးရှင်း',coupons:'ကူပွန်',reviews:'သုံးသပ်ချက်များ',banners:'ဘန်နာများ',reports:'အစီရင်ခံစာ',settings:'ဆိုင်ဆက်တင်',users:'အသုံးပြုသူနှင့် ခွင့်ပြုချက်',logs:'လုပ်ဆောင်မှုမှတ်တမ်း',newsletters:'စာရင်းသွင်းသူများ',demo:'နမူနာဒေတာ',backup:'အရန်သိမ်းဆည်းမှု'}}
+      th:{role:'เจ้าของระบบ',caption:'จัดการแพลตฟอร์มทั้งหมด',sidebar:'เมนูจัดการระบบ',upload:'อัปโหลด',notifications:'การแจ้งเตือนระบบ',viewLogs:'ดูประวัติกิจกรรมทั้งหมด',logout:'ออกจากระบบ',language:'ภาษา',dashboardSub:'ภาพรวมและสถานะของ Marketplace',pageSub:'จัดการ',empty:'ไม่มีการแจ้งเตือนใหม่',loading:'กำลังโหลดการแจ้งเตือน...',notificationError:'ไม่สามารถโหลดการแจ้งเตือนได้',noAccount:'เจ้าของระบบ',groups:{'ภาพรวม':'ภาพรวม','ตั้งค่าร้าน':'ตั้งค่าร้าน'},menus:{dashboard:'แดชบอร์ด',products:'สินค้า',categories:'หมวดหมู่',inventory:'คลังสินค้า',orders:'คำสั่งซื้อ',payments:'การชำระเงิน',shipping:'การจัดส่ง',customers:'ลูกค้า',sellers:'ผู้ขายและร้านค้า',officialStore:'ร้านค้าทางการ',officialProducts:'สินค้าร้านค้าทางการ',flashDeals:'แฟลชดีล',marketplaceReturns:'คืนสินค้า/คืนเงิน',marketplacePayouts:'จ่ายเงินผู้ขาย',promotions:'โปรโมชั่น',coupons:'คูปอง',reviews:'รีวิว',banners:'แบนเนอร์',reports:'รายงาน',settings:'ตั้งค่าร้านค้า',users:'ผู้ใช้งานและสิทธิ์',logs:'บันทึกกิจกรรม',newsletters:'ผู้รับข่าวสาร',demo:'ข้อมูลตัวอย่าง',backup:'สำรองข้อมูล'}},
+      en:{role:'System Owner',caption:'Manage the entire marketplace',sidebar:'Workspace menu',upload:'Upload',notifications:'System notifications',viewLogs:'View all activity logs',logout:'Sign out',language:'Language',dashboardSub:'Marketplace overview and status',pageSub:'Manage',empty:'No new notifications',loading:'Loading notifications...',notificationError:'Could not load notifications',noAccount:'เจ้าของระบบ',groups:{'ภาพรวม':'OVERVIEW','ตั้งค่าร้าน':'MANAGEMENT'},menus:{dashboard:'แดชบอร์ด',products:'Products',categories:'Categories',inventory:'Inventory',orders:'Orders',payments:'Payments',shipping:'Shipping',customers:'Customers',sellers:'Sellers & Stores',officialStore:'Official Store',officialProducts:'Official Store Products',flashDeals:'แฟลชดีล',marketplaceReturns:'Returns & Refunds',marketplacePayouts:'Seller Payouts',promotions:'Promotions',coupons:'Coupons',reviews:'Reviews',banners:'Banners',reports:'Reports',settings:'Store Settings',users:'Users & Permissions',logs:'Activity Logs',newsletters:'Subscribers',demo:'Demo Data',backup:'Backups'}},
+      my:{role:'စနစ်ပိုင်ရှင်',caption:'Marketplace စီမံခန့်ခွဲမှု',sidebar:'လုပ်ငန်းခွင် မီနူး',upload:'ဖိုင်တင်ရန်',notifications:'စနစ်အသိပေးချက်များ',viewLogs:'လုပ်ဆောင်မှုမှတ်တမ်းအားလုံး',logout:'ထွက်ရန်',language:'ဘာသာစကား',dashboardSub:'Marketplace အခြေအနေနှင့် အနှစ်ချုပ်',pageSub:'စီမံရန်',empty:'အသိပေးချက်အသစ် မရှိပါ',loading:'အသိပေးချက်များ ဖွင့်နေသည်...',notificationError:'အသိပေးချက်များ မရယူနိုင်ပါ',noAccount:'စနစ်ပိုင်ရှင်',groups:{'ภาพรวม':'အနှစ်ချုပ်','ตั้งค่าร้าน':'စီမံခန့်ခွဲမှု'},menus:{dashboard:'ဒက်ရှ်ဘုတ်',products:'ကုန်ပစ္စည်းများ',categories:'အမျိုးအစားများ',inventory:'လက်ကျန်ပစ္စည်း',orders:'အော်ဒါများ',payments:'ငွေပေးချေမှု',shipping:'ပို့ဆောင်မှု',customers:'ဖောက်သည်များ',sellers:'ရောင်းချသူနှင့် ဆိုင်များ',officialStore:'တရားဝင်ဆိုင်',officialProducts:'တရားဝင်ဆိုင်၏ ကုန်ပစ္စည်းများ',flashDeals:'แฟลชดีล',marketplaceReturns:'ပြန်အမ်းခြင်း',marketplacePayouts:'ရောင်းချသူငွေပေးချေမှု',promotions:'ပရိုမိုးရှင်း',coupons:'ကူပွန်',reviews:'သုံးသပ်ချက်များ',banners:'ဘန်နာများ',reports:'အစီရင်ခံစာ',settings:'ဆိုင်ဆက်တင်',users:'အသုံးပြုသူနှင့် ခွင့်ပြုချက်',logs:'လုပ်ဆောင်မှုမှတ်တမ်း',newsletters:'စာရင်းသွင်းသူများ',demo:'နမူနာဒေတာ',backup:'အရန်သိမ်းဆည်းမှု'}}
     };
     function adminLangText(key){var dict=ADMIN_TRANSLATIONS[ADMIN_LANGUAGE]||ADMIN_TRANSLATIONS.th;return dict[key]||ADMIN_TRANSLATIONS.th[key]||key;}
     function adminMenuLabel(id){var dict=ADMIN_TRANSLATIONS[ADMIN_LANGUAGE]||ADMIN_TRANSLATIONS.th;var item=dict.menus[id];if(item)return item;var original=ADMIN_MENUS.filter(function(x){return x.id===id;})[0];return original?original.label:id;}
@@ -4940,7 +4945,7 @@ function loadPublicData(onComplete){
       }
       var side=document.getElementById('adminSidebar');if(side)side.classList.remove('open');var backdrop=document.getElementById('adminSidebarBackdrop');if(backdrop)backdrop.classList.remove('show');var sidebarToggle=document.getElementById('adminSidebarToggle');if(sidebarToggle)sidebarToggle.setAttribute('aria-expanded','false');
       if(main)main.scrollTop=0;
-      if(page==='dashboard'){loadAdminDashboard();return;}if(page==='settings'){loadAdminSettings();return;}if(page==='reports'){loadAdminReports();return;}if(page==='demo'){renderDemoAdmin();if(document.documentElement.hasAttribute('data-store-browser-reload'))window.setTimeout(finishBrowserRefreshSkeleton,90);return;}if(page==='backup'){loadBackupAdmin();return;}if(page==='shipping'){loadShippingAdmin();return;}if(['sellers','flashDeals','marketplaceReturns','marketplacePayouts'].indexOf(page)>=0){loadMarketplaceAdmin(page);return;}loadAdminModule(page);
+      if(page==='dashboard'){loadAdminDashboard();return;}if(page==='officialStore'){loadOfficialStoreAdmin();return;}if(page==='settings'){loadAdminSettings();return;}if(page==='reports'){loadAdminReports();return;}if(page==='demo'){renderDemoAdmin();if(document.documentElement.hasAttribute('data-store-browser-reload'))window.setTimeout(finishBrowserRefreshSkeleton,90);return;}if(page==='backup'){loadBackupAdmin();return;}if(page==='shipping'){loadShippingAdmin();return;}if(['sellers','flashDeals','marketplaceReturns','marketplacePayouts'].indexOf(page)>=0){loadMarketplaceAdmin(page);return;}loadAdminModule(page);
     }
     function adminLogout(){
       var token=APP.adminToken;
@@ -5237,7 +5242,7 @@ function loadPublicData(onComplete){
     function adminGridCol(key,label,type,total,hidden){return {key:key,label:label,type:type||'text',total:!!total,defaultVisible:!hidden,sortable:true};}
     function adminGridColumns(page,rows){
       var config=MODULE_CONFIG[page],cols=[];
-      if(config&&config.columns){var totalsByPage={products:['stock'],categories:[],promotions:[],coupons:['usedCount'],banners:[],customers:[],users:[],shipping:[]};var pageTotals=totalsByPage[page]||[];cols=config.columns.map(function(c){var key=c[0],label=c[1],moneyKeys=['price','salePrice','costPrice','grandTotal','amount','fee','freeMinimum','dealPrice','netAmount','grossAmount','commissionAmount','discountAmount','subtotal','shippingFee','tax','discountValue','minimumOrder','maximumDiscount','value'];var numberKeys=['stock','quantity','reserved','available','order','rating','usedCount','quota','soldCount','remaining','followerCount','commissionRate'];var dateKeys=['createdAt','updatedAt','timestamp','paymentDate','approvedAt','paidAt','startDate','endDate'];var type=moneyKeys.indexOf(key)>=0?'money':(numberKeys.indexOf(key)>=0?'number':(dateKeys.indexOf(key)>=0?'date':(['status','orderStatus','paymentStatus'].indexOf(key)>=0?'status':(['featured','bestSeller'].indexOf(key)>=0?'boolean':'text'))));return adminGridCol(key,label,type,pageTotals.indexOf(key)>=0,['id','slug','parentId'].indexOf(key)>=0);});}
+      if(config&&config.columns){var totalsByPage={products:['stock'],officialProducts:['stock'],categories:[],promotions:[],coupons:['usedCount'],banners:[],customers:[],users:[],shipping:[]};var pageTotals=totalsByPage[page]||[];cols=config.columns.map(function(c){var key=c[0],label=c[1],moneyKeys=['price','salePrice','costPrice','grandTotal','amount','fee','freeMinimum','dealPrice','netAmount','grossAmount','commissionAmount','discountAmount','subtotal','shippingFee','tax','discountValue','minimumOrder','maximumDiscount','value'];var numberKeys=['stock','quantity','reserved','available','order','rating','usedCount','quota','soldCount','remaining','followerCount','commissionRate'];var dateKeys=['createdAt','updatedAt','timestamp','paymentDate','approvedAt','paidAt','startDate','endDate'];var type=moneyKeys.indexOf(key)>=0?'money':(numberKeys.indexOf(key)>=0?'number':(dateKeys.indexOf(key)>=0?'date':(['status','orderStatus','paymentStatus'].indexOf(key)>=0?'status':(['featured','bestSeller'].indexOf(key)>=0?'boolean':'text'))));return adminGridCol(key,label,type,pageTotals.indexOf(key)>=0,['id','slug','parentId'].indexOf(key)>=0);});}
       else if(page==='orders')cols=[adminGridCol('orderNumber','เลขคำสั่งซื้อ'),adminGridCol('customerName','ลูกค้า'),adminGridCol('phone','โทรศัพท์'),adminGridCol('grandTotal','ยอดสุทธิ','money',true),adminGridCol('paymentStatus','การชำระเงิน','status'),adminGridCol('orderStatus','สถานะคำสั่งซื้อ','status'),adminGridCol('createdAt','วันที่สั่งซื้อ','date')];
       else if(page==='payments')cols=[adminGridCol('orderNumber','เลขคำสั่งซื้อ'),adminGridCol('customerName','ลูกค้า'),adminGridCol('reference','เลขอ้างอิง'),adminGridCol('amount','ยอดชำระ','money',true),adminGridCol('paymentMethod','วิธีชำระ'),adminGridCol('status','สถานะชำระเงิน','status'),adminGridCol('paymentDate','วันที่ชำระ','date')];
       else if(page==='inventory')cols=[adminGridCol('productName','สินค้า'),adminGridCol('variantName','ตัวเลือก'),adminGridCol('sku','SKU'),adminGridCol('quantity','คงเหลือ','number',true),adminGridCol('reserved','จอง','number',true),adminGridCol('available','พร้อมขาย','number',true),adminGridCol('minimumStock','สต็อกขั้นต่ำ','number')];
@@ -5495,6 +5500,56 @@ function loadPublicData(onComplete){
     function renderAdminTable(page,rows,meta){var state=adminGridState(page);state.rows=safeArray(rows);state.meta=meta||state.meta;state.columns=adminGridColumns(page,state.rows);var cfg=MODULE_CONFIG[page],titles={orders:'คำสั่งซื้อ',payments:'การชำระเงิน',inventory:'คลังสินค้า',reviews:'รีวิว',logs:'บันทึกกิจกรรม',newsletters:'ผู้รับข่าวสาร'};state.title=cfg?cfg.title:(titles[page]||page);state.topActions='';if(cfg)state.topActions='<button class="btn btn-primary btn-small" type="button" onclick="openEditor(\''+page+'\',null)"><i class="fa-solid fa-plus"></i> '+esc(cfg.add)+'</button>';if(page==='inventory')state.topActions='<button class="btn btn-primary btn-small" type="button" onclick="inventoryCreateDialog()"><i class="fa-solid fa-plus"></i> เพิ่มเข้าคลัง</button><button class="btn btn-outline btn-small" type="button" onclick="adjustInventoryDialog()"><i class="fa-solid fa-arrows-rotate"></i> ปรับสต็อก</button>';state.actionRenderer=function(row){return adminRowActions(page,row,cfg);};if(!state.visibleKeys){try{var saved=JSON.parse(localStorage.getItem('eg_cols_'+state.id)||'null');if(Array.isArray(saved))state.visibleKeys=saved;}catch(e){}}APP.adminData=state.rows;renderAdminGridHost(state);}
     function renderMarketplaceAdminTable(page,rows,meta){var state=adminGridState(page);state.rows=safeArray(rows);state.meta=meta||state.meta;state.columns=adminGridColumns(page,state.rows);state.title=page==='sellers'?'ผู้ขายและร้านค้า':(page==='flashDeals'?'แฟลชดีล':(page==='marketplaceReturns'?'คำขอคืนสินค้า/คืนเงิน':'ยอดจ่ายผู้ขาย'));state.topActions='';state.actionRenderer=function(row){return marketAdminActions(page,row);};if(!state.visibleKeys){try{var saved=JSON.parse(localStorage.getItem('eg_cols_'+state.id)||'null');if(Array.isArray(saved))state.visibleKeys=saved;}catch(e){}}APP.adminData=state.rows;renderAdminGridHost(state);}
     function renderBackupAdminGrid(state){state.columns=adminGridColumns('backup',state.rows);state.title='ประวัติสำรองข้อมูล';state.topActions='<button class="btn btn-primary btn-small" type="button" onclick="makeBackup(this)"><i class="fa-solid fa-database"></i> สำรองข้อมูล</button>';state.actionRenderer=function(row){return row.fileId?'<a class="btn btn-outline btn-small" target="_blank" rel="noopener" href="https://drive.google.com/file/d/'+encodeURIComponent(row.fileId)+'/view">เปิดไฟล์</a>':'—';};renderAdminGridHost(state);}
+    function loadOfficialStoreAdmin(){
+      var host=document.getElementById('adminContent');if(!host)return;
+      host.setAttribute('aria-busy','true');
+      apiCall('adminGetOfficialStore',[APP.adminToken],function(r){
+        if(!host.isConnected)return;host.setAttribute('aria-busy','false');
+        if(!r||!r.success){host.innerHTML='<div class="panel"><div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><h3>โหลดข้อมูลร้านค้าทางการไม่สำเร็จ</h3><p>'+esc(r&&r.message||'กรุณาลองอีกครั้ง')+'</p><button class="btn btn-outline btn-small" onclick="loadOfficialStoreAdmin()">ลองอีกครั้ง</button></div></div>';return;}
+        renderOfficialStoreAdmin(r.data||{});
+      },false);
+    }
+    function renderOfficialStoreAdmin(data){
+      var host=document.getElementById('adminContent');if(!host)return;
+      var store=data.store||null,m=data.metrics||{};
+      if(!store){
+        host.innerHTML='<section class="official-store-admin"><div class="official-store-hero"><div class="official-store-hero-icon"><i class="fa-solid fa-shop"></i></div><div><span class="official-store-eyebrow">PLATFORM SELLER</span><h2>สร้างร้านค้าทางการของแพลตฟอร์ม</h2><p>เปิดร้านของแพลตฟอร์มโดยไม่ต้องสมัครผู้ขายแยก ใช้สินค้า SKU คลังสินค้า คำสั่งซื้อ และการจัดส่งร่วมกับระบบเดิม แต่แยกรายได้ออกจากค่าคอมมิชชันผู้ขาย</p></div></div><div class="official-store-create-card"><div><b>ยังไม่ได้สร้างร้านค้าทางการ</b><small>ร้านนี้จะใช้รหัสภายใน PLATFORM และจะแสดงในหน้า Marketplace เมื่อเปิดใช้งาน</small></div><button type="button" class="btn btn-primary" onclick="openOfficialStoreEditor(null)"><i class="fa-solid fa-plus"></i> สร้างร้านค้าทางการ</button></div></section>';
+        return;
+      }
+      APP.platformOfficialStore=store;
+      var logo=store.logo?'<img src="'+imageUrl(store.logo)+'" alt="" onerror="imageFallback(this)">':'<i class="fa-solid fa-store"></i>';
+      var cards=[['สินค้าในร้าน',m.productCount||0,'fa-box'],['สินค้าที่เปิดขาย',m.activeProducts||0,'fa-tags'],['คำสั่งซื้อทั้งหมด',m.orderCount||0,'fa-receipt'],['รอดำเนินการ',m.pendingOrders||0,'fa-truck'],['คำสั่งซื้อสำเร็จ',m.completedOrders||0,'fa-circle-check'],['ยอดขายที่สำเร็จ',money(m.completedSales||0),'fa-chart-line']];
+      host.innerHTML='<section class="official-store-admin">'+
+        '<div class="official-store-hero"><div class="official-store-hero-icon">'+logo+'</div><div class="official-store-hero-copy"><span class="official-store-eyebrow">PLATFORM OFFICIAL STORE</span><h2>'+esc(store.shopName||'Platform Official Store')+' <span class="official-store-live">เปิดใช้งาน</span></h2><p>แยกรายได้จากร้านค้าภายนอก · ค่าคอมมิชชัน 0% · ร้าน ID: PLATFORM</p><div class="official-store-hero-actions"><button class="btn btn-outline btn-small" type="button" onclick="openOfficialStoreEditor(APP.platformOfficialStore)"><i class="fa-solid fa-pen"></i> แก้ไขข้อมูลร้าน</button><button class="btn btn-outline btn-small" type="button" onclick="showStorePage(\'PLATFORM\')"><i class="fa-solid fa-arrow-up-right-from-square"></i> ดูหน้าร้าน</button></div></div></div>'+
+        '<div class="official-store-metrics">'+cards.map(function(x){return '<div class="official-store-metric"><span><i class="fa-solid '+x[2]+'"></i></span><div><small>'+x[0]+'</small><b>'+x[1]+'</b></div></div>';}).join('')+'</div>'+
+        '<div class="official-store-work-grid">'+
+          '<button type="button" class="official-store-work-card" onclick="loadAdminPage(\'officialProducts\')"><i class="fa-solid fa-box-open"></i><b>จัดการสินค้าและ SKU</b><small>เพิ่มสินค้า แก้ไขตัวเลือก รูปภาพ และสต็อกเริ่มต้น</small><span>เปิดจัดการสินค้า <i class="fa-solid fa-arrow-right"></i></span></button>'+
+          '<button type="button" class="official-store-work-card" onclick="loadAdminPage(\'orders\')"><i class="fa-solid fa-receipt"></i><b>คำสั่งซื้อและจัดส่ง</b><small>ตรวจสอบคำสั่งซื้อ ชำระเงิน และบันทึกเลขพัสดุผ่านระบบกลาง</small><span>เปิดคำสั่งซื้อ <i class="fa-solid fa-arrow-right"></i></span></button>'+
+          '<button type="button" class="official-store-work-card" onclick="loadAdminPage(\'inventory\')"><i class="fa-solid fa-warehouse"></i><b>คลังสินค้า</b><small>ตรวจสอบคงเหลือ สต็อกจอง และปรับจำนวนสินค้า</small><span>เปิดคลังสินค้า <i class="fa-solid fa-arrow-right"></i></span></button>'+
+          '<button type="button" class="official-store-work-card" onclick="loadAdminPage(\'reviews\')"><i class="fa-solid fa-star"></i><b>รีวิวสินค้า</b><small>ตรวจสอบและจัดการรีวิวตามนโยบาย Marketplace</small><span>เปิดรีวิว <i class="fa-solid fa-arrow-right"></i></span></button>'+
+        '</div><div class="official-store-note"><i class="fa-solid fa-circle-info"></i><span>ยอดขายของร้านทางการจะอยู่ใน SellerOrders รหัส PLATFORM และไม่สร้างรายการจ่ายเงินผู้ขาย (SellerPayouts) หรือหักค่าคอมมิชชัน Marketplace</span></div>'+
+      '</section>';
+    }
+    function openOfficialStoreEditor(store){
+      store=store||{};
+      var html='<div class="modal-form-grid">'+
+        '<div class="modal-field full"><label for="officialShopName">ชื่อร้านค้า <span class="required-mark">*</span></label><input id="officialShopName" maxlength="120" value="'+esc(store.shopName||'Platform Official Store')+'" placeholder="Platform Official Store" required></div>'+
+        '<div class="modal-field"><label for="officialShopSlug">Shop URL / Slug</label><input id="officialShopSlug" maxlength="160" value="'+esc(store.slug||'platform-official-store')+'"></div>'+
+        '<div class="modal-field"><label for="officialShopEmail">อีเมลร้านค้า</label><input id="officialShopEmail" type="email" maxlength="160" value="'+esc(store.email||'')+'"></div>'+
+        '<div class="modal-field"><label for="officialShopPhone">เบอร์โทรศัพท์</label><input id="officialShopPhone" maxlength="40" value="'+esc(store.phone||'')+'"></div>'+
+        '<div class="modal-field full"><label for="officialShopAddress">ที่อยู่ร้านค้า</label><input id="officialShopAddress" maxlength="500" value="'+esc(store.address||'')+'"></div>'+
+        '<div class="modal-field full"><label for="officialShopDescription">รายละเอียดร้านค้า</label><textarea id="officialShopDescription" rows="3">'+esc(store.description||'')+'</textarea></div>'+
+        renderAdminImageField('logo','โลโก้ร้านค้า',store.logo||'','Website')+
+        renderAdminImageField('banner','แบนเนอร์หน้าร้าน',store.banner||'','Banners')+
+        '<div class="modal-field full official-store-form-hint"><i class="fa-solid fa-shield-halved"></i> ร้านนี้เป็นทรัพย์สินของแพลตฟอร์ม ใช้ Store ID: PLATFORM และกำหนดค่าคอมมิชชันเป็น 0% โดยอัตโนมัติ</div>'+
+      '</div>';
+      Swal.fire({title:store.id?'แก้ไขร้านค้าทางการ':'สร้างร้านค้าทางการ',html:html,width:850,showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึกร้านค้า',cancelButtonText:'ยกเลิก',allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){
+        var data={shopName:document.getElementById('officialShopName').value.trim(),slug:document.getElementById('officialShopSlug').value.trim(),email:document.getElementById('officialShopEmail').value.trim(),phone:document.getElementById('officialShopPhone').value.trim(),address:document.getElementById('officialShopAddress').value.trim(),description:document.getElementById('officialShopDescription').value,logo:document.getElementById('edit_logo').value.trim(),banner:document.getElementById('edit_banner').value.trim()};
+        if(!data.shopName){Swal.showValidationMessage('กรุณาระบุชื่อร้านค้า');return false;}
+        return new Promise(function(resolve){apiCall('adminSaveOfficialStore',[APP.adminToken,data],function(r){if(!r||!r.success){Swal.showValidationMessage(r&&r.message||'บันทึกข้อมูลร้านค้าไม่สำเร็จ');resolve(false);return;}resolve({success:true,message:r.message});},false);});
+      },didOpen:function(){previewAdminImageField('edit_logo','preview_logo');previewAdminImageField('edit_banner','preview_banner');}}).then(function(result){if(result.isConfirmed&&result.value&&result.value.success){toast(result.value.message||'บันทึกข้อมูลร้านค้าสำเร็จ','success');ADMIN_PAGE_DOM_CACHE[adminPageDomCacheKey_('officialStore')]=null;loadOfficialStoreAdmin();}});
+    }
+
     function loadAdminModule(page){adminGridLoad(page,null,null,false);}
     
     var MODULE_CONFIG={
@@ -5507,12 +5562,13 @@ function loadPublicData(onComplete){
       users:{title:'ผู้ใช้งานและสิทธิ์',add:'เพิ่มผู้ใช้',edit:'แก้ไขผู้ใช้',save:'saveUser',del:'deleteUser',columns:[['username','Username'],['name','ชื่อ'],['role','Role'],['status','สถานะ']],fields:[['username','Username','text'],['email','อีเมลสำหรับกู้คืนรหัสผ่าน','email'],['name','ชื่อ','text'],['role','บทบาทผู้ใช้งาน','text'],['permissions','สิทธิ์เพิ่มเติม (JSON Array)','textarea'],['status','สถานะ','text'],['password','ตั้งรหัสผ่านใหม่ (เว้นว่างเพื่อไม่เปลี่ยน)','password']]},
       shipping:{title:'วิธีจัดส่ง',add:'เพิ่มวิธีจัดส่ง',edit:'แก้ไขวิธีจัดส่ง',save:'saveShippingMethod',del:'deleteShippingMethod',columns:[['name','ชื่อวิธีจัดส่ง'],['method','Method'],['fee','ค่าจัดส่ง'],['freeMinimum','ส่งฟรีเมื่อซื้อ'],['status','สถานะ']],fields:[['name','ชื่อวิธีจัดส่ง','text'],['method','รูปแบบการจัดส่ง','text'],['fee','ค่าจัดส่ง','number'],['freeMinimum','ส่งฟรีเมื่อยอดถึง','number'],['maxWeight','น้ำหนักสูงสุด','number'],['status','สถานะ','text']]}
     };
+    MODULE_CONFIG.officialProducts=Object.assign({},MODULE_CONFIG.products,{title:'สินค้าร้านค้าทางการ',add:'เพิ่มสินค้าในร้านค้าทางการ',edit:'แก้ไขสินค้าร้านค้าทางการ',save:'savePlatformProduct',del:'deletePlatformProduct'});
     function adminRowActions(page,row,config){
       if(page==='orders')return '<div class="row-actions"><button type="button" title="ดูรายละเอียด" aria-label="ดูรายละเอียด" onclick="viewAdminOrder(\''+esc(row.id)+'\')">ดูรายละเอียด</button><button type="button" onclick="changeOrderStatus(\''+esc(row.id)+'\')">สถานะ</button><button type="button" onclick="editShipping(\''+esc(row.id)+'\')">ติดตามพัสดุ</button></div>';
       if(page==='payments')return '<div class="row-actions">'+(row.proofFileId?'<button type="button" onclick="viewPaymentProof(\''+esc(row.proofFileId)+'\')">ดูหลักฐาน</button>':'')+'<button type="button" onclick="verifyPaymentAction(\''+esc(row.id)+'\')">ยืนยัน</button><button type="button" onclick="rejectPaymentAction(\''+esc(row.id)+'\')">ปฏิเสธ</button></div>';
       if(page==='inventory')return '<div class="row-actions"><button type="button" onclick="adjustInventoryDialog(\''+esc(row.productId)+'\',\''+esc(row.variantId||'')+'\')">ปรับสต็อก</button><button type="button" class="table-action-icon is-edit" title="แก้ไข" aria-label="แก้ไข" onclick="inventoryEditDialog(\''+esc(row.id)+'\')"><i class="fa-solid fa-pen-to-square"></i></button><button type="button" class="table-action-icon is-delete" title="ลบ" aria-label="ลบ" onclick="inventoryDeleteDialog(\''+esc(row.id)+'\')"><i class="fa-solid fa-trash-can"></i></button></div>';
       if(page==='reviews')return '<div class="row-actions"><button type="button" onclick="reviewStatus(\''+esc(row.id)+'\',\'Published\')">เผยแพร่</button><button type="button" onclick="reviewStatus(\''+esc(row.id)+'\',\'Hidden\')">ซ่อน</button></div>';
-      if(config)return '<div class="row-actions"><button type="button" class="table-action-icon is-edit" title="แก้ไข" aria-label="แก้ไข" onclick="openEditor(\''+page+'\',\''+esc(row.id)+'\')"><i class="fa-solid fa-pen-to-square"></i></button><button type="button" class="table-action-icon is-delete" title="ลบ" aria-label="ลบ" onclick="deleteAdminRecord(\''+page+'\',\''+esc(row.id)+'\')"><i class="fa-solid fa-trash-can"></i></button>'+(page==='products'?'<button type="button" title="จัดการตัวเลือกสินค้า" aria-label="จัดการตัวเลือกสินค้า" onclick="manageVariants(\''+esc(row.id)+'\')">ตัวเลือกสินค้า</button>':'')+'</div>';
+      if(config)return '<div class="row-actions"><button type="button" class="table-action-icon is-edit" title="แก้ไข" aria-label="แก้ไข" onclick="openEditor(\''+page+'\',\''+esc(row.id)+'\')"><i class="fa-solid fa-pen-to-square"></i></button><button type="button" class="table-action-icon is-delete" title="ลบ" aria-label="ลบ" onclick="deleteAdminRecord(\''+page+'\',\''+esc(row.id)+'\')"><i class="fa-solid fa-trash-can"></i></button>'+(['products','officialProducts'].indexOf(page)>=0?'<button type="button" title="จัดการตัวเลือกสินค้า" aria-label="จัดการตัวเลือกสินค้า" onclick="manageVariants(\''+esc(row.id)+'\')">ตัวเลือกสินค้า</button>':'')+'</div>';
       return '<span class="muted">—</span>';
     }
     function makeAdminCode(prefix){var d=new Date(),stamp=d.getFullYear().toString().slice(-2)+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);return String(prefix||'SKU').toUpperCase()+'-'+stamp+'-'+Math.random().toString(36).substring(2,8).toUpperCase();}
@@ -5607,7 +5663,7 @@ function loadPublicData(onComplete){
       return '<div class="modal-field full"><label for="edit_videoUrl">'+esc(label)+'</label><input id="edit_videoUrl" type="text" value="'+esc(current)+'" placeholder="https://... หรือเลือกอัปโหลดวิดีโอ"><div class="admin-image-actions"><label class="btn btn-outline btn-small" for="upload_videoUrl"><i class="fa-solid fa-cloud-arrow-up"></i> อัปโหลดวิดีโอ</label><input id="upload_videoUrl" type="file" accept="video/mp4,video/webm,video/quicktime" hidden onchange="uploadProductVideoFile(this,\'edit_videoUrl\',\'edit_videoUrl_status\',\'admin\')"></div><small id="edit_videoUrl_status" class="modal-help">'+esc(status)+' · รองรับ MP4, WebM, MOV ไม่เกิน 10 MB</small></div>';
     }
 
-    function renderAdminEditorField(page,f,row){var key=f[0],label=f[1],type=f[2]||'text',value=row[key];if(value===undefined||value===null)value='';if(key==='sku'&&!row.id&&!value)value=makeAdminCode(page==='products'?'SKU':'VAR');var imageFolders={coverImage:'Products',campaignImage:'Products',image:(page==='banners'?'Banners':'Categories'),profileImage:'Customers',favicon:'Website',logo:'Website',heroImage:'Banners',bankQrImage:'Website'};
+    function renderAdminEditorField(page,f,row){var key=f[0],label=f[1],type=f[2]||'text',value=row[key];if(value===undefined||value===null)value='';if(key==='sku'&&!row.id&&!value)value=makeAdminCode((page==='products'||page==='officialProducts')?'SKU':'VAR');var imageFolders={coverImage:'Products',campaignImage:'Products',image:(page==='banners'?'Banners':'Categories'),profileImage:'Customers',favicon:'Website',logo:'Website',heroImage:'Banners',bankQrImage:'Website'};
       if(imageFolders[key])return renderAdminImageField(key,label,value,imageFolders[key]);
       if(key==='videoUrl'&&page==='products')return renderAdminProductVideoField(label,value);
       if(key==='status'||['featured','bestSeller','allowGuestCheckout','quantityPromoEnabled','mallBadgeEnabled'].indexOf(key)>=0){var enabled=key==='status'?(String(value||'Active').toLowerCase()==='active'):adminEditorIsOn(value);var stateText=key==='status'?(enabled?'เปิดใช้งาน':'ปิดใช้งาน'):(enabled?'เปิด':'ปิด');return '<div class="modal-field"><label>'+esc(label)+'</label><label class="admin-switch-row" for="edit_'+key+'"><span class="admin-switch-copy"><b>'+esc(stateText)+'</b><small>'+(key==='status'?'กำหนดให้รายการนี้แสดงและใช้งานในระบบ':'เปิดหรือปิดคุณสมบัตินี้')+'</small></span><input id="edit_'+key+'" type="checkbox" class="admin-switch-input" '+(enabled?'checked':'')+' onchange="updateAdminSwitchLabel(this)"><span class="admin-switch-track"><i></i></span></label></div>';}
@@ -5625,7 +5681,7 @@ function loadPublicData(onComplete){
 
     function openEditor(page,id){
       var cfg=MODULE_CONFIG[page];if(!cfg)return;
-      var waiting=(['products','categories','promotions'].indexOf(page)>=0&&(!APP.adminCategoriesLoaded||!APP.sharedCategoriesIncludeInactive))||
+      var waiting=(['products','officialProducts','categories','promotions'].indexOf(page)>=0&&(!APP.adminCategoriesLoaded||!APP.sharedCategoriesIncludeInactive))||
         (page==='promotions'&&!APP.adminProductsLoaded)||
         (['promotions','coupons'].indexOf(page)>=0&&!APP.adminStoresLoaded);
       APP.adminEditorRequestId=Number(APP.adminEditorRequestId||0)+1;
@@ -5637,16 +5693,17 @@ function loadPublicData(onComplete){
         openEditorNow(page,id,true);
       });
     }
-    function ensureAdminEditorReferences(page,callback){var jobs=[];var needsCategories=['products','categories','promotions'].indexOf(page)>=0;var needsProducts=page==='promotions';var needsStores=['promotions','coupons'].indexOf(page)>=0;if(needsCategories&&(!APP.adminCategoriesLoaded||!APP.sharedCategoriesIncludeInactive))jobs.push(function(done){refreshSharedCategories(true,function(ok,rows){if(ok){APP.adminCategories=rows.slice();APP.adminCategoriesLoaded=true;}else APP.adminCategoriesLoaded=false;done();},true);});if(needsProducts&&!APP.adminProductsLoaded)jobs.push(function(done){apiCall('getProductsAdmin',[{token:APP.adminToken,page:1,pageSize:500}],function(r){if(r&&r.success){var x=r.data||{};APP.adminProducts=safeArray(x.items||x);APP.adminProductsLoaded=true;}else APP.adminProductsLoaded=false;done();});});if(needsStores&&!APP.adminStoresLoaded)jobs.push(function(done){apiCall('adminGetSellers',[APP.adminToken,{}],function(r){if(r&&r.success){APP.adminStores=safeArray(r.data);APP.adminStoresLoaded=true;}else APP.adminStoresLoaded=false;done();});});if(!jobs.length){callback();return;}var pending=jobs.length;jobs.forEach(function(job){job(function(){pending--;if(pending===0)callback();});});}
+    function ensureAdminEditorReferences(page,callback){var jobs=[];var needsCategories=['products','officialProducts','categories','promotions'].indexOf(page)>=0;var needsProducts=page==='promotions';var needsStores=['promotions','coupons'].indexOf(page)>=0;if(needsCategories&&(!APP.adminCategoriesLoaded||!APP.sharedCategoriesIncludeInactive))jobs.push(function(done){refreshSharedCategories(true,function(ok,rows){if(ok){APP.adminCategories=rows.slice();APP.adminCategoriesLoaded=true;}else APP.adminCategoriesLoaded=false;done();},true);});if(needsProducts&&!APP.adminProductsLoaded)jobs.push(function(done){apiCall('getProductsAdmin',[{token:APP.adminToken,page:1,pageSize:500}],function(r){if(r&&r.success){var x=r.data||{};APP.adminProducts=safeArray(x.items||x);APP.adminProductsLoaded=true;}else APP.adminProductsLoaded=false;done();});});if(needsStores&&!APP.adminStoresLoaded)jobs.push(function(done){apiCall('adminGetSellers',[APP.adminToken,{}],function(r){if(r&&r.success){APP.adminStores=safeArray(r.data);APP.adminStoresLoaded=true;}else APP.adminStoresLoaded=false;done();});});if(!jobs.length){callback();return;}var pending=jobs.length;jobs.forEach(function(job){job(function(){pending--;if(pending===0)callback();});});}
     function openEditorNow(page,id,updateExisting){
       var cfg=MODULE_CONFIG[page];if(!cfg)return;
+      var isProductEditorPage=page==='products'||page==='officialProducts';
       var row=id?safeArray(APP.adminData).filter(function(x){return String(x.id)===String(id);})[0]||{}:{};
       var html='<div class="admin-editor-intro"><span class="admin-editor-icon"><i class="fa-solid fa-pen-to-square"></i></span><span><b>'+(id?'แก้ไขข้อมูล':'กรอกข้อมูลใหม่')+'</b><small>ช่องที่มีความสัมพันธ์จะเลือกจากข้อมูลในระบบโดยอัตโนมัติ</small></span></div><div class="modal-form-grid">';
       cfg.fields.forEach(function(f){html+=renderAdminEditorField(page,f,row);});html+='</div>';
       var formOptions={title:id?cfg.edit:cfg.add,html:html,width:900,showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึกข้อมูล',cancelButtonText:'ยกเลิก',focusConfirm:false,buttonsStyling:true,customClass:{popup:'enterprise-admin-modal'},allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){
-        if(page==='products'&&APP.productCampaignImageUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดภาพแถบแคมเปญเสร็จก่อนบันทึกสินค้า');return false;}
-        if(page==='products'&&APP.productVideoUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดวิดีโอเสร็จก่อนบันทึกสินค้า');return false;}
-        if(page==='products'&&APP.adminGalleryUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดรูปภาพเพิ่มเติมเสร็จก่อนบันทึกสินค้า');return false;}
+        if(isProductEditorPage&&APP.productCampaignImageUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดภาพแถบแคมเปญเสร็จก่อนบันทึกสินค้า');return false;}
+        if(isProductEditorPage&&APP.productVideoUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดวิดีโอเสร็จก่อนบันทึกสินค้า');return false;}
+        if(isProductEditorPage&&APP.adminGalleryUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดรูปภาพเพิ่มเติมเสร็จก่อนบันทึกสินค้า');return false;}
         var data={id:id||''},invalid=false;
         cfg.fields.forEach(function(f){var key=f[0],el=document.getElementById('edit_'+key);if(!el)return;var value=el.value;
           if(f[2]==='richtext')value=getRichEditorHtml('edit_'+key);
@@ -5659,13 +5716,13 @@ function loadPublicData(onComplete){
           data[key]=value;
         });
         if(invalid)return false;
-        if(page==='products'&&!String(data.name||'').trim()){Swal.showValidationMessage('กรุณาระบุชื่อสินค้า');return false;}
-        if(page==='products'&&data.quantityPromoEnabled){var promoQty=Math.floor(Number(data.quantityPromoQty||0)),promoDiscount=Number(data.quantityPromoDiscount||0),basePromoPrice=Number(data.salePrice)>0?Number(data.salePrice):Number(data.price);if(promoQty<2||promoDiscount<=0||promoDiscount>=basePromoPrice*promoQty){Swal.showValidationMessage('โปรโมชั่นต้องซื้ออย่างน้อย 2 ชิ้น และส่วนลดต้องมากกว่า 0 แต่น้อยกว่ามูลค่าสินค้าในชุด');return false;}}
+        if(isProductEditorPage&&!String(data.name||'').trim()){Swal.showValidationMessage('กรุณาระบุชื่อสินค้า');return false;}
+        if(isProductEditorPage&&data.quantityPromoEnabled){var promoQty=Math.floor(Number(data.quantityPromoQty||0)),promoDiscount=Number(data.quantityPromoDiscount||0),basePromoPrice=Number(data.salePrice)>0?Number(data.salePrice):Number(data.price);if(promoQty<2||promoDiscount<=0||promoDiscount>=basePromoPrice*promoQty){Swal.showValidationMessage('โปรโมชั่นต้องซื้ออย่างน้อย 2 ชิ้น และส่วนลดต้องมากกว่า 0 แต่น้อยกว่ามูลค่าสินค้าในชุด');return false;}}
         if(page==='categories'&&!String(data.name||'').trim()){Swal.showValidationMessage('กรุณาระบุชื่อหมวดหมู่');return false;}
         return runAdminModalMutation(page,cfg.save,[APP.adminToken,data]);
       }};
-      formOptions.didOpen=function(){if(page==='products')productGalleryRefresh('edit_images','adminGalleryPreview','adminGalleryCount');};
-      if(updateExisting&&Swal.isVisible()){Swal.update(formOptions);if(page==='products')productGalleryRefresh('edit_images','adminGalleryPreview','adminGalleryCount');}else Swal.fire(formOptions);
+      formOptions.didOpen=function(){if(isProductEditorPage)productGalleryRefresh('edit_images','adminGalleryPreview','adminGalleryCount');};
+      if(updateExisting&&Swal.isVisible()){Swal.update(formOptions);if(isProductEditorPage)productGalleryRefresh('edit_images','adminGalleryPreview','adminGalleryCount');}else Swal.fire(formOptions);
     }
     function deleteAdminRecord(page,id){
       var cfg=MODULE_CONFIG[page];if(!cfg)return;
@@ -6529,8 +6586,9 @@ function adjustInventoryDialog(productId,variantId){
       },false,'',true);
     }
     function returnToSellerCenter(){renderSellerShell();loadSellerPage(APP.sellerPage||'dashboard');}
-    function returnFromStorePreview(){if(APP.currentView==='chatInbox'&&APP.customerChatActiveStoreId&&APP.customerToken){openChatInbox(APP.customerChatActiveStoreId);return;}returnToSellerCenter();}
+    function returnFromStorePreview(){if(APP.storefrontPreviousView==='admin'&&APP.adminToken){openAdmin(APP.adminPage||'officialStore');return;}if(APP.currentView==='chatInbox'&&APP.customerChatActiveStoreId&&APP.customerToken){openChatInbox(APP.customerChatActiveStoreId);return;}returnToSellerCenter();}
     function showStorePage(storeId){
+      APP.storefrontPreviousView=APP.currentView;
       var root=document.getElementById('appRoot');
       if(root)root.innerHTML='<div class="panel" style="max-width:1200px;margin:24px auto;padding:35px;text-align:center"><i class="fa-solid fa-circle-notch fa-spin"></i> กำลังโหลดหน้าร้านค้า...</div>';
       apiCall('getMarketplaceStorefront',[storeId,APP.customerToken||'',1,20,'relevance',''],function(r){
@@ -6608,7 +6666,7 @@ function adjustInventoryDialog(productId,variantId){
             '<div class="shop-store-head-main">'+
               '<div class="shop-store-brand-card"><div class="shop-store-brand-bg">'+(store.banner?'<img src="'+imageUrl(store.banner)+'" onerror="imageFallback(this)" alt="">':'')+'</div>'+
                 '<div class="shop-store-brand-content"><div class="shop-store-avatar">'+(store.logo?'<img src="'+imageUrl(store.logo)+'" onerror="imageFallback(this)" alt="">':'<i class="fa-solid fa-store"></i>')+'</div>'+
-                  '<div class="shop-store-brand-info"><h1>'+esc(store.shopName||'ร้านค้า')+'</h1><span class="shop-store-open-status"><i></i> ร้านค้าเปิดให้บริการ</span></div>'+
+                  '<div class="shop-store-brand-info"><h1>'+esc(store.shopName||'ร้านค้า')+(store.isOfficial?'<span class="shop-store-official-badge">OFFICIAL</span>':'')+'</h1><span class="shop-store-open-status"><i></i> ร้านค้าเปิดให้บริการ</span></div>'+
                   '<div class="shop-store-actions"><button type="button" id="shopFollowButton" class="'+(st.following?'is-following':'')+'" onclick="toggleFollowStore(\''+esc(store.id)+'\')">'+(st.following?'กำลังติดตาม':'+ ติดตาม')+'</button><button type="button" onclick="openChatWithStore(\''+esc(store.id)+'\',\'\')">พูดคุย</button></div>'+
                 '</div>'+
               '</div>'+
@@ -11292,6 +11350,37 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
  .shop-store-all-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
  .shop-store-products-area .product-name{font-size:11px}
 }
+</style>
+<style id="platform-official-store-admin-v1">
+.shop-store-official-badge{display:inline-flex;vertical-align:middle;margin-left:8px;padding:2px 6px;border-radius:3px;background:#ee4d2d;color:#fff;font-size:9px;line-height:1.5;letter-spacing:.04em}
+.official-store-admin{display:flex;flex-direction:column;gap:16px}
+.official-store-hero{display:flex;align-items:center;gap:16px;padding:22px;border-radius:14px;background:linear-gradient(120deg,#202938,#39465b);color:#fff}
+.official-store-hero-icon{display:grid;flex:0 0 76px;width:76px;height:76px;place-items:center;overflow:hidden;border:2px solid #ffffff70;border-radius:16px;background:#ffffff16;font-size:30px}
+.official-store-hero-icon img{width:100%;height:100%;object-fit:cover}
+.official-store-hero-copy{min-width:0}
+.official-store-eyebrow{color:#ffd0c5;font-size:10px;font-weight:800;letter-spacing:.12em}
+.official-store-hero h2{margin:3px 0 4px;color:#fff;font-size:20px}
+.official-store-hero p{margin:0;color:#d4dce8;font-size:12px}
+.official-store-live{display:inline-block;padding:3px 7px;border-radius:20px;background:#1d9b58;color:#fff;font-size:10px;vertical-align:middle}
+.official-store-hero-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.official-store-hero-actions .btn{border-color:#ffffff80;color:#fff}
+.official-store-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.official-store-metric{display:flex;align-items:center;gap:11px;min-width:0;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.official-store-metric>span{display:grid;width:38px;height:38px;flex:0 0 38px;place-items:center;border-radius:10px;background:#fff0eb;color:#ee4d2d}
+.official-store-metric small{display:block;color:var(--muted);font-size:11px}
+.official-store-metric b{display:block;color:var(--ink);font-size:18px;overflow-wrap:anywhere}
+.official-store-work-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.official-store-work-card{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-height:150px;padding:17px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--ink);text-align:left;cursor:pointer}
+.official-store-work-card>i{color:#ee4d2d;font-size:20px}
+.official-store-work-card>b{font-size:14px}
+.official-store-work-card>small{color:var(--muted);font-size:11px}
+.official-store-work-card>span{margin-top:auto;color:#ee4d2d;font-size:11px;font-weight:700}
+.official-store-note,.official-store-form-hint{display:flex;align-items:flex-start;gap:9px;padding:12px;border-radius:8px;background:var(--surface-2);color:var(--muted);font-size:11px}
+.official-store-note i,.official-store-form-hint i{color:#ee4d2d}
+.official-store-create-card{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:20px;border:1px dashed #ee9e8e;border-radius:12px;background:var(--surface)}
+.official-store-create-card b,.official-store-create-card small{display:block}
+.official-store-create-card small{margin-top:5px;color:var(--muted);font-size:11px}
+@media(max-width:760px){.official-store-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.official-store-work-grid{grid-template-columns:1fr}.official-store-hero{align-items:flex-start;padding:15px}.official-store-hero-icon{width:54px;height:54px;flex-basis:54px;font-size:22px}.official-store-hero h2{font-size:16px}.official-store-create-card{align-items:flex-start;flex-direction:column}}
 </style>
 </body>
 </html>
