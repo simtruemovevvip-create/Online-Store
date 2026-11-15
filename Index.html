@@ -6265,6 +6265,13 @@ function adjustInventoryDialog(productId,variantId){
       APP.sellerChatActiveThread='';APP.sellerPage=page;
       APP.sellerRequestId=Number(APP.sellerRequestId||0)+1;
       var requestId=APP.sellerRequestId;
+      // A normal navigation starts the seller product list at its default query;
+      // pagination/filter requests pass keepTableState=true and retain the state.
+      if(page==='products'&&!keepTableState){
+        APP.sellerProductPage=1;
+        APP.sellerProductStatus='all';
+        APP.sellerProductQuery='';
+      }
       var pageOptions=sellerPageOptions_(page);
       var cacheKey=page==='chat'?'':sellerPageCacheKey_(page,pageOptions);
       var cached=cacheKey?SELLER_PAGE_CACHE[cacheKey]:null;
