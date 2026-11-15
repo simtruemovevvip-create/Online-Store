@@ -3936,6 +3936,45 @@ function deletePlatformProduct(token,productId) {
     return deleteProduct(token,productId);
   } catch(e) { return fail_(safeError_(e)); }
 }
+function adminUpdateOfficialStoreOrder(token,sellerOrderId,status,carrier,trackingNumber) {
+  try {
+    return withLock_(function() {
+      var user=requirePlatformOwner_(token);
+      var order=readTable_('SellerOrders',false).filter(function(x) {
+        return String(x.id)===String(sellerOrderId)&&String(x.sellerId)==='PLATFORM';
+      })[0];
+      if(!order)throw new Error('ไม่พบคำสั่งซื้อของร้านค้าทางการ');
+      var parent=readTable_('Orders',false).filter(function(x){return String(x.id)===String(order.parentOrderId);})[0];
+      if(!parent)throw new Error('ไม่พบคำสั่งซื้อหลัก');
+      var allowed={'Processing':['Packed'],'Packed':['Shipped'],'Shipped':['Delivered']};
+      if(!allowed[order.status]||allowed[order.status].indexOf(String(status))<0) {
+        throw new Error('ไม่สามารถเปลี่ยนสถานะจาก '+order.status+' ไป '+status+' ได้');
+      }
+      if(['Packed','Shipped','Delivered'].indexOf(String(status))>=0&&parent.paymentMethod!=='cod'&&parent.paymentStatus!=='Verified') {
+        throw new Error('ต้องยืนยันการชำระเงินก่อนจัดส่ง กรุณาตรวจสอบในเมนูการชำระเงิน');
+      }
+      var tracking=text_(trackingNumber||order.trackingNumber,120);
+      var shipper=text_(carrier||order.carrier,100);
+      if(status==='Shipped'&&(!tracking||!shipper))throw new Error('กรุณาระบุบริษัทขนส่งและเลข Tracking');
+      var stamp=now_(),changes={status:String(status),carrier:shipper,trackingNumber:tracking,updatedAt:stamp};
+      if(status==='Shipped')changes.shippedAt=stamp;
+      if(status==='Delivered')changes.deliveredAt=stamp;
+      updateRecord_('SellerOrders',order.id,changes);
+      var siblings=readTable_('SellerOrders',false).filter(function(x){return String(x.parentOrderId)===String(parent.id);});
+      var rank={'Awaiting Payment':0,'Processing':1,'Packed':2,'Shipped':3,'Delivered':4,'Completed':5,'Cancelled':-1};
+      var minRank=siblings.length?Math.min.apply(null,siblings.map(function(x){return rank[x.status]===undefined?0:rank[x.status];})):0;
+      var parentStatus=minRank>=4?'Delivered':(minRank>=3?'Shipped':(minRank>=2?'Packed':(minRank>=1?'Processing':parent.orderStatus)));
+      var parentChanges={orderStatus:parentStatus,shippingStatus:parentStatus,updatedAt:stamp};
+      if(status==='Shipped')parentChanges.trackingNumber=tracking;
+      updateRecord_('Orders',parent.id,parentChanges);
+      if(parent.customerId)notify_('customer',parent.customerId,'อัปเดตการจัดส่ง','ร้านค้าทางการอัปเดตคำสั่งซื้อ '+parent.orderNumber+' เป็น '+status,'order',parent.id);
+      log_('Platform Official Store Order','Marketplace',order.orderNumber+' => '+status,user.username);
+      clearRuntimeCaches_();
+      return ok_(true,'อัปเดตคำสั่งซื้อร้านค้าทางการแล้ว');
+    });
+  } catch(e) { return fail_(safeError_(e)); }
+}
+
 /* -------------------------------------------------------------------------- */
 
 function adminGetSellers(token,filters) {
@@ -5007,6 +5046,7 @@ function getAdminGridPage(token, moduleName, options) {
       customers: {table:'Customers', permission:'customers.view', search:['id','username','firstname','lastname','phone','email'], status:'status', totals:[]},
       sellers: {table:'Stores', permission:'sellers.manage', search:['id','shopName','ownerName','ownerEmail','ownerPhone','slug'], status:'status', totals:['followerCount']},
       officialProducts: {table:'Products', permission:'products.view', search:['id','sku','barcode','name','brand','categoryId'], status:'status', totals:['stock']},
+      officialOrders: {table:'SellerOrders', permission:'orders.view', search:['id','orderNumber','parentOrderNumber','customerName','phone','carrier','trackingNumber'], status:'status', totals:['subtotal','discountAmount','commissionAmount','netAmount','shippingFee']},
       flashDeals: {table:'FlashDeals', permission:'promotions.manage', search:['id','name','shopName','productName','sellerId','productId'], status:'status', totals:['quota','soldCount','remaining']},
       marketplaceReturns: {table:'ReturnRequests', permission:'returns.manage', search:['id','orderId','orderItemId','reason','details','status'], status:'status', totals:['quantity']},
       marketplacePayouts: {table:'SellerPayouts', permission:'payouts.manage', search:['id','sellerOrderId','shopName','payoutReference','status'], status:'status', totals:['grossAmount','discountAmount','commissionAmount','netAmount']},
@@ -5021,7 +5061,7 @@ function getAdminGridPage(token, moduleName, options) {
     };
     var config = moduleMap[String(moduleName || '')];
     if (!config) throw new Error('ไม่รองรับตารางที่ร้องขอ');
-    if(moduleName==='officialProducts') requirePlatformOwner_(token); else requireAdmin_(token, config.permission);
+    if(moduleName==='officialProducts'||moduleName==='officialOrders') requirePlatformOwner_(token); else requireAdmin_(token, config.permission);
     var fastPage = getAdminGridPageFast_(moduleName, config, options);
     if (fastPage) return fastPage;
     if(moduleName==='inventory')withLock_(function(){reconcileDuplicateProductVariants_();});
@@ -5116,6 +5156,17 @@ function getAdminGridPage(token, moduleName, options) {
         var s = payoutStoresById[String(x.sellerId || '')] || {};
         x.shopName = s.shopName || '';
       });
+    } else if (moduleName === 'officialOrders') {
+      var officialParentsById = indexRowsByField_(readTable_('Orders', true), 'id');
+      rows.forEach(function(order) {
+        var parent = officialParentsById[String(order.parentOrderId || '')] || {};
+        order.parentOrderNumber = parent.orderNumber || '';
+        order.customerName = parent.customerName || '';
+        order.phone = parent.phone || '';
+        order.paymentMethod = parent.paymentMethod || '';
+        order.paymentStatus = parent.paymentStatus || '';
+        order.parentOrderStatus = parent.orderStatus || '';
+      });
     } else if (moduleName === 'reviews') {
       var reviewProducts = readTable_('Products', true);
       var reviewProductsById = indexRowsByField_(reviewProducts, 'id');
@@ -5125,7 +5176,7 @@ function getAdminGridPage(token, moduleName, options) {
       });
     }
 
-    if(moduleName==='officialProducts') rows=rows.filter(function(row){return String(row.sellerId||'')==='PLATFORM';});
+    if(moduleName==='officialProducts'||moduleName==='officialOrders') rows=rows.filter(function(row){return String(row.sellerId||'')==='PLATFORM';});
 
     // Strip credentials, but preserve the source index internally until sorting is complete.
     rows = rows.map(function(row) {
