@@ -2030,9 +2030,7 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     </nav>
   </header>
 
-  <main class="container" id="appRoot">
-    <div class="market-skeleton market-skeleton-home" aria-label="กำลังโหลดหน้าร้าน" aria-hidden="true"><div class="market-skeleton-hero"><i class="market-skeleton-block market-skeleton-hero-art"></i><div class="market-skeleton-hero-side"><i class="market-skeleton-block market-skeleton-hero-side-art"></i><i class="market-skeleton-block market-skeleton-hero-side-art"></i></div></div><div class="market-skeleton-shortcuts"><i class="market-skeleton-block market-skeleton-shortcut"></i><i class="market-skeleton-block market-skeleton-shortcut"></i><i class="market-skeleton-block market-skeleton-shortcut"></i><i class="market-skeleton-block market-skeleton-shortcut"></i><i class="market-skeleton-block market-skeleton-shortcut"></i></div><div class="market-skeleton-section-head"><i class="market-skeleton-block w-25 h-18"></i><i class="market-skeleton-block w-15"></i></div><div class="market-skeleton-category-grid"><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i><i class="market-skeleton-block market-skeleton-category"></i></div><div class="market-skeleton-section-head"><i class="market-skeleton-block w-25 h-18"></i><i class="market-skeleton-block w-15"></i></div><div class="market-skeleton-product-grid"><div class="market-skeleton-product"><i class="market-skeleton-block market-skeleton-product-image"></i><i class="market-skeleton-block w-85"></i><i class="market-skeleton-block w-55 h-14"></i><i class="market-skeleton-block w-35"></i></div><div class="market-skeleton-product"><i class="market-skeleton-block market-skeleton-product-image"></i><i class="market-skeleton-block w-85"></i><i class="market-skeleton-block w-55 h-14"></i><i class="market-skeleton-block w-35"></i></div><div class="market-skeleton-product"><i class="market-skeleton-block market-skeleton-product-image"></i><i class="market-skeleton-block w-85"></i><i class="market-skeleton-block w-55 h-14"></i><i class="market-skeleton-block w-35"></i></div><div class="market-skeleton-product"><i class="market-skeleton-block market-skeleton-product-image"></i><i class="market-skeleton-block w-85"></i><i class="market-skeleton-block w-55 h-14"></i><i class="market-skeleton-block w-35"></i></div><div class="market-skeleton-product"><i class="market-skeleton-block market-skeleton-product-image"></i><i class="market-skeleton-block w-85"></i><i class="market-skeleton-block w-55 h-14"></i><i class="market-skeleton-block w-35"></i></div></div></div>
-  </main>
+  <main class="container" id="appRoot"></main>
 
   <footer class="footer" id="siteFooter">
     <div class="footer-inner">
@@ -9131,5 +9129,227 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
 .fashion-thumb-scroll:disabled,.fashion-thumb-scroll.is-disabled{opacity:0;pointer-events:none}
 @media(max-width:720px){.fashion-detail-thumb-scroller{max-width:450px}.fashion-detail-thumbnails .detail-thumb{flex-basis:60px!important;width:60px!important;min-width:60px!important;max-width:60px;height:60px!important}}
 </style>
+
+  <style id="instant-page-display-v1">
+    #loading,.loading.show,#globalApiActivity,.market-skeleton,.seller-skeleton,.admin-skeleton,.eg-skeleton-grid,.customer-portal-loading-layer,.customer-portal-full-skeleton{display:none!important}
+    #appRoot[aria-busy="true"],#customerPortalContent[aria-busy="true"],#sellerContent[aria-busy="true"],#adminContent[aria-busy="true"]{opacity:1!important}
+    #appRoot[data-refreshing="true"],#customerPortalContent[data-refreshing="true"],#sellerContent[data-refreshing="true"],#adminContent[data-refreshing="true"]{opacity:1!important;filter:none!important}
+  </style>
+  <script id="instant-page-display-v1-js">
+    (function(){
+      if(window.__STORE_INSTANT_PAGE_DISPLAY_V1__)return;
+      window.__STORE_INSTANT_PAGE_DISPLAY_V1__=true;
+
+      /* Keep small, per-account page snapshots so previously visited pages appear immediately. */
+      var PAGE_CACHE=window.__STORE_PAGE_DOM_CACHE__||{};
+      window.__STORE_PAGE_DOM_CACHE__=PAGE_CACHE;
+      var PAGE_CACHE_LIMIT=22;
+      var PAGE_CACHE_ITEM_LIMIT=900000;
+      var CUSTOMER_VIEWS=['account','customerPurchases','customerAddresses','customerPayments','customerPreferences','customerNotifications','chatInbox','wallet','myVouchers','myReturns','followedStores'];
+
+      function pageIdentity(type){
+        if(type==='owner')return 'owner|'+String(APP.adminToken||'');
+        if(type==='seller')return 'seller|'+String(APP.customerToken||'')+'|'+String(APP.sellerStore&&APP.sellerStore.id||'');
+        if(type==='customer')return 'customer|'+String(APP.customerToken||'');
+        return 'public|'+String(APP.accessMode||'guest');
+      }
+      function pageKey(type,page,extra){
+        return pageIdentity(type)+'|'+String(page||'')+'|'+String(extra||'');
+      }
+      function currentPage(){
+        var view=String(APP.currentView||'home');
+        if(view==='admin')return {type:'owner',page:String(APP.adminPage||'dashboard'),extra:adminOptionsKey(APP.adminPage)};
+        if(view==='seller')return {type:'seller',page:String(APP.sellerPage||'dashboard'),extra:sellerOptionsKey(APP.sellerPage)};
+        if(CUSTOMER_VIEWS.indexOf(view)>=0){
+          var customerPage=String(APP.customerPortalActive||view);
+          return {type:'customer',page:customerPage,extra:customerPage==='chat'?'realtime':''};
+        }
+        var extra='';
+        if(view==='detail')extra=String(APP.currentProduct&&APP.currentProduct.id||'');
+        else if(view==='store')extra=String(APP.currentStore&&APP.currentStore.id||'');
+        else if(view==='recommended')extra=String(APP.recommendedPage||APP.productPage||1);
+        return {type:'public',page:view,extra:extra};
+      }
+      function adminOptionsKey(page){
+        try{
+          var state=window.ADMIN_GRID_STATES&&window.ADMIN_GRID_STATES['admin_'+page];
+          return state?JSON.stringify(state.options||{}):'';
+        }catch(error){return '';}
+      }
+      function sellerOptionsKey(page){
+        try{return typeof sellerPageOptions_==='function'?JSON.stringify(sellerPageOptions_(page)||{}):'';}catch(error){return '';}
+      }
+      function hostFor(type){
+        if(type==='owner')return document.getElementById('adminContent');
+        if(type==='seller')return document.getElementById('sellerContent');
+        if(type==='customer')return document.getElementById('customerPortalContent')||document.getElementById('appRoot');
+        return document.getElementById('appRoot');
+      }
+      function isRealtimePage(route){
+        return !!route&&((route.type==='seller'&&route.page==='chat')||(route.type==='customer'&&route.page==='chat'));
+      }
+      function trimPageCache(){
+        var keys=Object.keys(PAGE_CACHE);
+        if(keys.length<=PAGE_CACHE_LIMIT)return;
+        keys.sort(function(a,b){return Number(PAGE_CACHE[a].at||0)-Number(PAGE_CACHE[b].at||0);});
+        keys.slice(0,keys.length-PAGE_CACHE_LIMIT).forEach(function(key){delete PAGE_CACHE[key];});
+      }
+      function rememberCurrentPage(){
+        var route=currentPage();
+        if(isRealtimePage(route))return;
+        var host=hostFor(route.type);
+        if(!host)return;
+        var html=String(host.innerHTML||'');
+        if(html.length<80||html.length>PAGE_CACHE_ITEM_LIMIT)return;
+        if(/(?:market-skeleton|seller-skeleton|admin-skeleton|eg-skeleton|customer-portal-full-skeleton)/i.test(html))return;
+        var key=pageKey(route.type,route.page,route.extra);
+        PAGE_CACHE[key]={at:Date.now(),html:html};
+        trimPageCache();
+      }
+      function targetRoute(name,args){
+        args=args||[];
+        if(name==='goHome')return {type:'public',page:'home',extra:''};
+        if(name==='showAllProducts')return {type:'public',page:'products',extra:String(args[0]||'')+'|'+String(args[1]||'relevance')};
+        if(name==='viewProduct')return {type:'public',page:'detail',extra:String(args[0]||'')};
+        if(name==='showStores')return {type:'public',page:'stores',extra:''};
+        if(name==='showStorePage')return {type:'public',page:'store',extra:String(args[0]||'')};
+        if(name==='showFlashDeals')return {type:'public',page:'flash',extra:''};
+        if(name==='showMarketplaceVouchers')return {type:'public',page:'vouchers',extra:''};
+        if(name==='showLiveRooms')return {type:'public',page:'live',extra:''};
+        if(name==='showPromotions')return {type:'public',page:'promotions',extra:''};
+        if(name==='showAbout')return {type:'public',page:'about',extra:''};
+        if(name==='showContact')return {type:'public',page:'contact',extra:''};
+        if(name==='showPolicy')return {type:'public',page:'policy',extra:String(args[0]||'returnPolicy')};
+        if(name==='showRecommendedProducts')return {type:'public',page:'recommended',extra:String(args[0]||1)};
+        if(name==='openCart')return {type:'public',page:'cart',extra:''};
+        if(name==='openCheckout')return {type:'public',page:'checkout',extra:''};
+        if(name==='openAccount')return {type:'customer',page:'purchase',extra:''};
+        if(name==='customerPortalNavigate')return {type:'customer',page:String(args[0]||'purchase'),extra:String(args[0]||'')==='chat'?'realtime':''};
+        if(name==='openSellerCenter')return {type:'seller',page:'dashboard',extra:''};
+        if(name==='loadSellerPage')return {type:'seller',page:String(args[0]||'dashboard'),extra:args[4]?'force':sellerOptionsKey(String(args[0]||'dashboard'))};
+        if(name==='openAdmin')return {type:'owner',page:'dashboard',extra:''};
+        if(name==='loadAdminPage')return {type:'owner',page:String(args[0]||'dashboard'),extra:adminOptionsKey(String(args[0]||'dashboard'))};
+        return null;
+      }
+      function restorePage(route){
+        if(!route||isRealtimePage(route))return false;
+        var key=pageKey(route.type,route.page,route.extra);
+        var entry=PAGE_CACHE[key];
+        if(!entry||!entry.html)return false;
+        var host=hostFor(route.type);
+        if(!host)return false;
+        host.innerHTML=entry.html;
+        host.removeAttribute('aria-busy');
+        host.removeAttribute('data-refreshing');
+        if(route.type==='customer'){
+          APP.customerPortalSkeletonPending=false;
+          APP.customerPortalSkeletonRequestId=Number(APP.customerPortalSkeletonRequestId||0)+1;
+        }
+        if(route.type==='seller')host.classList.toggle('seller-chat-full-mode',route.page==='chat');
+        if(route.type==='public'&&route.page==='home'&&typeof initHomeShopeeMallCarousel==='function')initHomeShopeeMallCarousel();
+        entry.at=Date.now();
+        return true;
+      }
+      function wrapInstantNavigation(name){
+        var original=window[name];
+        if(typeof original!=='function'||original.__instantPageWrapped)return;
+        var wrapped=function(){
+          var args=Array.prototype.slice.call(arguments);
+          rememberCurrentPage();
+          var route=targetRoute(name,args);
+          var result=original.apply(this,args);
+          if(route)restorePage(route);
+          return result;
+        };
+        wrapped.__instantPageWrapped=true;
+        wrapped.__instantPageOriginal=original;
+        window[name]=wrapped;
+      }
+      [
+        'goHome','showAllProducts','viewProduct','showStores','showStorePage',
+        'showFlashDeals','showMarketplaceVouchers','showLiveRooms','showPromotions',
+        'showAbout','showContact','showPolicy','showRecommendedProducts',
+        'openCart','openCheckout','openAccount','customerPortalNavigate',
+        'openSellerCenter','loadSellerPage','openAdmin','loadAdminPage'
+      ].forEach(wrapInstantNavigation);
+
+      /* Remove page-covering loaders, while retaining button feedback for save actions. */
+      window.beginApiActivity=function(){return {active:false};};
+      window.endApiActivity=function(){};
+      var priorBeginApiLoading=window.beginApiLoading;
+      window.beginApiLoading=function(label){
+        var button=APP.lastActionButton;
+        var age=Date.now()-Number(APP.lastActionAt||0);
+        var fresh=!!(button&&age<1400&&document.documentElement.contains(button));
+        var navigation=!!(fresh&&APP.lastActionIsNavigation);
+        if(fresh&&!navigation&&typeof priorBeginApiLoading==='function')return priorBeginApiLoading(label);
+        APP.lastActionButton=null;APP.lastActionAt=0;APP.lastActionIsNavigation=false;
+        return {type:'none'};
+      };
+      window.loading=function(){
+        var overlay=document.getElementById('loading');
+        if(overlay)overlay.className='loading';
+      };
+
+      /* First entry has a normal page layout; returning entries restore cached HTML. */
+      if(typeof marketplaceRunWithSkeleton==='function'){
+        marketplaceRunWithSkeleton=function(original,args){return typeof original==='function'?original.apply(this,args||[]):undefined;};
+      }
+      if(typeof marketplaceSetRootSkeleton==='function')marketplaceSetRootSkeleton=function(){};
+      if(typeof marketplaceOriginalApplyCatalogFilter==='function')window.applyCatalogFilter=marketplaceOriginalApplyCatalogFilter;
+      if(typeof marketplaceOriginalSearchStores==='function')window.searchStores=marketplaceOriginalSearchStores;
+      if(typeof marketplaceOriginalRelatedProducts==='function')window.loadRelatedProducts=marketplaceOriginalRelatedProducts;
+      if(typeof window.adminSkeleton==='function')window.adminSkeleton=function(){return '';};
+      if(typeof window.adminGridSkeleton==='function')window.adminGridSkeleton=function(){return '';};
+      if(typeof window.sellerSkeletonMarkup==='function')window.sellerSkeletonMarkup=function(){return '';};
+      if(typeof window.customerPortalSetContent==='function'){
+        window.customerPortalSetContent=function(markup){
+          var host=typeof customerPortalContent==='function'?customerPortalContent():document.getElementById('customerPortalContent');
+          if(!host)return;
+          var isChat=String(markup||'').indexOf('buyer-chat-page')>=0;
+          host.classList.toggle('customer-chat-full-mode',isChat);
+          var main=host.closest?host.closest('.customer-portal-main'):null;
+          if(main)main.classList.toggle('customer-chat-main-mode',isChat);
+          if(!isChat&&typeof stopCustomerChatRealtime==='function')stopCustomerChatRealtime();
+          APP.customerPortalSkeletonRequestId=Number(APP.customerPortalSkeletonRequestId||0)+1;
+          APP.customerPortalSkeletonPending=false;
+          host.innerHTML=String(markup||'');
+          host.removeAttribute('aria-busy');
+        };
+      }
+
+      /* A successful write invalidates snapshots so the next visit cannot show stale data. */
+      var priorApiCall=window.apiCall;
+      var writePattern=/^(save|delete|update|add|remove|clear|create|submit|verify|reject|approve|set|toggle|confirm|cancel|adjust|upload|register|customerLogin|sellerLogin|systemOwnerLogin|customerSocialLogin|customerLogout|logout|collect|follow|read|mark|apply|resolve|respond|send|request|restore|reconcile|change|reset|consume|settle|move|import|adminSet|adminResolve|sellerSave|sellerDelete|sellerUpdate)/i;
+      if(typeof priorApiCall==='function'){
+        window.apiCall=function(name,args,callback,showLoading,loadingText,silentError){
+          var isWrite=writePattern.test(String(name||''));
+          return priorApiCall.call(this,name,args,function(result){
+            if(isWrite&&result&&result.success)Object.keys(PAGE_CACHE).forEach(function(key){delete PAGE_CACHE[key];});
+            if(typeof callback==='function')callback(result);
+          },showLoading,loadingText,silentError);
+        };
+      }
+
+      /* Clear private page snapshots when a portal session ends. */
+      var priorLogoutTransition=window.transitionToGuestHomeAfterLogout;
+      if(typeof priorLogoutTransition==='function'){
+        window.transitionToGuestHomeAfterLogout=function(){
+          Object.keys(PAGE_CACHE).forEach(function(key){delete PAGE_CACHE[key];});
+          return priorLogoutTransition.apply(this,arguments);
+        };
+      }
+
+      try{
+        var root=document.getElementById('appRoot');
+        if(root&&root.querySelector('.market-skeleton-home'))root.innerHTML='';
+      }catch(error){}
+      var overlay=document.getElementById('loading');
+      if(overlay)overlay.className='loading';
+      var progress=document.getElementById('globalApiActivity');
+      if(progress)progress.style.display='none';
+    })();
+  </script>
+
 </body>
 </html>
