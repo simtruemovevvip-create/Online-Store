@@ -9448,8 +9448,7 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
             restoreChildren(host,previousNodes);
             if(titleNode)titleNode.textContent=previousTitle;
             if(subtitleNode)subtitleNode.textContent=previousSubtitle;
-            /* Synchronous pages (for example Reports and Demo) have no API wait. */
-            window.setTimeout(function(){commitAdmin(pending);},0);
+            /* Async pages keep the previous title/content until their first render callback completes. */
           }
           return result;
         };
