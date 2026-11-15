@@ -4946,8 +4946,141 @@ function loadPublicData(onComplete){
       transitionToGuestHomeAfterLogout('ออกจากระบบเจ้าของระบบแล้ว');
       if(token)apiCall('logout',[token],function(r){if(!r||!r.success)console.warn('Owner logout session could not be revoked',r&&r.message||'');},false,'',true);
     }
-    function loadAdminDashboard(){apiCall('getDashboardStats',[APP.adminToken],function(r){if(!r.success){showAdminError(r.message);return;}var d=r.data;var html='<div class="stat-grid">'+statCard('ยอดขายวันนี้',money(d.todaySales),'fa-coins')+statCard('ยอดขายเดือนนี้',money(d.monthSales),'fa-chart-line')+statCard('คำสั่งซื้อทั้งหมด',d.orderCount,'fa-receipt')+statCard('รอดำเนินการ',d.pendingOrders,'fa-clock')+statCard('รอชำระเงิน',d.awaitingPayment,'fa-credit-card')+statCard('จำนวนสินค้า',d.productCount,'fa-box')+statCard('สินค้าใกล้หมด',d.lowStock,'fa-triangle-exclamation')+statCard('ลูกค้าทั้งหมด',d.customerCount,'fa-users')+'</div><div class="admin-panels"><div class="admin-card"><h3>ภาพรวมยอดขาย</h3><canvas id="salesChart" height="130"></canvas></div><div class="admin-card"><h3>สถานะคลังสินค้า</h3><div style="font-size:13px;line-height:2.4"><div>รายได้สุทธิ <b style="float:right">'+money(d.netRevenue)+'</b></div><div>สินค้าหมด <b style="float:right;color:#dc2626">'+d.outOfStock+'</b></div><div>ยอดขายเมื่อวาน <b style="float:right">'+money(d.yesterdaySales)+'</b></div><div>ยอดขายปีนี้ <b style="float:right">'+money(d.yearSales)+'</b></div></div><button class="btn btn-primary btn-small" onclick="loadAdminPage(\'reports\')">ดูรายงานทั้งหมด</button></div></div>';
-      document.getElementById('adminContent').innerHTML=html;document.getElementById('adminContent').setAttribute('aria-busy','false');apiCall('getSalesReports',[APP.adminToken,{}],function(x){if(!x.success)return;var canvas=document.getElementById('salesChart');if(!canvas||!window.Chart)return;if(APP.chart)APP.chart.destroy();APP.chart=new Chart(canvas,{type:'line',data:{labels:x.data.labels,datasets:[{label:'ยอดขาย',data:x.data.sales,tension:.32,fill:true,borderWidth:2}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});});},true,'กำลังเปิดแดชบอร์ดเจ้าของระบบ...');}
+    function loadAdminDashboard(){
+      var host=document.getElementById('adminContent');
+      if(!host)return;
+      var requestId=Number(APP.adminRequestId||0);
+      var pending=3;
+      function isCurrent(){
+        return APP.currentView==='admin'&&APP.adminPage==='dashboard'&&Number(APP.adminRequestId||0)===requestId&&document.getElementById('adminContent')===host;
+      }
+      function finishPart(){
+        pending=Math.max(0,pending-1);
+        if(pending===0&&isCurrent()){
+          host.setAttribute('aria-busy','false');
+          host.removeAttribute('data-refreshing');
+        }
+      }
+      function setPartError(id,message){
+        var node=document.getElementById(id);
+        if(node)node.innerHTML='<div class="admin-empty"><i class="fa-solid fa-circle-exclamation"></i><div>'+esc(message||'โหลดข้อมูลไม่สำเร็จ')+'</div></div>';
+      }
+
+      // Render every dashboard section together before starting server requests.
+      host.innerHTML=
+        '<div class="stat-grid" id="dashboardStatsGrid">'+
+          '<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-coins"></i></div><small>ยอดขายวันนี้</small><strong class="muted">กำลังโหลด...</strong></div>'+
+          '<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-chart-line"></i></div><small>ยอดขายเดือนนี้</small><strong class="muted">กำลังโหลด...</strong></div>'+
+          '<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-receipt"></i></div><small>คำสั่งซื้อทั้งหมด</small><strong class="muted">กำลังโหลด...</strong></div>'+
+          '<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-clock"></i></div><small>รอดำเนินการ</small><strong class="muted">กำลังโหลด...</strong></div>'+
+          '<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-credit-card"></i></div><small>รอชำระเงิน</small><strong class="muted">กำลังโหลด...</strong></div>'+
+          '<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-box"></i></div><small>จำนวนสินค้า</small><strong class="muted">กำลังโหลด...</strong></div>'+
+          '<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><small>สินค้าใกล้หมด</small><strong class="muted">กำลังโหลด...</strong></div>'+
+          '<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-users"></i></div><small>ลูกค้าทั้งหมด</small><strong class="muted">กำลังโหลด...</strong></div>'+
+        '</div>'+
+        '<div class="admin-panels">'+
+          '<div class="admin-card"><h3>ภาพรวมยอดขาย</h3><div id="dashboardSalesChartState" class="admin-empty">กำลังโหลดกราฟยอดขาย...</div><canvas id="salesChart" height="130" style="display:none"></canvas></div>'+
+          '<div class="admin-card"><h3>สถานะคลังสินค้า</h3><div id="dashboardStockSummary" style="font-size:13px;line-height:2.4"><div class="admin-empty">กำลังโหลดข้อมูลคลังสินค้า...</div></div><button class="btn btn-primary btn-small" type="button" onclick="loadAdminPage(\'reports\')">ดูรายงานทั้งหมด</button></div>'+
+        '</div>'+
+        '<div class="admin-table-wrap" style="margin-top:16px">'+
+          '<div class="table-head"><h3>คำสั่งซื้อล่าสุด</h3><button class="btn btn-outline btn-small" type="button" onclick="loadAdminPage(\'orders\')">ดูคำสั่งซื้อทั้งหมด <i class="fa-solid fa-arrow-right"></i></button></div>'+
+          '<div class="table-scroll"><table><thead><tr><th>หมายเลขคำสั่งซื้อ</th><th>ลูกค้า</th><th>ยอดรวม</th><th>การชำระเงิน</th><th>สถานะคำสั่งซื้อ</th><th>วันที่สั่งซื้อ</th></tr></thead><tbody id="dashboardRecentOrdersBody"><tr><td colspan="6" class="admin-empty">กำลังโหลดรายการคำสั่งซื้อ...</td></tr></tbody></table></div>'+
+        '</div>';
+      host.setAttribute('aria-busy','true');
+      host.removeAttribute('data-refreshing');
+
+      // KPI cards and stock summary.
+      apiCall('getDashboardStats',[APP.adminToken],function(result){
+        if(!isCurrent())return;
+        if(!result||!result.success||!result.data){
+          setPartError('dashboardStatsGrid',result&&result.message||'ไม่สามารถโหลดสรุป Dashboard ได้');
+          setPartError('dashboardStockSummary',result&&result.message||'ไม่สามารถโหลดข้อมูลคลังสินค้าได้');
+          finishPart();
+          return;
+        }
+        var d=result.data||{};
+        var grid=document.getElementById('dashboardStatsGrid');
+        if(grid)grid.innerHTML=
+          statCard('ยอดขายวันนี้',money(d.todaySales),'fa-coins')+
+          statCard('ยอดขายเดือนนี้',money(d.monthSales),'fa-chart-line')+
+          statCard('คำสั่งซื้อทั้งหมด',Number(d.orderCount||0).toLocaleString('th-TH'),'fa-receipt')+
+          statCard('รอดำเนินการ',Number(d.pendingOrders||0).toLocaleString('th-TH'),'fa-clock')+
+          statCard('รอชำระเงิน',Number(d.awaitingPayment||0).toLocaleString('th-TH'),'fa-credit-card')+
+          statCard('จำนวนสินค้า',Number(d.productCount||0).toLocaleString('th-TH'),'fa-box')+
+          statCard('สินค้าใกล้หมด',Number(d.lowStock||0).toLocaleString('th-TH'),'fa-triangle-exclamation')+
+          statCard('ลูกค้าทั้งหมด',Number(d.customerCount||0).toLocaleString('th-TH'),'fa-users');
+        var stock=document.getElementById('dashboardStockSummary');
+        if(stock)stock.innerHTML=
+          '<div>รายได้สุทธิ <b style="float:right">'+money(d.netRevenue)+'</b></div>'+
+          '<div>สินค้าหมด <b style="float:right;color:#dc2626">'+Number(d.outOfStock||0).toLocaleString('th-TH')+'</b></div>'+
+          '<div>ยอดขายเมื่อวาน <b style="float:right">'+money(d.yesterdaySales)+'</b></div>'+
+          '<div>ยอดขายปีนี้ <b style="float:right">'+money(d.yearSales)+'</b></div>';
+        finishPart();
+      },false,'',true);
+
+      // The chart is requested independently, so a slow report does not block other sections.
+      apiCall('getSalesReports',[APP.adminToken,{}],function(result){
+        if(!isCurrent())return;
+        var state=document.getElementById('dashboardSalesChartState');
+        var canvas=document.getElementById('salesChart');
+        if(!result||!result.success||!result.data){
+          if(state)state.innerHTML='<div class="admin-empty">ไม่สามารถโหลดกราฟยอดขายได้: '+esc(result&&result.message||'กรุณาลองอีกครั้ง')+'</div>';
+          finishPart();
+          return;
+        }
+        var labels=safeArray(result.data.labels),values=safeArray(result.data.sales);
+        if(!labels.length){
+          if(state)state.innerHTML='<div class="admin-empty"><i class="fa-solid fa-chart-line"></i><div>ยังไม่มีข้อมูลยอดขายในช่วงเวลานี้</div></div>';
+          finishPart();
+          return;
+        }
+        if(!window.Chart||!canvas){
+          if(state)state.innerHTML='<div class="admin-empty">โหลดข้อมูลกราฟแล้ว แต่ไม่พบส่วนแสดงผลกราฟ</div>';
+          finishPart();
+          return;
+        }
+        try{
+          if(APP.chart){APP.chart.destroy();APP.chart=null;}
+          canvas.style.display='block';
+          if(state)state.style.display='none';
+          APP.chart=new Chart(canvas,{type:'line',data:{labels:labels,datasets:[{label:'ยอดขาย',data:values,tension:.32,fill:true,borderWidth:2}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+        }catch(chartError){
+          if(state)state.innerHTML='<div class="admin-empty">ไม่สามารถวาดกราฟได้: '+esc(chartError&&chartError.message||'')+'</div>';
+        }
+        finishPart();
+      },false,'',true);
+
+      // Show the ten newest orders at the same time as the KPI cards and chart.
+      var recentOrderOptions={page:1,pageSize:10,search:'',status:'',dateFrom:'',dateTo:'',sortKey:'createdAt',sortDir:'desc'};
+      apiCall('getAdminGridPage',[APP.adminToken,'orders',recentOrderOptions],function(result){
+        if(!isCurrent())return;
+        var body=document.getElementById('dashboardRecentOrdersBody');
+        if(!body){finishPart();return;}
+        if(!result||!result.success){
+          body.innerHTML='<tr><td colspan="6" class="admin-empty">'+esc(result&&result.message||'ไม่สามารถโหลดคำสั่งซื้อล่าสุดได้')+'</td></tr>';
+          finishPart();
+          return;
+        }
+        var rows=safeArray(result.data&&result.data.items);
+        if(!rows.length){
+          body.innerHTML='<tr><td colspan="6" class="admin-empty">ยังไม่มีคำสั่งซื้อ</td></tr>';
+          finishPart();
+          return;
+        }
+        body.innerHTML=rows.map(function(row){
+          var dateCell=adminGridCellHtml(row,{key:'createdAt',label:'วันที่สั่งซื้อ',type:'date'});
+          return '<tr>'+
+            '<td><b>'+esc(row.orderNumber||row.id||'—')+'</b></td>'+
+            '<td>'+esc(row.customerName||'—')+'</td>'+
+            '<td>'+esc(money(row.grandTotal||0))+'</td>'+
+            '<td>'+adminGridStatusHtml(row.paymentStatus||'—','paymentStatus')+'</td>'+
+            '<td>'+adminGridStatusHtml(row.orderStatus||'—','orderStatus')+'</td>'+
+            '<td>'+dateCell+'</td>'+
+          '</tr>';
+        }).join('');
+        finishPart();
+      },false,'',true);
+    }
     function statCard(label,value,icon){return '<div class="stat-card"><div class="stat-icon"><i class="fa-solid '+icon+'"></i></div><small>'+label+'</small><strong>'+value+'</strong></div>';}
     function showAdminError(message){document.getElementById('adminContent').innerHTML='<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><h3>ไม่สามารถโหลดข้อมูลได้</h3><p>'+esc(message)+'</p><button class="btn btn-outline btn-small" onclick="loadAdminPage(\''+APP.adminPage+'\')">ลองอีกครั้ง</button></div>';document.getElementById('adminContent').setAttribute('aria-busy','false');}
     function moduleApi(page){var map={products:'getProductsAdmin',categories:'getCategories',inventory:'getInventory',orders:'getOrders',payments:'getPayments',customers:'getCustomers',promotions:'getPromotionsAdmin',coupons:'getCoupons',reviews:'getReviewsAdmin',banners:'getBannersAdmin',users:'getUsers',logs:'getLogs',newsletters:'getNewsletters'};return map[page]||'';}
