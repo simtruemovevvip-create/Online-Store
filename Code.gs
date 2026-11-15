@@ -79,7 +79,7 @@ var DEFAULT_SETTINGS_ = {
 
 /** Independent source-table revisions for screen-level Smart Data Loading. */
 var DATASET_TABLES_ = {
-  publicCategories:['Categories'], publicBanners:['Banners'],
+  publicSettings:['Settings'], publicCategories:['Categories'], publicBanners:['Banners'],
   publicProducts:['Products','ProductVariants','Inventory','Categories','Stores','FlashDeals','Orders','OrderItems','Reviews','Favorites'],
   publicPromotions:['Promotions','Products','Categories'],
   publicStores:['Stores','StoreFollows','Products','Reviews'],
@@ -446,17 +446,12 @@ function productPublicMetricsCacheKey_() {
 }
 
 function clearRuntimeCaches_(changedTables) {
-  var cache = CacheService.getScriptCache();
-  // Helpers invalidate only the table they changed. Never flush every table
-  // after an ordinary save; unrelated screens must keep their warm cache.
+  // This is an explicit migration/maintenance helper, not a blanket flush.
+  // Ordinary CRUD helpers already call invalidateTable_ for each changed table.
   var changed = Array.isArray(changedTables) ? changedTables : (changedTables ? [changedTables] : []);
   changed.forEach(function(name) {
     if (name && (Object.prototype.hasOwnProperty.call(SCHEMA_, String(name)) || String(name) === 'SellerCustomerNotes')) invalidateTable_(String(name));
   });
-  ['dashboard','public_settings','product_public_metrics_v1','inventory_variant_reconcile_v1'].forEach(function(key) {
-    try { cache.remove(key); } catch (e) {}
-  });
-  try { cache.remove(productPublicMetricsCacheKey_()); } catch (e) {}
   return true;
 }
 
@@ -884,8 +879,13 @@ function invalidateTable_(name) {
   // Persistent opaque revision: CacheService is only an expendable accelerator.
   try { if (tableName) PropertiesService.getScriptProperties().setProperty('data_revision_' + tableName, Utilities.getUuid()); }
   catch (revisionError) { console.warn('Data revision update failed for ' + tableName + ': ' + String(revisionError && revisionError.message || revisionError)); }
-  try { cache.remove('dashboard'); } catch (e2) {}
+  if (['Orders','OrderItems','Products','Customers','Inventory','Payments','Reviews','SellerOrders','SellerPayouts'].indexOf(tableName) >= 0) {
+    try { cache.remove('dashboard'); } catch (e2) {}
+  }
   if (tableName === 'Settings') { try { cache.remove('public_settings'); } catch (settingsCacheError) {} }
+  if (['Products','ProductVariants','Inventory','InventoryMovements','Carts','OrderItems'].indexOf(tableName) >= 0) {
+    try { cache.remove('inventory_variant_reconcile_v1'); } catch (reconcileError) {}
+  }
   if (['Orders','OrderItems','Reviews'].indexOf(tableName) >= 0) {
     try { cache.remove('product_public_metrics_v1'); } catch (oldMetricsError) {}
     try { cache.remove(productPublicMetricsCacheKey_()); } catch (metricsError) {}
@@ -3135,9 +3135,10 @@ function getBannerStoreOptions(token) {
 function getPublicHomeBundle(clientVersions) {
   try {
     clientVersions = clientVersions || {};
-    var names = ['publicCategories','publicBanners','publicProducts','publicPromotions','publicStores','publicFlashDeals','publicVouchers','publicLiveRooms'];
+    var names = ['publicSettings','publicCategories','publicBanners','publicProducts','publicPromotions','publicStores','publicFlashDeals','publicVouchers','publicLiveRooms'];
     var versions = currentDatasetVersions_(names);
     var loaders = {
+      publicSettings:function(){return getSettings();},
       publicCategories:function(){return getCategories({});},
       publicBanners:function(){return getBanners({});},
       publicProducts:function(){return getProducts({page:1,pageSize:100,sort:'relevance'});},
