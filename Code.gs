@@ -4399,6 +4399,156 @@ function getNewsletters(token) {
  * is intentionally never used as the default sort key, so editing a record
  * does not move it to the top of the table.
  */
+/**
+ * Fast path for the common unfiltered newest-first grid request.
+ * It reads only the requested data rows plus narrow status/summary columns.
+ * Search, date/status filters, custom sorts and derived-stock tables continue
+ * through the full query path to preserve exact filtering and aggregation.
+ */
+function getAdminGridPageFast_(moduleName, config, options) {
+  options = options || {};
+  var allowedModules = [
+    'categories', 'orders', 'payments', 'shipping', 'customers', 'sellers',
+    'marketplaceReturns', 'marketplacePayouts', 'promotions', 'coupons',
+    'banners', 'users', 'logs', 'newsletters', 'backup'
+  ];
+  if (allowedModules.indexOf(String(moduleName)) < 0) return null;
+  if (text_(options.search, 160) || String(options.status || '') ||
+      String(options.dateFrom || '') || String(options.dateTo || '') ||
+      options.exportAll === true) return null;
+
+  var expectedSort = moduleName === 'logs' ? 'timestamp' : 'createdAt';
+  var sortKey = String(options.sortKey || expectedSort);
+  var sortDir = String(options.sortDir || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+  if (sortKey !== expectedSort || sortDir !== 'desc') return null;
+
+  var pageSize = Number(options.pageSize || 10);
+  if ([10, 25, 50, 100].indexOf(pageSize) < 0) pageSize = 10;
+
+  // Summary keys must be stored columns. Derived fields use the full query path.
+  var headersForSchema = SCHEMA_[config.table] || [];
+  if (safeArray_(config.totals).some(function(key) { return headersForSchema.indexOf(key) < 0; })) return null;
+
+  var sh = validateTable_(config.table);
+  if (!sh) return ok_({
+    items: [], total: 0, filteredTotal: 0, page: 1, pageSize: pageSize,
+    pages: 1, summary: {}, statusOptions: [], sortKey: sortKey, sortDir: sortDir
+  }, 'โหลดข้อมูลตารางแล้ว');
+
+  var lastRow = sh.getLastRow();
+  var lastColumn = sh.getLastColumn();
+  var headers = lastColumn > 0
+    ? sh.getRange(1, 1, 1, lastColumn).getValues()[0].map(function(v) { return String(v || ''); })
+    : [];
+  var total = Math.max(0, lastRow - 1);
+  var pages = Math.max(1, Math.ceil(total / pageSize));
+  var page = Math.max(1, Math.min(pages, Math.floor(Number(options.page || 1)) || 1));
+  var offset = (page - 1) * pageSize;
+  var endRow = lastRow - offset;
+  var startRow = Math.max(2, endRow - pageSize + 1);
+  var rows = [];
+
+  if (total > 0 && endRow >= startRow) {
+    var data = sh.getRange(startRow, 1, endRow - startRow + 1, lastColumn).getValues();
+    // Records are appended to the bottom. Reverse only the selected page so
+    // the newest appended records appear first without reading every row.
+    data.reverse().forEach(function(values, index) {
+      var row = {};
+      headers.forEach(function(header, column) {
+        if (header) row[header] = serializable_(values[column]);
+      });
+      row.__gridSourceIndex = endRow - index - 2;
+      rows.push(row);
+    });
+  }
+
+  var summary = {};
+  var totalKeys = safeArray_(config.totals);
+  if (totalKeys.length && total > 0) {
+    var columnIndexes = totalKeys.map(function(key) { return headers.indexOf(key); });
+    if (columnIndexes.some(function(index) { return index < 0; })) return null;
+    var minColumn = Math.min.apply(null, columnIndexes);
+    var maxColumn = Math.max.apply(null, columnIndexes);
+    var values = sh.getRange(2, minColumn + 1, total, maxColumn - minColumn + 1).getValues();
+    totalKeys.forEach(function(key, index) {
+      var offsetColumn = columnIndexes[index] - minColumn;
+      summary[key] = values.reduce(function(sum, row) {
+        return sum + number_(row[offsetColumn], 0);
+      }, 0);
+    });
+  } else {
+    totalKeys.forEach(function(key) { summary[key] = 0; });
+  }
+
+  var statusOptions = [];
+  if (config.status && total > 0) {
+    var statusColumn = headers.indexOf(config.status);
+    if (statusColumn >= 0) {
+      var statusValues = sh.getRange(2, statusColumn + 1, total, 1).getValues();
+      var seenStatus = Object.create(null);
+      statusValues.forEach(function(row) {
+        var value = String(row[0] === null || row[0] === undefined ? '' : row[0]).trim();
+        if (value) seenStatus[value] = true;
+      });
+      statusOptions = Object.keys(seenStatus).sort();
+    }
+  }
+
+  // Join labels only for rows on the requested page.
+  if (moduleName === 'payments') {
+    var ordersById = indexRowsByField_(readTable_('Orders', true), 'id');
+    rows.forEach(function(row) {
+      var order = ordersById[String(row.orderId || '')] || {};
+      row.orderNumber = order.orderNumber || '';
+      row.customerName = order.customerName || '';
+    });
+  } else if (moduleName === 'sellers') {
+    var customersById = indexRowsByField_(readTable_('Customers', true), 'id');
+    rows.forEach(function(row) {
+      var customer = customersById[String(row.ownerCustomerId || '')] || {};
+      row.ownerName = [customer.firstname || '', customer.lastname || ''].join(' ').trim();
+      row.ownerEmail = customer.email || '';
+      row.ownerPhone = customer.phone || '';
+    });
+  } else if (moduleName === 'marketplacePayouts') {
+    var storesById = indexRowsByField_(readTable_('Stores', true), 'id');
+    rows.forEach(function(row) {
+      var store = storesById[String(row.sellerId || '')] || {};
+      row.shopName = store.shopName || '';
+    });
+  }
+
+  rows = rows.map(function(row) {
+    delete row.passwordHash;
+    delete row.tokenHash;
+    delete row.guestAccessToken;
+    delete row.registrationTicketHash;
+    delete row.codeHash;
+    var safeRow = row;
+    if (moduleName === 'customers') safeRow = publicCustomer_(row);
+    else if (moduleName === 'users') safeRow = publicUser_(row);
+    ['status', 'createdAt', 'updatedAt'].forEach(function(key) {
+      if (row[key] !== undefined) safeRow[key] = row[key];
+    });
+    delete safeRow.__gridSourceIndex;
+    return safeRow;
+  });
+
+  return ok_({
+    items: rows,
+    total: total,
+    filteredTotal: total,
+    page: page,
+    pageSize: pageSize,
+    pages: pages,
+    summary: summary,
+    statusOptions: statusOptions,
+    sortKey: sortKey,
+    sortDir: sortDir,
+    fastPage: true
+  }, 'โหลดข้อมูลตารางแล้ว');
+}
+
 function indexRowsByField_(rows, fieldName) {
   var index = Object.create(null);
   safeArray_(rows).forEach(function(row) {
@@ -4446,6 +4596,8 @@ function getAdminGridPage(token, moduleName, options) {
     var config = moduleMap[String(moduleName || '')];
     if (!config) throw new Error('ไม่รองรับตารางที่ร้องขอ');
     requireAdmin_(token, config.permission);
+    var fastPage = getAdminGridPageFast_(moduleName, config, options);
+    if (fastPage) return fastPage;
     if(moduleName==='inventory')withLock_(function(){reconcileDuplicateProductVariants_();});
 
     var rows = readTable_(config.table, true).map(function(row, index) {
