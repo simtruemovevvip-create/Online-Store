@@ -6552,10 +6552,10 @@ function adjustInventoryDialog(productId,variantId){
       var date=new Date(value||'');
       if(!value||isNaN(date.getTime()))return '—';
       var now=new Date(),months=Math.max(0,(now.getFullYear()-date.getFullYear())*12+now.getMonth()-date.getMonth());
-      if(months<1)return 'น้อยกว่า 1 เดือน';
-      if(months<12)return months+' เดือน';
+      if(months<1)return 'น้อยกว่า 1 เดือนที่ผ่านมา';
+      if(months<12)return months+' เดือนที่ผ่านมา';
       var years=Math.floor(months/12),remain=months%12;
-      return years+' ปี'+(remain?' '+remain+' เดือน':'');
+      return years+' ปี'+(remain?' '+remain+' เดือน':'')+'ที่ผ่านมา';
     }
     function shopRenderStoreProductCard(product,isTop){
       var card=renderProductCard(product,true);
@@ -6586,7 +6586,7 @@ function adjustInventoryDialog(productId,variantId){
         ['fa-box','รายการสินค้า',shopCompactNumber(store.productCount)],
         ['fa-users','ผู้ติดตาม',shopCompactNumber(store.followers)],
         ['fa-user-plus','กำลังติดตาม',shopCompactNumber(store.followingCount)],
-        ['fa-star','คะแนน',Number(store.rating||0)>0?Number(store.rating).toFixed(1)+' ('+shopCompactNumber(store.reviewCount)+' รีวิว)':'ยังไม่มีคะแนน'],
+        ['fa-star','คะแนน',Number(store.rating||0)>0?Number(store.rating).toFixed(1)+' (การให้คะแนนทั้งหมด '+shopCompactNumber(store.reviewCount)+')':'ยังไม่มีคะแนน'],
         ['fa-comments','ประสิทธิภาพการแชท',store.chatResponseRate!==null&&store.chatResponseRate!==undefined?Number(store.chatResponseRate)+'%':'—'],
         ['fa-calendar-check','เข้าร่วมเมื่อ',shopJoinedLabel(store.createdAt)]
       ];
@@ -11179,7 +11179,7 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
 .shop-store-backbar button{border:0;background:transparent;color:var(--muted,#64748b);font-size:12px;cursor:pointer}
 .shop-storefront{width:min(1200px,calc(100% - 28px));margin:0 auto 36px;color:var(--ink,#172033);font-family:inherit}
 .shop-store-header{overflow:visible;border-radius:12px;background:#fff;box-shadow:0 2px 12px rgba(15,23,42,.06)}
-.shop-store-head-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(390px,1fr);gap:18px;padding:16px}
+.shop-store-head-main{display:grid;grid-template-columns:minmax(0,42fr) minmax(390px,58fr);gap:18px;padding:16px}
 .shop-store-brand-card{position:relative;display:flex;min-height:170px;overflow:hidden;align-items:flex-end;border-radius:10px;background:linear-gradient(125deg,#171923 0%,#34384a 48%,#171923 100%);color:#fff}
 .shop-store-brand-bg{position:absolute;inset:0;opacity:.25}
 .shop-store-brand-bg:after{position:absolute;inset:0;background:linear-gradient(90deg,rgba(7,10,20,.78),rgba(7,10,20,.24));content:""}
@@ -11221,8 +11221,8 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
 .shop-top-badge{position:absolute;z-index:3;top:7px;left:7px;padding:4px 7px;border-radius:3px;background:linear-gradient(120deg,#ff9f43,#ee4d2d);color:#fff;font-size:9px;font-weight:900;letter-spacing:.05em}
 .shop-store-product-card .product-card{height:100%;min-width:0}
 .shop-store-product-card .product-similar-button{display:none}
-.shop-store-categories{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:16px 12px}
-.shop-store-category{display:flex;min-width:0;flex-direction:column;align-items:center;gap:8px;border:0;background:transparent;color:#444;text-align:center;cursor:pointer}
+.shop-store-categories{display:flex;align-items:flex-start;gap:24px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:thin}
+.shop-store-category{display:flex;flex:0 0 110px;min-width:0;flex-direction:column;align-items:center;gap:8px;border:0;background:transparent;color:#444;text-align:center;cursor:pointer}
 .shop-store-category>span{display:grid;width:76px;height:76px;place-items:center;overflow:hidden;border:1px solid #f0f0f0;border-radius:50%;background:#fff4f0;color:#ee4d2d;font-size:24px}
 .shop-store-category img{width:100%;height:100%;object-fit:cover}
 .shop-store-category>b{display:-webkit-box;max-width:120px;overflow:hidden;color:#444;font-size:10px;font-weight:650;line-height:1.4;-webkit-box-orient:vertical;-webkit-line-clamp:2}
@@ -11260,7 +11260,7 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
  .shop-store-brand-info h1{font-size:18px}
  .shop-store-stat-grid{gap:7px}
  .shop-store-shelf-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
- .shop-store-categories{grid-template-columns:repeat(6,minmax(0,1fr))}
+ .shop-store-categories{gap:16px}
  .shop-store-all{grid-template-columns:175px minmax(0,1fr)}
  .shop-store-all-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
@@ -11278,7 +11278,7 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
  .shop-store-sections{gap:9px;margin-top:9px}
  .shop-store-shelves,.shop-store-categories-section,.shop-store-all{padding:11px}
  .shop-store-shelf-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
- .shop-store-categories{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 7px}
+ .shop-store-categories{gap:12px}
  .shop-store-category>span{width:62px;height:62px}
  .shop-store-all{grid-template-columns:minmax(0,1fr);gap:8px}
  .shop-store-category-sidebar{position:static;display:flex;gap:6px;overflow-x:auto;padding-bottom:5px}

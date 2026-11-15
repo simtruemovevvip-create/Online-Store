@@ -3603,6 +3603,52 @@ function publicStore_(s) {
     email:s.email,phone:s.phone,address:s.address,
     rating:number_(s.rating,0),followerCount:number_(s.followerCount,0),status:s.status,createdAt:s.createdAt};
 }
+function getStoreChatResponseRate_(storeId) {
+  try {
+    var threadIds = Object.create(null);
+    readTable_('ChatThreads', true).forEach(function(thread) {
+      if (String(thread.sellerId || '') === String(storeId || '')) {
+        threadIds[String(thread.id || '')] = true;
+      }
+    });
+    if (!Object.keys(threadIds).length) return null;
+
+    var messages = readTable_('ChatMessages', true).filter(function(message) {
+      return !!threadIds[String(message.threadId || '')] &&
+        !message.deletedAt &&
+        (message.senderType === 'customer' || message.senderType === 'seller');
+    });
+    if (!messages.length) return null;
+
+    messages.sort(function(a, b) {
+      var aTime = new Date(a.createdAt || 0).getTime() || 0;
+      var bTime = new Date(b.createdAt || 0).getTime() || 0;
+      return aTime - bTime;
+    });
+
+    var customerTurns = 0;
+    var answeredTurns = 0;
+    var waitingByThread = Object.create(null);
+    messages.forEach(function(message) {
+      var threadId = String(message.threadId || '');
+      if (message.senderType === 'customer') {
+        if (!waitingByThread[threadId]) {
+          customerTurns++;
+          waitingByThread[threadId] = true;
+        }
+      } else if (message.senderType === 'seller' && waitingByThread[threadId]) {
+        answeredTurns++;
+        waitingByThread[threadId] = false;
+      }
+    });
+
+    return customerTurns ? Math.round(answeredTurns * 100 / customerTurns) : null;
+  } catch (error) {
+    console.warn('Unable to calculate store chat response rate: ' + String(error && error.message || error));
+    return null;
+  }
+}
+
 function notify_(recipientType,recipientId,title,message,type,link) {
   try {
     if(!recipientId)return;
@@ -3738,7 +3784,7 @@ function getMarketplaceStorefront(storeId, customerToken, page, pageSize, sort, 
     }
     info.isFollowing=isFollowing;
     info.online=false;
-    info.chatResponseRate=null;
+    info.chatResponseRate=getStoreChatResponseRate_(storeId);
 
     var categories=readTable_('Categories',true),categoryById=Object.create(null),categoryCounts=Object.create(null);
     categories.forEach(function(c){if(String(c.status)==='Active')categoryById[String(c.id)]=c;});
