@@ -3786,7 +3786,81 @@ function sellerDeleteProductVariant(customerToken,variantId) {
   }catch(e){return fail_(safeError_(e));}
 }
 function sellerDashboard(customerToken) {try{var x=requireSeller_(customerToken),sid=x.store.id,orders=readTable_('SellerOrders',false).filter(function(o){return o.sellerId===sid;}),products=readTable_('Products',false).filter(function(p){return p.sellerId===sid;}),payouts=readTable_('SellerPayouts',false).filter(function(p){return p.sellerId===sid;});return ok_({store:publicStore_(x.store),productCount:products.length,activeProducts:products.filter(function(p){return p.status==='Active';}).length,orderCount:orders.length,pendingOrders:orders.filter(function(o){return ['Awaiting Payment','Processing','Packed'].indexOf(o.status)>=0;}).length,revenue:orders.filter(function(o){return ['Delivered','Completed'].indexOf(o.status)>=0;}).reduce(function(s,o){return s+number_(o.subtotal,0);},0),pendingPayout:payouts.filter(function(p){return p.status!=='Paid';}).reduce(function(s,p){return s+number_(p.netAmount,0);},0)});}catch(e){return fail_(safeError_(e));}}
-function sellerGetProducts(customerToken,filters) {try{var x=requireSeller_(customerToken);filters=filters||{};var rows=readTable_('Products',false).filter(function(p){return p.sellerId===x.store.id;});var variants=readTable_('ProductVariants',true),inventory=readTable_('Inventory',true),categories=readTable_('Categories',true);rows.forEach(function(p){var category=categories.filter(function(c){return String(c.id)===String(p.categoryId||'');})[0]||{};p.categoryName=category.name||'';p.categoryStatus=category.status||'';var children=variants.filter(function(v){return String(v.productId)===String(p.id)&&String(v.status)==='Active';});p.variantCount=children.length;if(children.length){p.totalVariantAvailableStock=children.reduce(function(sum,v){var inv=inventory.filter(function(i){return String(i.productId)===String(p.id)&&String(i.variantId)===String(v.id);})[0];var quantity=inv?number_(inv.quantity,v.stock):number_(v.stock,0),reserved=inv?number_(inv.reserved,0):0;return sum+Math.max(0,quantity-reserved);},0);}});if(filters.status)rows=rows.filter(function(p){return p.status===filters.status;});var q=text_(filters.search,100).toLowerCase();if(q)rows=rows.filter(function(p){return [p.name,p.sku].join(' ').toLowerCase().indexOf(q)>=0;});rows.sort(function(a,b){var d=new Date(b.createdAt||0)-new Date(a.createdAt||0);return d||String(b.id||'').localeCompare(String(a.id||''));});return ok_(rows);}catch(e){return fail_(safeError_(e));}}
+function sellerGetProducts(customerToken, filters) {
+  try {
+    var x = requireSeller_(customerToken);
+    filters = filters || {};
+    var isPaginated = Object.prototype.hasOwnProperty.call(filters, 'page') ||
+      filters.paginated === true;
+    var allRows = readTable_('Products', true).filter(function(product) {
+      return String(product.sellerId || '') === String(x.store.id);
+    });
+    var total = allRows.length;
+    var query = text_(filters.search, 100).toLowerCase();
+    var status = String(filters.status || '');
+    var rows = allRows.filter(function(product) {
+      if (status && status !== 'all' && String(product.status || 'Active') !== status) return false;
+      if (!query) return true;
+      return [product.name, product.sku, product.barcode, product.brand]
+        .join(' ').toLowerCase().indexOf(query) >= 0;
+    });
+    rows.sort(function(a, b) {
+      var difference = new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      return difference || String(b.id || '').localeCompare(String(a.id || ''));
+    });
+
+    var filteredTotal = rows.length;
+    var pageSize = Number(filters.pageSize || 10);
+    if ([10, 25, 50, 100].indexOf(pageSize) < 0) pageSize = 10;
+    var pages = Math.max(1, Math.ceil(filteredTotal / pageSize));
+    var page = Math.max(1, Math.min(pages, Math.floor(Number(filters.page || 1)) || 1));
+    if (isPaginated) rows = rows.slice((page - 1) * pageSize, page * pageSize);
+
+    // Build lookup maps once. Never scan all variants/inventory separately for each product.
+    var categoryById = indexRowsByField_(readTable_('Categories', true), 'id');
+    var variantsByProduct = groupRowsByField_(readTable_('ProductVariants', true), 'productId');
+    var inventoryByProductVariant = Object.create(null);
+    readTable_('Inventory', true).forEach(function(item) {
+      var key = String(item.productId || '') + '\u0001' + String(item.variantId || '');
+      if (!Object.prototype.hasOwnProperty.call(inventoryByProductVariant, key)) {
+        inventoryByProductVariant[key] = item;
+      }
+    });
+
+    rows.forEach(function(product) {
+      var category = categoryById[String(product.categoryId || '')] || {};
+      product.categoryName = category.name || '';
+      product.categoryStatus = category.status || '';
+      var children = safeArray_(variantsByProduct[String(product.id || '')]).filter(function(variant) {
+        return String(variant.status) === 'Active' && !String(variant.mergedIntoVariantId || '');
+      });
+      product.variantCount = children.length;
+      if (children.length) {
+        product.totalVariantAvailableStock = children.reduce(function(sum, variant) {
+          var key = String(product.id || '') + '\u0001' + String(variant.id || '');
+          var inventory = inventoryByProductVariant[key];
+          var quantity = inventory ? number_(inventory.quantity, variant.stock) : number_(variant.stock, 0);
+          var reserved = inventory ? number_(inventory.reserved, 0) : 0;
+          return sum + Math.max(0, quantity - reserved);
+        }, 0);
+      }
+    });
+
+    if (isPaginated) {
+      return ok_({
+        items: rows,
+        total: total,
+        filteredTotal: filteredTotal,
+        page: page,
+        pageSize: pageSize,
+        pages: pages
+      }, 'โหลดสินค้าของร้านแล้ว');
+    }
+    return ok_(rows);
+  } catch (e) {
+    return fail_(safeError_(e));
+  }
+}
 function normalizeProductGalleryImages_(value) {
   var rows=[];
   if(Array.isArray(value))rows=value;
