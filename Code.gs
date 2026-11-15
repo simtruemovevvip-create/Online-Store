@@ -4,7 +4,7 @@
  * Keep the four deployment settings below in this single location.
  * ========================================================================== */
 const SHEET_ID = "1j7crcGh_9gtojDogwecvD_TNPr7lG1vTn0DJafrWNJw";
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwArhL3V9EYMLj6EDzRj66-ruRAEbHpMEgDX0XcUxvH5RzSKYOiRUp2K33SiSbXDKYnYA/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwK32o0YpxskxlNCV_h-9FpMXrpqt1ho4WaTTVrPvT8wHIwSwQH19tPLmMjIZc5AhpXuw/exec";
 const FOLDER_ID = "1WowUHSERuWRl95J8rNCJHGL9KwVbWd-c";
 const ADMIN_PASSWORD = "1234";
 
