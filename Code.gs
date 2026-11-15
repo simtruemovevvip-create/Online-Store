@@ -3132,10 +3132,13 @@ function getBannerStoreOptions(token) {
 }
 
 /** One RPC for all initial public home datasets; unchanged datasets are omitted. */
-function getPublicHomeBundle(clientVersions) {
+function getPublicHomeBundle(clientVersions, group) {
   try {
     clientVersions = clientVersions || {};
-    var names = ['publicSettings','publicCategories','publicBanners','publicProducts','publicPromotions','publicStores','publicFlashDeals','publicVouchers','publicLiveRooms'];
+    group = String(group || 'primary');
+    var primaryNames = ['publicSettings','publicCategories','publicBanners','publicProducts'];
+    var secondaryNames = ['publicPromotions','publicStores','publicFlashDeals','publicVouchers','publicLiveRooms'];
+    var names = group === 'secondary' ? secondaryNames : (group === 'all' ? primaryNames.concat(secondaryNames) : primaryNames);
     var versions = currentDatasetVersions_(names);
     var loaders = {
       publicSettings:function(){return getSettings();},
@@ -3149,7 +3152,7 @@ function getPublicHomeBundle(clientVersions) {
       publicLiveRooms:function(){return getMarketplaceLiveRooms();}
     };
     var changed = names.filter(function(name){return String(clientVersions[name] || '') !== String(versions[name] || '');});
-    if (!changed.length) return ok_({unchanged:true,versions:versions,datasets:{},errors:{},changed:[]}, 'ข้อมูลหน้าแรกยังไม่มีการเปลี่ยนแปลง');
+    if (!changed.length) return ok_({unchanged:true,group:group,versions:versions,datasets:{},errors:{},changed:[]}, 'ข้อมูลหน้าแรกยังไม่มีการเปลี่ยนแปลง');
     var datasets = {}, returnedVersions = {}, errors = {};
     changed.forEach(function(name) {
       try {
@@ -3158,7 +3161,7 @@ function getPublicHomeBundle(clientVersions) {
         else errors[name] = response && response.message || 'โหลดข้อมูลไม่สำเร็จ';
       } catch (loadError) { errors[name] = safeError_(loadError); }
     });
-    return ok_({unchanged:false,versions:returnedVersions,datasets:datasets,errors:errors,changed:changed}, 'ตรวจสอบข้อมูลหน้าแรกแล้ว');
+    return ok_({unchanged:false,group:group,versions:returnedVersions,datasets:datasets,errors:errors,changed:changed}, 'ตรวจสอบข้อมูลหน้าแรกแล้ว');
   } catch (error) { return fail_(safeError_(error)); }
 }
 
