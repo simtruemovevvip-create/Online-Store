@@ -2044,6 +2044,18 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
   <button class="floating-cart" onclick="openCart()" title="ตะกร้าสินค้า"><i class="fa-solid fa-bag-shopping"></i><span id="floatingCartCount">0</span></button>
   <button class="back-top" id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="fa-solid fa-arrow-up"></i></button>
   <div class="loading" id="loading"><div class="loading-box"><div class="global-loading-skeleton" aria-hidden="true"><i class="market-skeleton-block w-55"></i><i class="market-skeleton-block w-85 h-18"></i><i class="market-skeleton-block w-70"></i><i class="market-skeleton-block w-45"></i></div><span id="loadingText">กำลังโหลดข้อมูล...</span></div></div>
+  <div id="browserRefreshSkeleton" class="browser-refresh-skeleton" role="status" aria-live="polite" aria-busy="true">
+    <div class="brs-topbar"><div class="brs-topbar-inner"><i class="brs-block brs-logo"></i><i class="brs-block brs-search"></i><i class="brs-block brs-action"></i><i class="brs-block brs-action"></i></div></div>
+    <div class="brs-nav"><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i></div>
+    <div class="brs-main">
+      <aside class="brs-sidebar" aria-hidden="true"><i class="brs-block brs-side-line" style="width:70%"></i><i class="brs-block brs-side-line"></i><i class="brs-block brs-side-line"></i><i class="brs-block brs-side-line"></i><i class="brs-block brs-side-line"></i><i class="brs-block brs-side-line"></i><i class="brs-block brs-side-line"></i><i class="brs-block brs-side-line"></i><i class="brs-block brs-side-line"></i><i class="brs-block brs-side-line"></i></aside>
+      <main class="brs-content" aria-hidden="true">
+        <div class="brs-heading"><i class="brs-block brs-title"></i><i class="brs-block brs-subtitle"></i></div>
+        <div class="brs-cards"><div class="brs-card"><i class="brs-block"></i><i class="brs-block"></i></div><div class="brs-card"><i class="brs-block"></i><i class="brs-block"></i></div><div class="brs-card"><i class="brs-block"></i><i class="brs-block"></i></div><div class="brs-card"><i class="brs-block"></i><i class="brs-block"></i></div></div>
+        <section class="brs-panel"><i class="brs-block brs-panel-head"></i><div class="brs-table-row"><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i></div><div class="brs-table-row"><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i></div><div class="brs-table-row"><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i></div><div class="brs-table-row"><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i></div><div class="brs-table-row"><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i></div><div class="brs-table-row"><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i></div></section>
+      </main>
+    </div>
+  </div>
   <input type="file" id="adminUploadInput" accept="image/*" style="display:none" onchange="handleAdminUpload(this)">
   <script>
     var APP = {
@@ -2078,6 +2090,15 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
 
     function safeHref(value,fallback){var u=String(value||'').trim();return /^(https?:\/\/|mailto:|tel:|\/(?!\/)|#)/i.test(u)?esc(u):(fallback||'#');}
     function loading(show,text){var node=document.getElementById('loading');if(!node)return;node.className=show?'loading show':'loading';document.getElementById('loadingText').textContent=text||'กำลังโหลดข้อมูล...';}
+    function finishBrowserRefreshSkeleton(){
+      var root=document.getElementById('browserRefreshSkeleton');
+      if(!root||!document.documentElement.hasAttribute('data-store-browser-reload'))return;
+      root.style.opacity='0';root.style.pointerEvents='none';root.setAttribute('aria-busy','false');
+      window.setTimeout(function(){
+        document.documentElement.removeAttribute('data-store-browser-reload');
+        if(root.parentNode)root.parentNode.removeChild(root);
+      },200);
+    }
     function captureActionTarget(event){
       var target=event.target,button=target&&target.closest?target.closest('button,[role=button],[onclick],input[type=submit]'):null;
       if(!button)return;
@@ -2188,7 +2209,18 @@ function beginApiLoading(text){
       var loadHandle=(!guardAdminPage&&(showLoading||pendingNavigation))?beginApiLoading(loadingText||(pendingNavigation?'กำลังเปิดหน้า...':'กำลังประมวลผล...')):null;
       var requestFinished=false,requestTimer=null;
       function finishRequest(){if(requestFinished)return false;requestFinished=true;if(requestTimer)clearTimeout(requestTimer);endApiLoading(loadHandle);endApiActivity(apiActivityHandle);return true;}
-      function deliverApiResult(result){try{done(result);}catch(callbackError){console.error('API callback failed: '+name,callbackError);if(!silentError)alertError('เกิดข้อผิดพลาดขณะเปิดหน้า กรุณาลองใหม่อีกครั้ง');}}
+      var isPrefetchApiRequest=!!APP.dataPrefetchInProgress;
+      function deliverApiResult(result){
+        try{done(result);}catch(callbackError){console.error('API callback failed: '+name,callbackError);if(!silentError)alertError('เกิดข้อผิดพลาดขณะเปิดหน้า กรุณาลองใหม่อีกครั้ง');}
+        if(!isPrefetchApiRequest&&document.documentElement.hasAttribute('data-store-browser-reload')){
+          var primaryReady=false;
+          if(APP.accessMode==='owner')primaryReady=APP.currentView==='admin'&&adminReadApis.indexOf(name)>=0;
+          else if(APP.accessMode==='seller')primaryReady=APP.currentView==='seller'&&(/^seller/.test(name)||name==='getSellerChatThreads');
+          else if(APP.accessMode==='customer')primaryReady=APP.currentView==='account'&&!['getSettings','checkCustomerPortalSession','mergeGuestCart'].includes(name);
+          else if(APP.accessMode==='guest')primaryReady=APP.currentView!=='home'&&name!=='getSettings';
+          if(primaryReady)window.setTimeout(finishBrowserRefreshSkeleton,90);
+        }
+      }
       function finishPortalSkeleton(){if(portalSkeletonRequest){try{customerPortalFinishSkeleton(portalSkeletonRequest);}catch(skeletonError){console.warn('Portal skeleton cleanup failed',skeletonError);}}}
       requestTimer=setTimeout(function(){
         if(!finishRequest())return;
@@ -2602,6 +2634,7 @@ function loadPublicData(onComplete){
           criticalComplete=true;
           APP.homeDataInitialPending=false;
           renderPublicHome();
+          if(document.documentElement.hasAttribute('data-store-browser-reload'))window.setTimeout(finishBrowserRefreshSkeleton,90);
           if(!completedCallback&&typeof onComplete==='function'){
             completedCallback=true;
             try{onComplete();}catch(callbackError){console.error('Public data completion callback failed',callbackError);}
@@ -9166,10 +9199,73 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
 @media(max-width:720px){.fashion-detail-thumb-scroller{max-width:450px}.fashion-detail-thumbnails .detail-thumb{flex-basis:60px!important;width:60px!important;min-width:60px!important;max-width:60px;height:60px!important}}
 </style>
 
+  <script id="browser-refresh-skeleton-detect">
+    (function(){
+      try{
+        var navEntry=window.performance&&performance.getEntriesByType?performance.getEntriesByType('navigation')[0]:null;
+        var isBrowserReload=navEntry?navEntry.type==='reload':!!(performance&&performance.navigation&&performance.navigation.type===1);
+        if(isBrowserReload)document.documentElement.setAttribute('data-store-browser-reload','true');
+      }catch(error){}
+    })();
+  </script>
   <style id="instant-page-display-v1">
     #loading,.loading.show,#globalApiActivity,.market-skeleton,.seller-skeleton,.admin-skeleton,.eg-skeleton-grid,.customer-portal-loading-layer,.customer-portal-full-skeleton{display:none!important}
+    html[data-store-browser-reload="true"] #browserRefreshSkeleton{display:flex!important}
+    html[data-store-browser-reload="true"] .market-skeleton,
+    html[data-store-browser-reload="true"] .seller-skeleton,
+    html[data-store-browser-reload="true"] .admin-skeleton,
+    html[data-store-browser-reload="true"] .customer-portal-loading-layer,
+    html[data-store-browser-reload="true"] .customer-portal-full-skeleton{display:flex!important}
+    html[data-store-browser-reload="true"] .eg-skeleton-grid{display:grid!important}
     #appRoot[aria-busy="true"],#customerPortalContent[aria-busy="true"],#sellerContent[aria-busy="true"],#adminContent[aria-busy="true"]{opacity:1!important}
     #appRoot[data-refreshing="true"],#customerPortalContent[data-refreshing="true"],#sellerContent[data-refreshing="true"],#adminContent[data-refreshing="true"]{opacity:1!important;filter:none!important}
+    .browser-refresh-skeleton{display:none;position:fixed;inset:0;z-index:2147483001;flex-direction:column;overflow:auto;background:#f4f6fa;color:#334155;opacity:1;transition:opacity .18s ease}
+    .browser-refresh-skeleton *{box-sizing:border-box}
+    .browser-refresh-skeleton .brs-block{display:block;position:relative;overflow:hidden;background:#e5eaf1;border-radius:8px}
+    .browser-refresh-skeleton .brs-block:after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);animation:browserRefreshShimmer 1.25s infinite}
+    @keyframes browserRefreshShimmer{100%{transform:translateX(100%)}}
+    .browser-refresh-skeleton .brs-topbar{height:68px;flex:0 0 68px;background:#fff;border-bottom:1px solid #e7ebf0;display:flex;align-items:center}
+    .browser-refresh-skeleton .brs-topbar-inner{width:min(1200px,calc(100% - 32px));margin:auto;display:flex;align-items:center;gap:18px}
+    .browser-refresh-skeleton .brs-logo{width:42px;height:42px;border-radius:12px;flex:0 0 42px}
+    .browser-refresh-skeleton .brs-search{height:36px;max-width:420px;flex:1;border-radius:10px}
+    .browser-refresh-skeleton .brs-action{width:82px;height:30px}
+    .browser-refresh-skeleton .brs-nav{height:38px;flex:0 0 38px;background:#fff;border-bottom:1px solid #e7ebf0;display:flex;align-items:center;gap:24px;padding:0 max(16px,calc((100% - 1200px)/2))}
+    .browser-refresh-skeleton .brs-nav .brs-block{width:76px;height:9px}
+    .browser-refresh-skeleton .brs-main{width:min(1200px,calc(100% - 32px));margin:22px auto 40px;display:grid;grid-template-columns:190px minmax(0,1fr);gap:22px;flex:1}
+    .browser-refresh-skeleton .brs-sidebar{background:#fff;border:1px solid #e7ebf0;border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:18px;min-height:390px}
+    .browser-refresh-skeleton .brs-side-line{height:11px;width:100%}
+    .browser-refresh-skeleton .brs-content{min-width:0;display:flex;flex-direction:column;gap:18px}
+    .browser-refresh-skeleton .brs-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;height:38px}
+    .browser-refresh-skeleton .brs-title{height:20px;width:210px}
+    .browser-refresh-skeleton .brs-subtitle{height:11px;width:128px}
+    .browser-refresh-skeleton .brs-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .browser-refresh-skeleton .brs-card{height:112px;background:#fff;border:1px solid #e7ebf0;border-radius:12px;padding:17px;display:flex;flex-direction:column;gap:15px}
+    .browser-refresh-skeleton .brs-card .brs-block:first-child{width:60%;height:10px}
+    .browser-refresh-skeleton .brs-card .brs-block:last-child{width:42%;height:23px}
+    .browser-refresh-skeleton .brs-panel{background:#fff;border:1px solid #e7ebf0;border-radius:12px;padding:18px;min-height:250px}
+    .browser-refresh-skeleton .brs-panel-head{height:18px;width:180px;margin-bottom:20px}
+    .browser-refresh-skeleton .brs-table-row{display:grid;grid-template-columns:1.2fr 1fr .8fr 90px;gap:14px;align-items:center;padding:15px 0;border-top:1px solid #edf0f4}
+    .browser-refresh-skeleton .brs-table-row .brs-block{height:10px}
+    .browser-refresh-skeleton .brs-table-row .brs-block:last-child{width:70px}
+    .dark .browser-refresh-skeleton{background:#0d1117;color:#e7ebf2}
+    .dark .browser-refresh-skeleton .brs-topbar,.dark .browser-refresh-skeleton .brs-nav,
+    .dark .browser-refresh-skeleton .brs-sidebar,.dark .browser-refresh-skeleton .brs-card,
+    .dark .browser-refresh-skeleton .brs-panel{background:#161b22;border-color:#30363d}
+    .dark .browser-refresh-skeleton .brs-block{background:#252c35}
+    @media(max-width:760px){
+      .browser-refresh-skeleton .brs-topbar{height:60px;flex-basis:60px}
+      .browser-refresh-skeleton .brs-topbar-inner{gap:9px}
+      .browser-refresh-skeleton .brs-logo{width:36px;height:36px;flex-basis:36px}
+      .browser-refresh-skeleton .brs-action{width:34px}
+      .browser-refresh-skeleton .brs-nav{gap:13px;overflow:hidden}
+      .browser-refresh-skeleton .brs-nav .brs-block{min-width:56px}
+      .browser-refresh-skeleton .brs-main{grid-template-columns:1fr;width:calc(100% - 24px);margin-top:14px;gap:13px}
+      .browser-refresh-skeleton .brs-sidebar{display:none}
+      .browser-refresh-skeleton .brs-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+      .browser-refresh-skeleton .brs-card{height:88px;padding:12px}
+      .browser-refresh-skeleton .brs-table-row{grid-template-columns:1.2fr 1fr 64px;gap:8px}
+      .browser-refresh-skeleton .brs-table-row .brs-block:nth-child(3){display:none}
+    }
   </style>
   <script id="instant-page-display-v1-js">
     (function(){
