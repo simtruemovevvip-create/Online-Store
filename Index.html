@@ -2216,7 +2216,7 @@ function beginApiLoading(text){
           var primaryReady=false;
           if(APP.accessMode==='owner')primaryReady=APP.currentView==='admin'&&adminReadApis.indexOf(name)>=0;
           else if(APP.accessMode==='seller')primaryReady=APP.currentView==='seller'&&(/^seller/.test(name)||name==='getSellerChatThreads');
-          else if(APP.accessMode==='customer')primaryReady=APP.currentView==='account'&&!['getSettings','checkCustomerPortalSession','mergeGuestCart'].includes(name);
+          else if(APP.accessMode==='customer')primaryReady=APP.currentView!=='home'&&['getSettings','checkCustomerPortalSession','mergeGuestCart'].indexOf(name)<0;
           else if(APP.accessMode==='guest')primaryReady=APP.currentView!=='home'&&name!=='getSettings';
           if(primaryReady)window.setTimeout(finishBrowserRefreshSkeleton,90);
         }
@@ -4800,7 +4800,7 @@ function loadPublicData(onComplete){
       if(content){content.setAttribute('aria-busy','true');content.innerHTML=adminSkeleton(page);}
       var side=document.getElementById('adminSidebar');if(side)side.classList.remove('open');var backdrop=document.getElementById('adminSidebarBackdrop');if(backdrop)backdrop.classList.remove('show');var sidebarToggle=document.getElementById('adminSidebarToggle');if(sidebarToggle)sidebarToggle.setAttribute('aria-expanded','false');
       if(main)main.scrollTop=0;
-      if(page==='dashboard'){loadAdminDashboard();return;}if(page==='settings'){loadAdminSettings();return;}if(page==='reports'){loadAdminReports();return;}if(page==='demo'){renderDemoAdmin();return;}if(page==='backup'){loadBackupAdmin();return;}if(page==='shipping'){loadShippingAdmin();return;}if(['sellers','flashDeals','marketplaceReturns','marketplacePayouts'].indexOf(page)>=0){loadMarketplaceAdmin(page);return;}loadAdminModule(page);
+      if(page==='dashboard'){loadAdminDashboard();return;}if(page==='settings'){loadAdminSettings();return;}if(page==='reports'){loadAdminReports();return;}if(page==='demo'){renderDemoAdmin();if(document.documentElement.hasAttribute('data-store-browser-reload'))window.setTimeout(finishBrowserRefreshSkeleton,90);return;}if(page==='backup'){loadBackupAdmin();return;}if(page==='shipping'){loadShippingAdmin();return;}if(['sellers','flashDeals','marketplaceReturns','marketplacePayouts'].indexOf(page)>=0){loadMarketplaceAdmin(page);return;}loadAdminModule(page);
     }
     function adminLogout(){
       var token=APP.adminToken;
