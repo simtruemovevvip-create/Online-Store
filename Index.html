@@ -2180,7 +2180,7 @@ function beginApiLoading(text){
     var API_INFLIGHT_READ_APIS = {
       getSettings:1,getCategories:1,getProducts:1,getBanners:1,getPromotions:1,
       getMarketplaceStores:1,getMarketplaceFlashDeals:1,getMarketplaceVouchers:1,getMarketplaceLiveRooms:1,
-      getPublicHomeBundle:1,getAdminDashboardBundle:1,getAdminGridPage:1,getSellerPageBundle:1,
+      getPublicHomeBundle:1,
       sellerDashboard:1,sellerGetProducts:1,sellerGetOrders:1,sellerGetCustomers:1,sellerGetVouchers:1,
       sellerGetFlashDeals:1,sellerGetReturns:1,sellerGetPayouts:1,sellerGetLiveRooms:1,sellerGetStoreProfile:1
     };
@@ -2634,6 +2634,10 @@ function loadPublicData(onComplete){
           renderPublicHome();finish();return;
         }
         var payload=response.data||{},datasets=payload.datasets||{};
+        if(Object.prototype.hasOwnProperty.call(datasets,'publicSettings')){
+          APP.settings=datasets.publicSettings||{};
+          applySettings();
+        }
         if(Object.prototype.hasOwnProperty.call(datasets,'publicCategories'))applySharedCategoryRows(safeArray(datasets.publicCategories),false);
         if(Object.prototype.hasOwnProperty.call(datasets,'publicBanners'))APP.banners=safeArray(datasets.publicBanners);
         if(Object.prototype.hasOwnProperty.call(datasets,'publicProducts')){
@@ -4259,6 +4263,11 @@ function loadPublicData(onComplete){
       APP.adminRequestId=Number(APP.adminRequestId||0)+1;
       APP.customerPortalSkeletonPending=false;
       clearPortalRoutePage('owner',APP.adminToken);clearPortalRoutePage('seller',APP.customerToken);clearPortalRoutePage('customer',APP.customerToken);clearPortalRoutePage('customerPurchaseTab',APP.customerToken);
+      try{
+        if(typeof adminGridInvalidatePageCache_==='function')adminGridInvalidatePageCache_();
+        if(typeof sellerInvalidatePageCache_==='function')sellerInvalidatePageCache_();
+        if(APP.adminToken&&typeof ADMIN_DASHBOARD_CACHE!=='undefined')delete ADMIN_DASHBOARD_CACHE[String(APP.adminToken)];
+      }catch(cacheClearError){}
       APP.adminToken='';APP.adminUser=null;
       APP.customerToken='';APP.customer=null;APP.sellerStore=null;
       APP.accessMode='guest';APP.currentView='home';APP.adminPage='';
