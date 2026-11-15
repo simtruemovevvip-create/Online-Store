@@ -2241,7 +2241,7 @@ function beginApiLoading(text){
       Object.keys(PORTAL_DATA_CACHE).forEach(function(key){delete PORTAL_DATA_CACHE[key];});
     }
     function portalDataApiMutates_(name){
-      return /^(save|delete|update|create|add|remove|submit|verify|reject|adjust|cancel|confirm|mark|set|collect|follow|apply|request|resend|begin|customerComplete|adminResolve|adminSet|sellerRespond|sellerSave|sellerDelete|sellerUpdate|sellerSend|send|change|reset|logout|customerLogout|upload|clear|merge|subscribe|approve)/i.test(String(name||''));
+      return /^(systemOwnerLogin|sellerLogin|customerLogin|customerSocialLogin|customerRegister|save|delete|update|create|add|remove|submit|verify|reject|adjust|cancel|confirm|mark|set|collect|follow|apply|request|resend|begin|customerComplete|adminResolve|adminSet|sellerRespond|sellerSave|sellerDelete|sellerUpdate|sellerSend|send|change|reset|logout|customerLogout|upload|clear|merge|subscribe|approve)/i.test(String(name||''));
     }
 
     function gsRun(method,...args){
@@ -9838,6 +9838,7 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
         var tasks=[];
         if(APP.adminPage!=='settings')tasks.push(function(done){warmRead('getAdminSettings',[token],done);});
         if(APP.adminPage!=='dashboard')tasks.push(function(done){warmRead('getDashboardStats',[token],done);});
+        if(APP.adminPage!=='dashboard')tasks.push(function(done){warmRead('getSalesReports',[token,{}],done);});
         adminGridPages.forEach(function(page){if(page!==APP.adminPage)tasks.push(adminTask(page));});
         runQueue(tasks,function(){return APP.accessMode==='owner'&&String(APP.adminToken||'')===token;},2);
       }
