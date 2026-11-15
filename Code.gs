@@ -83,7 +83,7 @@ var DATASET_TABLES_ = {
   publicProducts:['Products','ProductVariants','Inventory','Categories','Stores','FlashDeals','Orders','OrderItems','Reviews','Favorites'],
   publicPromotions:['Promotions','Products','Categories'],
   publicStores:['Stores','StoreFollows','Products','Reviews'],
-  publicFlashDeals:['FlashDeals','Products','Stores','Inventory','ProductVariants','Orders','OrderItems','Reviews'],
+  publicFlashDeals:['FlashDeals','Products','Stores','Inventory','ProductVariants','Orders','OrderItems','Reviews','Favorites'],
   publicVouchers:['Coupons','Stores'], publicLiveRooms:['LiveRooms','Stores'],
   admin_dashboard:['Orders','OrderItems','Products','Customers','Inventory','Payments','Reviews','SellerOrders','SellerPayouts'],
   admin_products:['Products','ProductVariants','Inventory','Categories','Stores'],
