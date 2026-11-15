@@ -2180,7 +2180,7 @@ function beginApiLoading(text){
       var portalSkeletonRequest=APP.customerPortalSkeletonPending?Number(APP.customerPortalSkeletonRequestId||0):0;
       var pendingNavigation=!!(APP.lastActionButton&&Date.now()-Number(APP.lastActionAt||0)<1400&&APP.lastActionIsNavigation&&document.documentElement.contains(APP.lastActionButton));
       var adminReadApis=['getBannerStoreOptions','getDashboardStats','getSalesReports','getAdminSettings','getEmailOtpServiceStatus','getProductsAdmin','getCategories','getInventory','getOrders','getPayments','getShippingMethods','getCustomers','getCoupons','getReviewsAdmin','getBannersAdmin','getPromotionsAdmin','getUsers','getLogs','getNewsletters','getBackups','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getAdminGridPage'];
-      var guardAdminPage=APP.currentView==='admin'&&adminReadApis.indexOf(name)>=0;
+      var guardAdminPage=APP.currentView==='admin'&&adminReadApis.indexOf(name)>=0&&!APP.dataPrefetchInProgress;
       var requestAdminPage=guardAdminPage?APP.adminPage:'';
       var requestAdminId=guardAdminPage?Number(APP.adminRequestId||0):0;
       var isStaleAdminPage=function(){return guardAdminPage&&(APP.currentView!=='admin'||APP.adminPage!==requestAdminPage||Number(APP.adminRequestId||0)!==requestAdminId);};
@@ -7225,13 +7225,29 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
         getCustomerWallet:15000,
         getMyVouchers:30000,
         getCustomerReturns:15000,
-        getFollowedStores:30000
+        getFollowedStores:30000,
+        getAdminGridPage:60000,
+        getAdminSettings:60000,
+        getDashboardStats:30000,
+        getSalesReports:30000,
+        sellerDashboard:30000,
+        sellerGetProducts:30000,
+        sellerGetOrders:20000,
+        sellerGetCustomers:30000,
+        sellerGetVouchers:30000,
+        sellerGetFlashDeals:20000,
+        sellerGetReturns:20000,
+        sellerGetPayouts:20000,
+        sellerGetLiveRooms:30000,
+        sellerGetStoreProfile:60000
       };
       var STORE_SPA_MUTATION = /^(save|delete|update|add|remove|clear|create|submit|verify|reject|approve|set|toggle|confirm|cancel|adjust|upload|register|customerLogin|sellerLogin|systemOwnerLogin|customerSocialLogin|customerLogout|logout|collect|follow|read|mark|apply|resolve|respond|send|request|restore|reconcile|change|reset|consume|settle|move|import|adminSet|adminResolve|sellerSave|sellerDelete|sellerUpdate)/i;
       var STORE_SPA_ORIGINAL_API = apiCall;
       var STORE_SPA_REPLAYING = false;
       var STORE_SPA_LAST_USER_ACTION = 0;
-      var STORE_SPA_MAX_CACHE_ENTRIES = 90;
+      var STORE_SPA_MAX_CACHE_ENTRIES = 150;
+      var STORE_SPA_INFLIGHT = Object.create(null);
+      var STORE_SPA_CACHE_GENERATION = 0;
 
       function storeSpaClone(value){
         try{return JSON.parse(JSON.stringify(value));}catch(error){return value;}
@@ -7262,26 +7278,46 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
         });
       }
 
-      /* Read-only page data is kept in memory only. Mutations clear it immediately. */
+      /* Session-scoped read cache covers guest, customer, seller and owner data.
+         In-flight reads are shared so a menu click can attach to a warm-up request. */
       apiCall=function(name,args,callback,showLoading,loadingText,silentError){
         var ttl=STORE_SPA_READ_TTL[name];
-        var canCache=!!ttl&&APP.accessMode!=='owner'&&APP.accessMode!=='seller';
-        if(canCache){
+        var isMutation=STORE_SPA_MUTATION.test(String(name||''));
+        if(ttl){
           var key=storeSpaCacheKey(name,args),entry=STORE_SPA_NAV_CACHE_V1[key];
           if(entry&&Date.now()-Number(entry.at||0)<=ttl){
             var cachedResult=storeSpaClone(entry.result);
             if(typeof callback==='function')window.setTimeout(function(){callback(cachedResult);},0);
             return;
           }
+          if(entry)delete STORE_SPA_NAV_CACHE_V1[key];
+          var pending=STORE_SPA_INFLIGHT[key];
+          if(pending){
+            if(typeof callback==='function')pending.callbacks.push(callback);
+            return;
+          }
+          var generation=STORE_SPA_CACHE_GENERATION;
+          pending={callbacks:[]};
+          if(typeof callback==='function')pending.callbacks.push(callback);
+          STORE_SPA_INFLIGHT[key]=pending;
           return STORE_SPA_ORIGINAL_API(name,args,function(result){
-            if(result&&result.success){
+            if(result&&result.success&&generation===STORE_SPA_CACHE_GENERATION){
               STORE_SPA_NAV_CACHE_V1[key]={at:Date.now(),result:storeSpaClone(result)};
               storeSpaTrimReadCache();
             }
-            if(typeof callback==='function')callback(result);
+            var flight=STORE_SPA_INFLIGHT[key];
+            delete STORE_SPA_INFLIGHT[key];
+            var callbacks=flight?safeArray(flight.callbacks):[];
+            callbacks.forEach(function(fn){
+              try{fn(storeSpaClone(result));}
+              catch(callbackError){console.error('Cached API callback failed: '+name,callbackError);}
+            });
           },showLoading,loadingText,silentError);
         }
-        if(STORE_SPA_MUTATION.test(String(name||'')))storeSpaClearReadCache();
+        if(isMutation){
+          STORE_SPA_CACHE_GENERATION++;
+          storeSpaClearReadCache();
+        }
         return STORE_SPA_ORIGINAL_API(name,args,callback,showLoading,loadingText,silentError);
       };
 
@@ -9481,8 +9517,8 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
         var wrappedApiCall=function(name,args,callback,showLoading,loadingText,silentError){
           var adminPending=atomic.admin;
           var sellerPending=atomic.seller;
-          var captureAdmin=!!(adminPending&&!adminPending.apiSeen&&APP.currentView==='admin'&&String(APP.adminPage||'')===adminPending.page);
-          var captureSeller=!!(sellerPending&&!sellerPending.apiSeen&&APP.currentView==='seller'&&String(APP.sellerPage||'')===sellerPending.page&&sellerPending.page!=='chat');
+          var captureAdmin=!!(adminPending&&!adminPending.apiSeen&&!APP.dataPrefetchInProgress&&APP.currentView==='admin'&&String(APP.adminPage||'')===adminPending.page);
+          var captureSeller=!!(sellerPending&&!sellerPending.apiSeen&&!APP.dataPrefetchInProgress&&APP.currentView==='seller'&&String(APP.sellerPage||'')===sellerPending.page&&sellerPending.page!=='chat');
           if(captureAdmin)adminPending.apiSeen=true;
           if(captureSeller)sellerPending.apiSeen=true;
           var wrappedCallback=callback;
@@ -9545,6 +9581,132 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
         if(atomic.admin)commitAdmin(atomic.admin);
         if(atomic.seller)commitSeller(atomic.seller);
       },0);
+    })();
+  </script>
+
+
+  <script id="instant-menu-data-warmup-v1">
+    (function(){
+      if(window.__STORE_INSTANT_MENU_DATA_WARMUP_V1__)return;
+      window.__STORE_INSTANT_MENU_DATA_WARMUP_V1__=true;
+      APP.dataPrefetchInProgress=false;
+
+      var adminWarmToken='',sellerWarmToken='',customerWarmToken='';
+      var adminGridPages=['products','orders','inventory','categories','customers','payments','shipping','banners','promotions','coupons','reviews','sellers','flashDeals','marketplaceReturns','marketplacePayouts','users','logs','newsletters','backup'];
+      var sellerPages=['products','orders','customers','vouchers','deals','returns','payouts','live','store'];
+      var customerReads=['getCustomerOrders','getCustomerReturns','getAddresses','getCustomerPreferences','getCustomerBankAccounts','getMyNotifications','getCustomerWallet','getMyVouchers','getFollowedStores'];
+
+      function clone(value){try{return JSON.parse(JSON.stringify(value));}catch(error){return value;}}
+      function runQueue(tasks,valid,workers){
+        var cursor=0,active=0,finished=false;
+        workers=Math.max(1,Math.min(3,Number(workers)||2));
+        function pump(){
+          if(finished||!valid())return;
+          if(cursor>=tasks.length&&active===0){finished=true;return;}
+          while(active<workers&&cursor<tasks.length){
+            var task=tasks[cursor++];
+            active++;
+            (function(current){
+              try{current(function(){active--;window.setTimeout(pump,40);});}
+              catch(error){active--;window.setTimeout(pump,40);}
+            })(task);
+          }
+        }
+        pump();
+      }
+      function warmRead(name,args,done){
+        var prior=!!APP.dataPrefetchInProgress;
+        APP.dataPrefetchInProgress=true;
+        try{
+          window.apiCall(name,args,function(){if(typeof done==='function')done();},false,'',true);
+        }finally{APP.dataPrefetchInProgress=prior;}
+      }
+      function adminTask(page){
+        return function(done){
+          if(!APP.adminToken||APP.accessMode!=='owner'){done();return;}
+          var state=adminGridState(page);
+          if(!state.options.sortKey)state.options.sortKey=page==='logs'?'timestamp':'createdAt';
+          var options=clone(state.options)||{};
+          warmRead('getAdminGridPage',[APP.adminToken,page,options],done);
+        };
+      }
+      function startAdminWarm(){
+        var token=String(APP.adminToken||'');
+        if(!token||APP.accessMode!=='owner'||adminWarmToken===token)return;
+        adminWarmToken=token;
+        var tasks=[];
+        if(APP.adminPage!=='settings')tasks.push(function(done){warmRead('getAdminSettings',[token],done);});
+        if(APP.adminPage!=='dashboard')tasks.push(function(done){warmRead('getDashboardStats',[token],done);});
+        adminGridPages.forEach(function(page){if(page!==APP.adminPage)tasks.push(adminTask(page));});
+        runQueue(tasks,function(){return APP.accessMode==='owner'&&String(APP.adminToken||'')===token;},2);
+      }
+      function sellerTask(page,token,storeId){
+        return function(done){
+          if(APP.accessMode!=='seller'||String(APP.customerToken||'')!==token||String(APP.sellerStore&&APP.sellerStore.id||'')!==storeId){done();return;}
+          var apiMap={products:'sellerGetProducts',orders:'sellerGetOrders',customers:'sellerGetCustomers',vouchers:'sellerGetVouchers',deals:'sellerGetFlashDeals',returns:'sellerGetReturns',payouts:'sellerGetPayouts',live:'sellerGetLiveRooms',store:'sellerGetStoreProfile'};
+          var options=typeof sellerPageOptions_==='function'?sellerPageOptions_(page):{};
+          warmRead(apiMap[page],[token,options||{}],done);
+        };
+      }
+      function startSellerWarm(){
+        var token=String(APP.customerToken||''),storeId=String(APP.sellerStore&&APP.sellerStore.id||'');
+        if(!token||!storeId||APP.accessMode!=='seller')return;
+        var key=token+'|'+storeId;
+        if(sellerWarmToken===key)return;
+        sellerWarmToken=key;
+        var tasks=sellerPages.filter(function(page){return page!==APP.sellerPage;}).map(function(page){return sellerTask(page,token,storeId);});
+        runQueue(tasks,function(){return APP.accessMode==='seller'&&String(APP.customerToken||'')===token&&String(APP.sellerStore&&APP.sellerStore.id||'')===storeId;},2);
+      }
+      function startCustomerWarm(){
+        var token=String(APP.customerToken||'');
+        if(!token||APP.accessMode!=='customer'||customerWarmToken===token)return;
+        customerWarmToken=token;
+        var tasks=customerReads.map(function(name){return function(done){warmRead(name,[token],done);};});
+        runQueue(tasks,function(){return APP.accessMode==='customer'&&String(APP.customerToken||'')===token;},2);
+      }
+
+      function wrapAfter(name,after){
+        var original=window[name];
+        if(typeof original!=='function'||original.__instantWarmWrapped)return;
+        var wrapped=function(){
+          var result=original.apply(this,arguments);
+          try{after.apply(this,arguments);}catch(error){console.warn('Warm-up scheduling skipped: '+name,error);}
+          return result;
+        };
+        wrapped.__instantWarmWrapped=true;
+        wrapped.__instantWarmOriginal=original;
+        window[name]=wrapped;
+      }
+      wrapAfter('loadAdminPage',function(){
+        if(APP.accessMode==='owner'&&APP.adminToken)window.setTimeout(startAdminWarm,220);
+      });
+      wrapAfter('loadSellerPage',function(){
+        if(APP.accessMode==='seller'&&APP.customerToken)window.setTimeout(startSellerWarm,220);
+      });
+      wrapAfter('openAccount',function(){
+        if(APP.customerToken&&APP.accessMode==='customer')window.setTimeout(startCustomerWarm,180);
+      });
+      wrapAfter('customerPortalNavigate',function(){
+        if(APP.customerToken&&APP.accessMode==='customer')window.setTimeout(startCustomerWarm,120);
+      });
+
+      /* Warm a menu before it is clicked; the navigation request joins the same in-flight read. */
+      document.addEventListener('pointerover',function(event){
+        var target=event.target;
+        if(!target||!target.closest)return;
+        var adminButton=target.closest('#adminSidebar .admin-menu button[data-menu-id]');
+        if(adminButton&&APP.accessMode==='owner'){
+          var page=adminButton.getAttribute('data-menu-id');
+          if(page==='settings')warmRead('getAdminSettings',[APP.adminToken]);
+          else if(adminGridPages.indexOf(page)>=0)adminTask(page)(function(){});
+          return;
+        }
+        var sellerButton=target.closest('#sellerSidebar .seller-nav-item[id^="sellerNav_"]');
+        if(sellerButton&&APP.accessMode==='seller'){
+          var sellerPage=String(sellerButton.id||'').replace('sellerNav_','');
+          if(sellerPages.indexOf(sellerPage)>=0)sellerTask(sellerPage,String(APP.customerToken||''),String(APP.sellerStore&&APP.sellerStore.id||''))(function(){});
+        }
+      },{passive:true});
     })();
   </script>
 
