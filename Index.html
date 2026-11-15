@@ -631,6 +631,44 @@
 .seller-gallery-empty{grid-column:1/-1;padding:12px;border:1px dashed var(--border);border-radius:9px;text-align:center;color:var(--muted);font-size:10px}
 .seller-row-actions button.seller-variant-action{width:auto;min-width:29px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:10px}
 .seller-row-actions button.seller-variant-action span{font-weight:600}.seller-editor-note{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;margin-bottom:15px;border-radius:9px;background:var(--bg);color:var(--muted);font-size:10px}.seller-editor-note i{color:var(--seller-accent);margin-top:2px}.seller-required{color:#dc4545}.seller-product-modal .swal2-html-container{max-height:min(72vh,760px);overflow:auto}
+    .swal2-popup.enterprise-admin-modal,.swal2-popup.seller-product-modal,.swal2-popup.vm-manager-modal{
+      max-height:calc(100dvh - 16px)!important;
+    }
+    .swal2-popup.enterprise-admin-modal .swal2-html-container,
+    .swal2-popup.seller-product-modal .swal2-html-container,
+    .swal2-popup.vm-manager-modal .swal2-html-container{
+      max-height:calc(100dvh - 205px)!important;
+      min-height:0!important;
+      overflow-x:hidden!important;
+      overflow-y:auto!important;
+      overscroll-behavior:contain;
+      scrollbar-gutter:stable;
+    }
+    .swal2-popup.enterprise-admin-modal .swal2-actions,
+    .swal2-popup.seller-product-modal .swal2-actions,
+    .swal2-popup.vm-manager-modal .swal2-actions{
+      position:sticky!important;
+      bottom:0!important;
+      z-index:20!important;
+      flex-shrink:0!important;
+      width:100%!important;
+      margin:10px auto 0!important;
+      padding:11px 0 2px!important;
+      background:var(--surface)!important;
+      border-top:1px solid var(--border)!important;
+    }
+    @media(max-width:600px){
+      .swal2-popup.enterprise-admin-modal .swal2-html-container,
+      .swal2-popup.seller-product-modal .swal2-html-container,
+      .swal2-popup.vm-manager-modal .swal2-html-container{
+        max-height:calc(100dvh - 185px)!important;
+      }
+      .swal2-popup.enterprise-admin-modal .swal2-actions,
+      .swal2-popup.seller-product-modal .swal2-actions,
+      .swal2-popup.vm-manager-modal .swal2-actions{
+        padding-top:9px!important;
+      }
+    }
 .seller-mobile-backdrop{display:none}
 .seller-console.is-collapsed .seller-brand-copy,.seller-console.is-collapsed .seller-store-copy,.seller-console.is-collapsed .seller-store-chevron,.seller-console.is-collapsed .seller-nav-label,.seller-console.is-collapsed .seller-nav-item span,.seller-console.is-collapsed .seller-nav-item em,.seller-console.is-collapsed .seller-signout-btn span{display:none}.seller-console.is-collapsed .seller-brand-row{justify-content:center;padding-left:0;padding-right:0}.seller-console.is-collapsed .seller-collapse-btn{display:grid}.seller-console.is-collapsed .seller-collapse-btn i{display:block;transform:rotate(180deg)}.seller-console.is-collapsed .seller-store-card{justify-content:center;padding:9px 4px}.seller-console.is-collapsed .seller-nav-item,.seller-console.is-collapsed .seller-signout-btn{justify-content:center;padding:10px 4px}.seller-console.is-collapsed .seller-nav-item>i,.seller-console.is-collapsed .seller-signout-btn>i{font-size:15px}.seller-console.is-collapsed .seller-topbar-left{min-width:auto}
 @media(max-width:1180px){.seller-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-dashboard-grid{grid-template-columns:1fr}.seller-topbar-user>div:last-child{display:none}}
@@ -4799,8 +4837,9 @@ function loadPublicData(onComplete){
     }
     function getRichEditorHtml(id){var editor=document.getElementById(id);return editor?sanitizeRichEditorHtml(editor.innerHTML):'';}
     function adminRefreshModuleAfterMutation(page,callback,keepContent){
+      adminGridInvalidatePageCache_(page);
       var state=ADMIN_GRID_STATES['admin_'+page];
-      if(state){adminGridLoad(page,null,callback,true);return;}
+      if(state){adminGridLoad(page,null,callback,true,true);return;}
       if(['sellers','flashDeals','marketplaceReturns','marketplacePayouts'].indexOf(page)>=0){loadMarketplaceAdmin(page,callback,true);return;}
       if(page==='backup'){loadBackupAdmin(callback);return;}
       loadAdminModule(page);if(typeof callback==='function')callback(true,'');
@@ -4823,7 +4862,7 @@ function loadPublicData(onComplete){
         var isNewProduct=page==='products'&&api==='sellerSaveProduct'&&payload&&typeof payload==='object'&&!Array.isArray(payload)&&!String(payload.id||'').trim();
         var keepTableState=!isNewProduct;
         if(isNewProduct){APP.sellerProductPage=1;APP.sellerProductQuery='';APP.sellerProductStatus='all';}
-        function reloadAfterSave(result){loadSellerPage(page,function(ok,message){if(!ok){Swal.showValidationMessage('บันทึกข้อมูลแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ: '+message+' กดปุ่มอีกครั้งเพื่อโหลดข้อมูลใหม่โดยไม่บันทึกซ้ำ');resolve(false);return;}clearCurrentModalMutationReceipt(popup);toast(result.message||'บันทึกข้อมูลสำเร็จ','success');resolve({success:true});},true,keepTableState);}
+        function reloadAfterSave(result){sellerInvalidatePageCache_();loadSellerPage(page,function(ok,message){if(!ok){Swal.showValidationMessage('บันทึกข้อมูลแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ: '+message+' กดปุ่มอีกครั้งเพื่อโหลดข้อมูลใหม่โดยไม่บันทึกซ้ำ');resolve(false);return;}clearCurrentModalMutationReceipt(popup);toast(result.message||'บันทึกข้อมูลสำเร็จ','success');resolve({success:true});},true,keepTableState);}
         if(saved){popup=saved.popup;reloadAfterSave(saved.receipt.result);return;}
         apiCall(api,args,function(result){if(!result||!result.success){Swal.showValidationMessage(result&&result.message?result.message:'ไม่สามารถบันทึกข้อมูลได้');resolve(false);return;}popup=Swal.getPopup()||popup;setCurrentModalMutationReceipt(popup,api,page,result);reloadAfterSave(result);},false);
       });
@@ -4846,7 +4885,7 @@ function loadPublicData(onComplete){
     }
     function setInlineButtonBusy(button,label){if(!button)return null;var state={button:button,html:button.innerHTML,disabled:button.disabled};button.disabled=true;button.setAttribute('aria-busy','true');button.classList.add('is-loading');button.innerHTML='<span class="inline-spinner" aria-hidden="true"></span>'+esc(label||'กำลังบันทึก...');return state;}
     function restoreInlineButton(state){if(!state||!state.button||!document.documentElement.contains(state.button))return;state.button.innerHTML=state.html;state.button.disabled=state.disabled;state.button.removeAttribute('aria-busy');state.button.classList.remove('is-loading');}
-    function refreshSellerPageForMutation(page,callback){loadSellerPage(page,callback,true);}
+    function refreshSellerPageForMutation(page,callback){sellerInvalidatePageCache_(page);loadSellerPage(page,callback,true,true,true);}
 
     /* --------------------- ENTERPRISE OWNER DATA GRID ----------------------- */
     var ADMIN_GRID_STATES = window.ADMIN_GRID_STATES || {};
@@ -4854,6 +4893,15 @@ function loadPublicData(onComplete){
     // In-memory cache only: private admin records are never persisted to browser storage.
     var ADMIN_GRID_PAGE_CACHE = window.ADMIN_GRID_PAGE_CACHE || {};
     window.ADMIN_GRID_PAGE_CACHE = ADMIN_GRID_PAGE_CACHE;
+    var ADMIN_GRID_CACHE_FRESH_MS = 60000;
+    var ADMIN_GRID_CACHE_STALE_MS = 180000;
+    function adminGridInvalidatePageCache_(page) {
+      var prefix = String(APP.adminToken || '') + '|';
+      var pagePrefix = page ? prefix + String(page) + '|' : prefix;
+      Object.keys(ADMIN_GRID_PAGE_CACHE).forEach(function(key) {
+        if (key.indexOf(pagePrefix) === 0) delete ADMIN_GRID_PAGE_CACHE[key];
+      });
+    }
     function adminGridPageCacheKey_(page, options) {
       options = options || {};
       return String(APP.adminToken || '') + '|' + String(page || '') + '|' + JSON.stringify({
@@ -4903,7 +4951,7 @@ function loadPublicData(onComplete){
     function adminGridDefaultOptions(page){return {page:1,pageSize:10,search:'',status:'',dateFrom:'',dateTo:'',sortKey:page==='logs'?'timestamp':'createdAt',sortDir:'desc'};}
     function adminGridState(page){var id='admin_'+page;if(!ADMIN_GRID_STATES[id])ADMIN_GRID_STATES[id]={id:id,page:page,options:adminGridDefaultOptions(page),rows:[],meta:{total:0,filteredTotal:0,page:1,pageSize:10,pages:1,summary:{},statusOptions:[]},columns:[],visibleKeys:null,requestId:0,hasLoaded:false};return ADMIN_GRID_STATES[id];}
     function adminGridSkeleton(title){var cards='<div class="eg-skeleton-title"><i></i><b>'+esc(title||'กำลังโหลดข้อมูล')+'</b></div><div class="eg-skeleton-toolbar"><i></i><i></i><i></i><i></i></div><div class="eg-skeleton-table">'+Array.from({length:7}).map(function(){return '<div class="eg-skeleton-row"><i></i><i></i><i></i><i></i><i></i></div>';}).join('')+'</div>';return '<div class="eg-grid eg-skeleton-grid" aria-live="polite">'+cards+'</div>'; }
-    function adminGridLoad(page, options, callback, silent) {
+    function adminGridLoad(page, options, callback, silent, forceRefresh) {
       var state = adminGridState(page);
       if (options) Object.keys(options).forEach(function(key) { state.options[key] = options[key]; });
       if (!state.options.sortKey) state.options.sortKey = page === 'logs' ? 'timestamp' : 'createdAt';
@@ -4911,20 +4959,28 @@ function loadPublicData(onComplete){
       var requestOptions = JSON.parse(JSON.stringify(state.options));
       var cacheKey = adminGridPageCacheKey_(page, requestOptions);
       var cached = ADMIN_GRID_PAGE_CACHE[cacheKey] || null;
-      var hasCache = !!(cached && cached.data && Date.now() - Number(cached.at || 0) < 180000);
+      var cacheAge = cached ? Math.max(0, Date.now() - Number(cached.at || 0)) : Infinity;
+      var hasCache = !!(cached && cached.data && cacheAge <= ADMIN_GRID_CACHE_STALE_MS);
+      var isFreshCache = hasCache && cacheAge <= ADMIN_GRID_CACHE_FRESH_MS;
       if (!hasCache && cached) delete ADMIN_GRID_PAGE_CACHE[cacheKey];
 
       var host = document.getElementById('adminContent');
       if (hasCache) {
         adminGridRenderPageData_(state, cached.data);
         if (host) {
-          host.setAttribute('aria-busy', 'true');
-          host.setAttribute('data-refreshing', 'true');
+          host.setAttribute('aria-busy', String(!isFreshCache || !!forceRefresh));
+          if (!isFreshCache || forceRefresh) host.setAttribute('data-refreshing', 'true');
+          else host.removeAttribute('data-refreshing');
+        }
+        // Back/next to an unchanged page in this freshness window makes no server call.
+        if (isFreshCache && !forceRefresh) {
+          if (typeof callback === 'function') callback(true, '');
+          return;
         }
       } else if (host) {
         host.setAttribute('aria-busy', 'true');
         host.removeAttribute('data-refreshing');
-        host.innerHTML = adminGridSkeleton(state.title || 'กำลังโหลดข้อมูล');
+        if (!silent) host.innerHTML = adminGridSkeleton(state.title || 'กำลังโหลดข้อมูล');
       }
 
       state.requestId = Number(state.requestId || 0) + 1;
@@ -4935,7 +4991,7 @@ function loadPublicData(onComplete){
           if (host) {
             host.setAttribute('aria-busy', 'false');
             host.removeAttribute('data-refreshing');
-            if (!hasCache && APP.adminPage === page) {
+            if (!hasCache && APP.adminPage === page && !silent) {
               host.innerHTML = '<div class="eg-grid-empty eg-grid-error"><i class="fa-solid fa-triangle-exclamation"></i>' +
                 esc(result && result.message || 'โหลดข้อมูลตารางไม่สำเร็จ') +
                 '<button class="btn btn-outline btn-small" onclick="adminGridRefresh(\'admin_' + page + '\')">ลองอีกครั้ง</button></div>';
@@ -4975,7 +5031,7 @@ function loadPublicData(onComplete){
     function adminGridToggleColumns(id){var menu=document.getElementById(id+'_columns');if(menu)menu.classList.toggle('open');}
     function adminGridSetColumn(id,key,checked){var s=ADMIN_GRID_STATES[id];if(!s)return;var all=s.columns.map(function(c){return c.key;});if(!s.visibleKeys)s.visibleKeys=all.filter(function(k){return k!=='id'&&k!=='updatedAt';});if(checked&&s.visibleKeys.indexOf(key)<0)s.visibleKeys.push(key);if(!checked)s.visibleKeys=s.visibleKeys.filter(function(k){return k!==key;});try{localStorage.setItem('eg_cols_'+id,JSON.stringify(s.visibleKeys));}catch(e){}renderAdminGridHost(s);}
     function adminGridResetColumns(id){var s=ADMIN_GRID_STATES[id];if(!s)return;s.visibleKeys=s.columns.filter(function(c){return c.defaultVisible!==false;}).map(function(c){return c.key;});try{localStorage.removeItem('eg_cols_'+id);}catch(e){}renderAdminGridHost(s);}
-    function adminGridRefresh(id){var s=ADMIN_GRID_STATES[id];if(!s)return;adminGridFetchState(s);}
+    function adminGridRefresh(id){var s=ADMIN_GRID_STATES[id];if(!s)return;adminGridLoad(s.page,null,null,false,true);}
     function normalizeTableStatusKey(value){
       return String(value===null||value===undefined?'':value).trim().toLowerCase()
         .replace(/[\\_-]+/g,' ').replace(/\s+/g,' ').trim();
@@ -5697,8 +5753,13 @@ function adjustInventoryDialog(productId,variantId){
         });
         var unique=Object.create(null),skuUnique=Object.create(null);payloadRows.forEach(function(row){var key=variantMatrixKey(row.attributes),skuKey=row.sku.toUpperCase();if(unique[key])throw new Error('มีชุดตัวเลือกซ้ำกัน: '+row.variantName);if(skuUnique[skuKey])throw new Error('พบ SKU ซ้ำกัน: '+row.sku+' กรุณาแก้ไขให้ไม่ซ้ำ');unique[key]=true;skuUnique[skuKey]=true;});
         var data={productId:productId,variants:payloadRows,removeMissing:true};
-        if(mode==='admin')return runAdminModalMutation('products','saveProductVariantMatrix',[APP.adminToken,data]);
-        return runSellerModalMutation('sellerSaveProductVariantMatrix',[APP.customerToken,data],'products');
+        var saveResult=mode==='admin'
+          ?runAdminModalMutation('products','saveProductVariantMatrix',[APP.adminToken,data])
+          :runSellerModalMutation('sellerSaveProductVariantMatrix',[APP.customerToken,data],'products');
+        return Promise.resolve(saveResult).then(function(result){
+          if(result&&result.success)variantMatrixInvalidateCache_(productId,mode);
+          return result;
+        });
       }catch(e){Swal.showValidationMessage(e.message||'กรุณาตรวจสอบข้อมูลตัวเลือก');return false;}
     }
     function variantMatrixResolveProduct(productId,mode,callback){
@@ -5717,11 +5778,23 @@ function adjustInventoryDialog(productId,variantId){
         callback(loaded);
       },false);
     }
+    var VARIANT_MATRIX_DATA_CACHE = window.VARIANT_MATRIX_DATA_CACHE || {};
+    window.VARIANT_MATRIX_DATA_CACHE = VARIANT_MATRIX_DATA_CACHE;
+    function variantMatrixCacheKey_(productId,mode){
+      var auth=mode==='admin'?(APP.adminToken||''):(APP.customerToken||'');
+      return String(auth)+'|'+String(mode||'')+'|'+String(productId||'');
+    }
+    function variantMatrixInvalidateCache_(productId,mode){
+      delete VARIANT_MATRIX_DATA_CACHE[variantMatrixCacheKey_(productId,mode)];
+    }
     function variantMatrixOpen(productId,mode){
       variantMatrixResolveProduct(productId,mode,function(product){
         var api=mode==='admin'?'getProductVariants':'sellerGetProductVariants';
         var args=mode==='admin'?[productId,{token:APP.adminToken}]:[APP.customerToken,productId];
-        apiCall(api,args,function(result){
+        var cacheKey=variantMatrixCacheKey_(productId,mode);
+        var cached=VARIANT_MATRIX_DATA_CACHE[cacheKey];
+        var fresh=!!(cached&&Date.now()-Number(cached.at||0)<30000);
+        function handleVariantResult(result){
           if(!result||!result.success){alertError(result&&result.message||'โหลดตัวเลือกสินค้าไม่สำเร็จ');return;}
           var rows=safeArray(result.data).filter(function(v){return String(v.status||'Active')!=='Archived';});
           APP.variantMatrixProduct=product;APP.variantMatrixMode=mode;APP.variantMatrixProductId=productId;
@@ -5773,7 +5846,17 @@ function adjustInventoryDialog(productId,variantId){
             didOpen:function(){variantMatrixRenderRows();variantMatrixUpdateCombinationInfo();},
             preConfirm:function(){return variantMatrixSave(mode,productId);}
           });
-        },false);
+        }
+        if(fresh){
+          handleVariantResult({success:true,data:cached.rows});
+          return;
+        }
+        apiCall(api,args,function(result){
+          if(result&&result.success){
+            VARIANT_MATRIX_DATA_CACHE[cacheKey]={at:Date.now(),rows:safeArray(result.data)};
+          }
+          handleVariantResult(result);
+        },false,'',true);
       });
     }
     function manageVariants(productId){variantMatrixOpen(productId,'admin');}
@@ -6216,7 +6299,7 @@ function adjustInventoryDialog(productId,variantId){
     function toggleSellerSidebar(){var shell=document.getElementById('sellerConsole');if(!shell)return;if(window.innerWidth<=980){shell.classList.toggle('mobile-open');return;}shell.classList.toggle('is-collapsed');try{localStorage.setItem('seller_sidebar_collapsed',shell.classList.contains('is-collapsed')?'1':'0');}catch(e){}}
     function closeSellerMobileSidebar(){var shell=document.getElementById('sellerConsole');if(shell)shell.classList.remove('mobile-open');}
     function toggleSellerTheme(){document.body.classList.toggle('dark');try{localStorage.setItem('store_theme',document.body.classList.contains('dark')?'dark':'light');}catch(e){}var icon=document.querySelector('.seller-topbar-icon[onclick="toggleSellerTheme()"] i');if(icon)icon.className=document.body.classList.contains('dark')?'fa-regular fa-sun':'fa-regular fa-moon';}
-    function sellerRefreshCurrentPage(){loadSellerPage(APP.sellerPage||'dashboard',null,true,true);}
+    function sellerRefreshCurrentPage(){loadSellerPage(APP.sellerPage||'dashboard',null,true,true,true);}
     function sellerRunGlobalSearch(){var input=document.getElementById('sellerGlobalSearch'),q=input?input.value.trim():'';if(!q)return;loadSellerPage('products',function(ok){if(ok){var search=document.getElementById('sellerProductSearch');if(search){search.value=q;sellerFilterProducts();}}});}
     function sellerSkeletonMarkup(page){
       var card='<div class="seller-skeleton-card"><i></i><b></b><span></span></div>';
@@ -6228,6 +6311,16 @@ function adjustInventoryDialog(productId,variantId){
     }
     var SELLER_PAGE_CACHE = window.SELLER_PAGE_CACHE || {};
     window.SELLER_PAGE_CACHE = SELLER_PAGE_CACHE;
+    var SELLER_PAGE_CACHE_FRESH_MS = 60000;
+    var SELLER_PAGE_CACHE_STALE_MS = 180000;
+    function sellerInvalidatePageCache_(page) {
+      var prefix = String(APP.customerToken || '') + '|' +
+        String(APP.sellerStore && APP.sellerStore.id || '') + '|';
+      var pagePrefix = page ? prefix + String(page) + '|' : prefix;
+      Object.keys(SELLER_PAGE_CACHE).forEach(function(key) {
+        if (key.indexOf(pagePrefix) === 0) delete SELLER_PAGE_CACHE[key];
+      });
+    }
     function sellerPageOptions_(page) {
       if (page !== 'products') return {};
       return {
@@ -6255,7 +6348,7 @@ function adjustInventoryDialog(productId,variantId){
       else if (page === 'live') renderSellerLive(safeArray(data));
       else if (page === 'store') renderSellerStoreProfile(data);
     }
-    function loadSellerPage(page,onLoaded,silent,keepTableState){
+    function loadSellerPage(page,onLoaded,silent,keepTableState,forceRefresh){
       APP.currentView='seller';
       var apis={dashboard:'sellerDashboard',products:'sellerGetProducts',orders:'sellerGetOrders',customers:'sellerGetCustomers',vouchers:'sellerGetVouchers',deals:'sellerGetFlashDeals',returns:'sellerGetReturns',chat:'getSellerChatThreads',payouts:'sellerGetPayouts',live:'sellerGetLiveRooms',store:'sellerGetStoreProfile'};
       if(!apis[page]){if(typeof onLoaded==='function')onLoaded(false,'ไม่พบหน้าที่ต้องการ');return;}
@@ -6275,7 +6368,9 @@ function adjustInventoryDialog(productId,variantId){
       var pageOptions=sellerPageOptions_(page);
       var cacheKey=page==='chat'?'':sellerPageCacheKey_(page,pageOptions);
       var cached=cacheKey?SELLER_PAGE_CACHE[cacheKey]:null;
-      var hasCache=!!(cached&&Date.now()-Number(cached.at||0)<180000);
+      var cacheAge=cached?Math.max(0,Date.now()-Number(cached.at||0)):Infinity;
+      var hasCache=!!(cached&&cacheAge<=SELLER_PAGE_CACHE_STALE_MS);
+      var isFreshCache=hasCache&&cacheAge<=SELLER_PAGE_CACHE_FRESH_MS;
       if(!hasCache&&cached)delete SELLER_PAGE_CACHE[cacheKey];
 
       SELLER_MENU.forEach(function(m){var b=document.getElementById('sellerNav_'+m[0]);if(b){b.classList.toggle('active',m[0]===page);b.setAttribute('aria-current',m[0]===page?'page':'false');}});
@@ -6286,18 +6381,28 @@ function adjustInventoryDialog(productId,variantId){
         host.classList.remove('seller-chat-full-mode');
         if(hasCache){
           sellerRenderPageData_(page,cached.data,true);
-          host.setAttribute('aria-busy','true');
+          host.setAttribute('aria-busy',String(!isFreshCache||!!forceRefresh));
+          if(!isFreshCache||forceRefresh)host.setAttribute('data-refreshing','true');
+          else host.removeAttribute('data-refreshing');
         }else{
-          host.innerHTML=sellerSkeletonMarkup(page);
+          if(!silent)host.innerHTML=sellerSkeletonMarkup(page);
           host.setAttribute('aria-busy','true');
+          host.removeAttribute('data-refreshing');
         }
+      }
+
+      // Fresh cached pages can be rendered without another round-trip to Apps Script.
+      if(hasCache&&isFreshCache&&!forceRefresh){
+        if(host){host.setAttribute('aria-busy','false');host.removeAttribute('data-refreshing');}
+        if(typeof onLoaded==='function')onLoaded(true,'');
+        return;
       }
 
       apiCall(apis[page],[APP.customerToken,pageOptions],function(result){
         if(requestId!==APP.sellerRequestId||APP.sellerPage!==page)return;
         if(!result||!result.success){
           if(!hasCache)sellerError(result&&result.message||'ไม่สามารถโหลดข้อมูลได้');
-          else if(host)host.setAttribute('aria-busy','false');
+          else if(host){host.setAttribute('aria-busy','false');host.removeAttribute('data-refreshing');}
           if(typeof onLoaded==='function')onLoaded(false,result&&result.message||'ไม่สามารถโหลดข้อมูลได้');
           return;
         }
@@ -6406,7 +6511,7 @@ function adjustInventoryDialog(productId,variantId){
       var d={shopName:document.getElementById('storeName').value,slug:document.getElementById('storeSlug').value,email:document.getElementById('storeEmail').value,phone:document.getElementById('storePhone').value,logo:document.getElementById('storeLogo').value,banner:document.getElementById('storeBanner').value,description:getRichEditorHtml('storeDesc'),address:document.getElementById('storeAddress').value};
       if(!d.shopName){alertError('กรุณาระบุชื่อร้านค้า');return;}
       var busy=setInlineButtonBusy(button||document.getElementById('saveSellerStoreProfileButton'),'กำลังบันทึก...');
-      apiCall('sellerSaveStoreProfile',[APP.customerToken,d],function(r){if(!r.success){restoreInlineButton(busy);alertError(r.message);return;}APP.sellerStore=r.data;loadSellerPage('store',function(ok,message){if(!ok){restoreInlineButton(busy);alertError('บันทึกแล้วแต่โหลดข้อมูลร้านล่าสุดไม่สำเร็จ: '+message);return;}toast(r.message,'success','ข้อมูลหน้าร้านถูกบันทึกและโหลดใหม่แล้ว');},true);},false);
+      apiCall('sellerSaveStoreProfile',[APP.customerToken,d],function(r){if(!r.success){restoreInlineButton(busy);alertError(r.message);return;}APP.sellerStore=r.data;sellerInvalidatePageCache_('store');loadSellerPage('store',function(ok,message){if(!ok){restoreInlineButton(busy);alertError('บันทึกแล้วแต่โหลดข้อมูลร้านล่าสุดไม่สำเร็จ: '+message);return;}toast(r.message,'success','ข้อมูลหน้าร้านถูกบันทึกและโหลดใหม่แล้ว');},true);},false);
     }
     function sellerUpdateImagePreview(fieldId,url){
       var preview=document.getElementById(fieldId+'Preview');if(!preview)return;
@@ -6498,7 +6603,17 @@ function adjustInventoryDialog(productId,variantId){
       productGalleryUploadFiles(fileInput,textareaId,'seller','spGalleryPreview','spGalleryCount','spGalleryUploadStatus');
     }
 
-    function sellerProductDialog(id){refreshSharedCategories(false,function(ok){if(!ok){alertError('โหลดหมวดหมู่สินค้ากลางไม่สำเร็จ กรุณาลองอีกครั้ง');return;}sellerProductDialogReady(id);},true);}
+    function sellerProductDialog(id){
+      if(Array.isArray(APP.sharedCategories)&&APP.sharedCategories.length){
+        sellerProductDialogReady(id);
+        refreshSharedCategories(false,function(){},false);
+        return;
+      }
+      refreshSharedCategories(false,function(ok){
+        if(!ok){alertError('โหลดหมวดหมู่สินค้ากลางไม่สำเร็จ กรุณาลองอีกครั้ง');return;}
+        sellerProductDialogReady(id);
+      },false);
+    }
     function sellerProductDialogReady(id){
       var p=id?safeArray(APP.sellerProducts).filter(function(x){return String(x.id)===String(id);})[0]||{}:{};
       var sharedCategories=safeArray(APP.sharedCategories).filter(sharedCategoryIsActive);
@@ -6582,6 +6697,7 @@ function adjustInventoryDialog(productId,variantId){
         return new Promise(function(resolve){
           apiCall('sellerSaveCustomerNote',[APP.customerToken,data],function(result){
             if(!result||!result.success){Swal.showValidationMessage(result&&result.message||'บันทึกข้อมูลไม่สำเร็จ');resolve(false);return;}
+            sellerInvalidatePageCache_('customers');
             resolve(result);
           },false);
         });
@@ -6752,7 +6868,7 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     function runMarketplaceAdminMutation(api,args,page){
       return new Promise(function(resolve){
         var popup=Swal.getPopup(),saved=getCurrentModalMutationReceipt(api,page);
-        function reloadAfterSave(result){loadMarketplaceAdmin(page,function(ok,message){if(!ok){Swal.showValidationMessage('บันทึกแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ: '+message+' กดปุ่มอีกครั้งเพื่อโหลดข้อมูลใหม่โดยไม่ทำรายการซ้ำ');resolve(false);return;}clearCurrentModalMutationReceipt(popup);toast(result.message||'ดำเนินการสำเร็จ','success');resolve({success:true});},true);}
+        function reloadAfterSave(result){adminGridInvalidatePageCache_(page);loadMarketplaceAdmin(page,function(ok,message){if(!ok){Swal.showValidationMessage('บันทึกแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ: '+message+' กดปุ่มอีกครั้งเพื่อโหลดข้อมูลใหม่โดยไม่ทำรายการซ้ำ');resolve(false);return;}clearCurrentModalMutationReceipt(popup);toast(result.message||'ดำเนินการสำเร็จ','success');resolve({success:true});},true);}
         if(saved){popup=saved.popup;reloadAfterSave(saved.receipt.result);return;}
         apiCall(api,args,function(result){if(!result||!result.success){Swal.showValidationMessage(result&&result.message?result.message:'ดำเนินการไม่สำเร็จ');resolve(false);return;}popup=Swal.getPopup()||popup;setCurrentModalMutationReceipt(popup,api,page,result);reloadAfterSave(result);},false);
       });
