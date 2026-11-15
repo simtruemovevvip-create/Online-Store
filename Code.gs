@@ -5360,7 +5360,7 @@ function getAdminSidebarBadgeCounts(token) {
     var cacheKey = 'sidebar_badges_admin_' + sha256_(String(user.id || '') + '|' + JSON.stringify(permissions)).substring(0, 28);
     var cached = sidebarBadgeCacheGet_(cacheKey);
     if (cached) return ok_(cached);
-    var counts = {products:0,inventory:0,orders:0,payments:0,sellers:0,marketplaceReturns:0,marketplacePayouts:0,reviews:0};
+    var counts = {products:0,inventory:0,orders:0,payments:0,sellers:0,sellerChat:0,officialChat:0,marketplaceReturns:0,marketplacePayouts:0,reviews:0};
     if (can('sellers.manage')) {
       counts.sellers = readTable_('Stores', false).filter(function(row) {
         return ['Pending','Pending Review','Awaiting Approval'].indexOf(String(row.status || '')) >= 0;
@@ -5406,6 +5406,18 @@ function getAdminSidebarBadgeCounts(token) {
         return sidebarBadgePendingStatus_(row.status);
       }).length;
     }
+    if (can('sellers.manage')) {
+      var ownerThreadIds = Object.create(null), officialThreadIds = Object.create(null);
+      readTable_('ChatThreads', false).forEach(function(row) {
+        if (String(row.customerId || '') === '__SYSTEM_OWNER__') ownerThreadIds[String(row.id)] = true;
+        if (String(row.sellerId || '') === 'PLATFORM') officialThreadIds[String(row.id)] = true;
+      });
+      readTable_('ChatMessages', false).forEach(function(message) {
+        if (parseBool_(message.isRead) || message.deletedAt) return;
+        if (ownerThreadIds[String(message.threadId || '')] && message.senderType === 'seller') counts.sellerChat++;
+        if (officialThreadIds[String(message.threadId || '')] && message.senderType === 'customer') counts.officialChat++;
+      });
+    }
     sidebarBadgeCachePut_(cacheKey, counts);
     return ok_(counts);
   } catch (e) { return fail_(safeError_(e)); }
@@ -5426,7 +5438,7 @@ function getSellerSidebarBadgeCounts(customerToken) {
       if (String(thread.sellerId || '') === storeId) threadIds[String(thread.id || '')] = true;
     });
     var unreadChats = readTable_('ChatMessages', false).filter(function(message) {
-      return !!threadIds[String(message.threadId || '')] && String(message.senderType || '') === 'customer' &&
+      return !!threadIds[String(message.threadId || '')] && (String(message.senderType || '') === 'customer' || (String(message.senderType || '') === 'admin' && String(message.threadId || '').indexOf('')>=0)) &&
         !parseBool_(message.isRead) && !message.deletedAt;
     }).length;
     var counts = {
@@ -5479,5 +5491,143 @@ function getCustomerSidebarBadgeCounts(customerToken) {
     };
     sidebarBadgeCachePut_(cacheKey, counts);
     return ok_(counts);
+  } catch (e) { return fail_(safeError_(e)); }
+}
+
+
+/* ------------------------ OWNER / OFFICIAL STORE CHAT ------------------------ */
+function getAdminSellerChatThreads(token) {
+  try {
+    requireAdmin_(token, 'sellers.manage');
+    var stores = readTable_('Stores', false).filter(function(s) {
+      return s.status === 'Active' && String(s.id || '') !== 'PLATFORM';
+    });
+    var threads = readTable_('ChatThreads', false).filter(function(t) {
+      return String(t.customerId || '') === '__SYSTEM_OWNER__';
+    });
+    var byStore = Object.create(null), threadIds = Object.create(null);
+    threads.forEach(function(t) {
+      var sid = String(t.sellerId || ''), old = byStore[sid];
+      var stamp = new Date(t.lastMessageAt || t.createdAt || 0).getTime() || 0;
+      var oldStamp = old ? (new Date(old.lastMessageAt || old.createdAt || 0).getTime() || 0) : -1;
+      if (!old || (t.status !== 'Closed' && old.status === 'Closed') || (t.status === old.status && stamp >= oldStamp)) byStore[sid] = t;
+    });
+    Object.keys(byStore).forEach(function(k) { threadIds[String(byStore[k].id)] = true; });
+    var unread = Object.create(null);
+    readTable_('ChatMessages', false).forEach(function(m) {
+      var tid = String(m.threadId || '');
+      if (threadIds[tid] && m.senderType === 'seller' && !parseBool_(m.isRead) && !m.deletedAt) unread[tid] = (unread[tid] || 0) + 1;
+    });
+    var rows = stores.map(function(s) {
+      var t = byStore[String(s.id)] || null;
+      return {storeId:String(s.id),shopName:String(s.shopName || 'ร้านค้า'),threadId:t ? String(t.id) : '',
+        lastMessage:t ? String(t.lastMessage || '') : '',lastMessageAt:t ? String(t.lastMessageAt || t.createdAt || '') : '',
+        unreadCount:t ? Number(unread[String(t.id)] || 0) : 0,hasConversation:!!t};
+    });
+    rows.sort(function(a,b) {
+      return (Number(b.unreadCount > 0) - Number(a.unreadCount > 0)) ||
+        ((new Date(b.lastMessageAt || 0).getTime() || 0) - (new Date(a.lastMessageAt || 0).getTime() || 0)) ||
+        a.shopName.localeCompare(b.shopName,'th');
+    });
+    return ok_(rows);
+  } catch (e) { return fail_(safeError_(e)); }
+}
+function adminGetSellerChatMessages(token, storeId) {
+  try {
+    requireAdmin_(token, 'sellers.manage');
+    var sid = text_(storeId, 100);
+    var store = readTable_('Stores', false).filter(function(s) { return String(s.id) === sid && String(s.id) !== 'PLATFORM'; })[0];
+    if (!store) throw new Error('ไม่พบร้านค้าที่ต้องการสนทนา');
+    var threads = readTable_('ChatThreads', false).filter(function(t) {
+      return String(t.sellerId) === sid && String(t.customerId || '') === '__SYSTEM_OWNER__';
+    });
+    threads.sort(function(a,b) {
+      return (new Date(b.lastMessageAt || b.createdAt || 0).getTime() || 0) -
+        (new Date(a.lastMessageAt || a.createdAt || 0).getTime() || 0);
+    });
+    var t = threads.filter(function(x) { return x.status !== 'Closed'; })[0] || threads[0] || null;
+    if (!t) return ok_({threadId:'',messages:[]});
+    var rows = readTable_('ChatMessages', false).filter(function(m) { return String(m.threadId) === String(t.id); });
+    markChatMessagesRead_(rows, 'admin');
+    return ok_({threadId:t.id,messages:rows});
+  } catch (e) { return fail_(safeError_(e)); }
+}
+function adminSendSellerChatMessage(token, storeId, message, clientMessageId) {
+  try {
+    var user = requireAdmin_(token, 'sellers.manage'), sid = text_(storeId, 100);
+    var store = readTable_('Stores', false).filter(function(s) {
+      return String(s.id) === sid && String(s.id) !== 'PLATFORM' && s.status === 'Active';
+    })[0];
+    if (!store) throw new Error('ไม่พบร้านค้าที่เปิดใช้งาน');
+    var threads = readTable_('ChatThreads', false).filter(function(t) {
+      return String(t.sellerId) === sid && String(t.customerId || '') === '__SYSTEM_OWNER__' && t.status !== 'Closed';
+    });
+    threads.sort(function(a,b) { return (new Date(b.lastMessageAt || b.createdAt || 0).getTime() || 0) - (new Date(a.lastMessageAt || a.createdAt || 0).getTime() || 0); });
+    var t = threads[0];
+    if (!t) {
+      var stamp = now_();
+      t = {id:newId_('CHT'),customerId:'__SYSTEM_OWNER__',sellerId:sid,productId:'',lastMessage:'',lastMessageAt:stamp,status:'Open',createdAt:stamp,updatedAt:stamp};
+      appendRecord_('ChatThreads', t);
+    }
+    var saved = chatSend_(t.id, String(user.id || 'SYSTEM_ADMIN'), 'admin', message, '', clientMessageId);
+    return ok_({threadId:t.id,message:saved}, 'ส่งข้อความถึงร้านค้าแล้ว');
+  } catch (e) { return fail_(safeError_(e)); }
+}
+function getAdminOfficialStoreChatThreads(token) {
+  try {
+    requireAdmin_(token, 'sellers.manage');
+    var officialStore = readTable_('Stores', false).filter(function(s) { return String(s.id) === 'PLATFORM'; })[0];
+    if (!officialStore) return ok_([]);
+    var customers = indexRowsByField_(readTable_('Customers', true), 'id');
+    var threads = readTable_('ChatThreads', false).filter(function(t) { return String(t.sellerId || '') === 'PLATFORM'; });
+    var byCustomer = Object.create(null), active = Object.create(null);
+    threads.forEach(function(t) {
+      var cid = String(t.customerId || ''), old = byCustomer[cid];
+      if (!cid) return;
+      var stamp = new Date(t.lastMessageAt || t.createdAt || 0).getTime() || 0;
+      var oldStamp = old ? (new Date(old.lastMessageAt || old.createdAt || 0).getTime() || 0) : -1;
+      if (!old || (t.status !== 'Closed' && old.status === 'Closed') || (t.status === old.status && stamp >= oldStamp)) byCustomer[cid] = t;
+    });
+    Object.keys(byCustomer).forEach(function(cid) { active[String(byCustomer[cid].id)] = true; });
+    var unread = Object.create(null);
+    readTable_('ChatMessages', false).forEach(function(m) {
+      var tid = String(m.threadId || '');
+      if (active[tid] && m.senderType === 'customer' && !parseBool_(m.isRead) && !m.deletedAt) unread[tid] = (unread[tid] || 0) + 1;
+    });
+    var rows = Object.keys(byCustomer).map(function(cid) {
+      var t = byCustomer[cid], c = customers[cid] || {};
+      return {threadId:String(t.id),customerId:cid,
+        customerName:[c.firstname,c.lastname].filter(Boolean).join(' ') || c.username || c.email || ('ลูกค้า '+cid),
+        customerPhone:String(c.phone || ''),lastMessage:String(t.lastMessage || ''),
+        lastMessageAt:String(t.lastMessageAt || t.createdAt || ''),unreadCount:Number(unread[String(t.id)] || 0)};
+    });
+    rows.sort(function(a,b) {
+      return (Number(b.unreadCount > 0) - Number(a.unreadCount > 0)) ||
+        ((new Date(b.lastMessageAt || 0).getTime() || 0) - (new Date(a.lastMessageAt || 0).getTime() || 0));
+    });
+    return ok_(rows);
+  } catch (e) { return fail_(safeError_(e)); }
+}
+function adminGetOfficialStoreChatMessages(token, threadId) {
+  try {
+    requireAdmin_(token, 'sellers.manage');
+    var t = readTable_('ChatThreads', false).filter(function(x) {
+      return String(x.id) === String(threadId) && String(x.sellerId || '') === 'PLATFORM';
+    })[0];
+    if (!t) throw new Error('ไม่พบห้องแชตร้านค้าทางการ');
+    var rows = readTable_('ChatMessages', false).filter(function(m) { return String(m.threadId) === String(t.id); });
+    markChatMessagesRead_(rows, 'seller');
+    return ok_({threadId:t.id,messages:rows});
+  } catch (e) { return fail_(safeError_(e)); }
+}
+function adminSendOfficialStoreChatMessage(token, threadId, message, clientMessageId) {
+  try {
+    var user = requireAdmin_(token, 'sellers.manage');
+    var t = readTable_('ChatThreads', false).filter(function(x) {
+      return String(x.id) === String(threadId) && String(x.sellerId || '') === 'PLATFORM';
+    })[0];
+    if (!t) throw new Error('ไม่พบห้องแชตร้านค้าทางการ');
+    var saved = chatSend_(t.id, 'PLATFORM', 'seller', message, '', clientMessageId);
+    return ok_({threadId:t.id,message:saved,adminId:user.id}, 'ส่งข้อความถึงลูกค้าแล้ว');
   } catch (e) { return fail_(safeError_(e)); }
 }
