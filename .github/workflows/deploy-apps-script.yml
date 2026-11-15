@@ -79,6 +79,10 @@ jobs:
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
           chmod 600 "$HOME/.clasprc.json"
 
+      - name: Inspect existing Apps Script deployments
+        if: steps.config.outputs.ready == 'true'
+        run: clasp deployments
+
       - name: Push source to Apps Script
         if: steps.config.outputs.ready == 'true'
         run: clasp push --force
