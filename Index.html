@@ -7037,18 +7037,32 @@ function adjustInventoryDialog(productId,variantId){
     function startSellerChatListRealtime(){if(APP.sellerChatListPollTimer)clearInterval(APP.sellerChatListPollTimer);ensureChatRealtimeVisibilityListener();APP.sellerChatListPollTimer=setInterval(function(){if(APP.sellerPage!=='chat'){clearInterval(APP.sellerChatListPollTimer);APP.sellerChatListPollTimer=null;return;}if(document.visibilityState==='visible')refreshSellerChatUnreadRows();},6000);}
     function startCustomerChatListRealtime(){if(APP.customerChatListPollTimer)clearInterval(APP.customerChatListPollTimer);ensureChatRealtimeVisibilityListener();APP.customerChatListPollTimer=setInterval(function(){if(APP.currentView!=='chatInbox'){clearInterval(APP.customerChatListPollTimer);APP.customerChatListPollTimer=null;return;}if(document.visibilityState==='visible')refreshCustomerChatUnreadRows();},6000);}
     function renderSellerChats(rows){
-      APP.sellerChatThreads=safeArray(rows);APP.sellerChatActiveThread='';APP.chatPendingFile=null;
-      var host=document.getElementById('sellerContent');if(!host)return;host.classList.add('seller-chat-full-mode');
-      host.innerHTML='<div class="seller-chat-page"><div class="seller-chat-page-heading"><div><span class="seller-eyebrow">CUSTOMER CARE</span><h1>แชตลูกค้า</h1><p>จัดการห้องสนทนา ส่งรูปภาพ และประกาศข่าวถึงลูกค้าของร้าน</p></div><div class="seller-chat-summary"><b>'+APP.sellerChatThreads.length.toLocaleString('th-TH')+'</b><span>ห้องสนทนา</span></div></div><div class="seller-chat-tabs"><button type="button" class="active" id="sellerChatTabRooms" onclick="setSellerChatMode(\'rooms\')"><i class="fa-regular fa-comments"></i> ห้องแชท</button><button type="button" id="sellerChatTabBroadcast" onclick="setSellerChatMode(\'broadcast\')"><i class="fa-solid fa-bullhorn"></i> บรอดแคสต์</button></div><div id="sellerChatRoomsPane" class="seller-chat-workspace"><aside class="seller-chat-customer-list"><div class="seller-chat-list-heading"><b>รายชื่อลูกค้า</b><span>'+APP.sellerChatThreads.length+'</span></div><label class="seller-chat-search"><i class="fa-solid fa-magnifying-glass"></i><input id="sellerChatSearch" type="search" placeholder="ค้นหาชื่อ, ID ลูกค้า..." oninput="filterSellerChatCustomers()"></label><div id="sellerChatCustomerRows" class="seller-chat-customer-rows">'+sellerChatCustomerRowsMarkup(APP.sellerChatThreads)+'</div></aside><section class="seller-chat-center"><header class="seller-chat-conversation-header" id="sellerChatConversationHeader"><div><b>ยังไม่ได้เลือกห้องแชต</b><small>รอเลือกลูกค้าจากรายการด้านซ้าย</small></div></header><div class="seller-chat-window" id="sellerChatWindow"><div class="seller-chat-empty"><i class="fa-regular fa-message"></i><b>เลือกห้องสนทนา</b><span>เลือกชื่อลูกค้าจากรายการด้านซ้ายเพื่อเริ่มตอบกลับ</span></div></div></section><aside class="seller-chat-profile" id="sellerChatCustomerProfile"><div class="seller-chat-profile-empty"><i class="fa-regular fa-id-card"></i><span>ข้อมูลลูกค้าจะแสดงที่นี่</span></div></aside></div><div id="sellerChatBroadcastPane" class="seller-broadcast-pane" hidden></div></div>';
+      APP.sellerChatThreads=safeArray(rows);
+      APP.sellerChatActiveThread='';
+      APP.chatPendingFile=null;
+      var host=document.getElementById('sellerContent');
+      if(!host)return;
+      host.classList.add('seller-chat-full-mode');
+      host.innerHTML=
+        '<div class="seller-chat-page">'+
+          '<div class="seller-chat-page-heading">'+
+            '<div><span class="seller-eyebrow">CUSTOMER CARE</span><h1>แชตลูกค้า</h1><p>ติดต่อและตอบกลับลูกค้าของร้านได้ในหน้าเดียว</p></div>'+
+            '<div class="seller-chat-summary"><b>'+APP.sellerChatThreads.length.toLocaleString('th-TH')+'</b><span>ห้องสนทนา</span></div>'+
+          '</div>'+
+          '<div id="sellerChatRoomsPane" class="seller-chat-workspace">'+
+            '<aside class="seller-chat-customer-list">'+
+              '<div class="seller-chat-list-heading"><b>รายชื่อลูกค้า</b><span>'+APP.sellerChatThreads.length.toLocaleString('th-TH')+'</span></div>'+
+              '<label class="seller-chat-search"><i class="fa-solid fa-magnifying-glass"></i><input id="sellerChatSearch" type="search" placeholder="ค้นหาชื่อลูกค้า หรือ ID ลูกค้า..." oninput="filterSellerChatCustomers()"></label>'+
+              '<div id="sellerChatCustomerRows" class="seller-chat-customer-rows">'+sellerChatCustomerRowsMarkup(APP.sellerChatThreads)+'</div>'+
+            '</aside>'+
+            '<section class="seller-chat-center">'+
+              '<header class="seller-chat-conversation-header" id="sellerChatConversationHeader"><div><b>ยังไม่ได้เลือกห้องแชต</b><small>เลือกลูกค้าจากรายการด้านซ้ายเพื่อเริ่มสนทนา</small></div></header>'+
+              '<div class="seller-chat-window" id="sellerChatWindow"><div class="seller-chat-empty"><i class="fa-regular fa-message"></i><b>เลือกห้องสนทนา</b><span>ข้อความจะปรากฏที่นี่</span></div></div>'+
+            '</section>'+
+          '</div>'+
+        '</div>';
       startSellerChatListRealtime();
     }
-    function chatUnreadBadgeMarkup(count){var n=Math.max(0,Number(count||0));return n?'<span class="chat-unread-badge" aria-label="ข้อความที่ยังไม่ได้อ่าน '+n+' ข้อความ">'+(n>99?'99+':n.toLocaleString('th-TH'))+'</span>':'';}
-        function sellerChatCustomerRowsMarkup(rows){
-      rows=safeArray(rows);if(!rows.length)return '<div class="seller-chat-no-customers">ยังไม่มีบทสนทนากับลูกค้า</div>';
-      return rows.map(function(t){var nm=t.customerName||('ลูกค้า '+t.customerId),phone=String(t.customerPhone||'').replace(/\D/g,''),avatar=t.customerImage||t.profileImage||t.avatarUrl||'';return '<button type="button" class="seller-chat-customer-row" data-thread-id="'+esc(t.id)+'" data-search="'+esc([t.customerId,nm,t.customerEmail||'',phone].join(' ').toLowerCase())+'" onclick="openSellerChatThread(\''+esc(t.id)+'\')"><span class="seller-chat-customer-avatar">'+(avatar?'<img src="'+imageUrl(avatar)+'" onerror="imageFallback(this)" alt="รูปโปรไฟล์ลูกค้า">':'<i class="fa-regular fa-user"></i>')+'</span><span class="seller-chat-customer-meta"><b>'+esc(nm)+'</b>'+(phone?'<small class="seller-chat-customer-phone">'+esc(phone)+'</small>':'')+'<small class="seller-chat-preview">'+esc(t.lastMessage||'เริ่มบทสนทนา')+'</small></span><span class="seller-chat-row-trailing"><span class="seller-chat-row-time">'+esc(formatChatListTime(t.lastMessageAt))+'</span>'+chatUnreadBadgeMarkup(t.unreadCount)+'</span></button>';}).join('');
-    }
-function refreshSellerChatUnreadRows(){if(!APP.customerToken||APP.sellerPage!=='chat')return;apiCall('getSellerChatThreads',[APP.customerToken],function(r){if(!r||!r.success)return;APP.sellerChatThreads=safeArray(r.data);var host=document.getElementById('sellerChatCustomerRows');if(!host)return;var scrollTop=host.scrollTop,q=String((document.getElementById('sellerChatSearch')||{}).value||'').trim().toLowerCase(),active=String(APP.sellerChatActiveThread||'');host.innerHTML=sellerChatCustomerRowsMarkup(APP.sellerChatThreads);host.scrollTop=scrollTop;var rows=host.querySelectorAll('.seller-chat-customer-row');for(var i=0;i<rows.length;i++){rows[i].classList.toggle('active',rows[i].getAttribute('data-thread-id')===active);rows[i].hidden=!!q&&String(rows[i].getAttribute('data-search')||'').indexOf(q)<0;}var total=APP.sellerChatThreads.reduce(function(n,t){return n+Number(t.unreadCount||0);},0),heading=document.querySelector('.seller-chat-list-heading');if(heading){var badge=heading.querySelector('.chat-unread-total');if(!badge&&total){badge=document.createElement('span');badge.className='chat-unread-total';heading.appendChild(badge);}if(badge){badge.textContent=total?('ยังไม่อ่าน '+total.toLocaleString('th-TH')):'';badge.hidden=!total;}}},false);}
-
     function setSellerChatMode(mode){var rooms=mode!=='broadcast';var r=document.getElementById('sellerChatRoomsPane'),b=document.getElementById('sellerChatBroadcastPane');if(r)r.hidden=!rooms;if(b)b.hidden=rooms;var a=document.getElementById('sellerChatTabRooms'),c=document.getElementById('sellerChatTabBroadcast');if(a)a.classList.toggle('active',rooms);if(c)c.classList.toggle('active',!rooms);if(!rooms){if(APP.sellerChatPollTimer){clearInterval(APP.sellerChatPollTimer);APP.sellerChatPollTimer=null;}APP.sellerChatActiveThread='';renderSellerBroadcastPane();}else if(APP.sellerChatActiveThread){startSellerChatRealtime(APP.sellerChatActiveThread);}}
     function filterSellerChatCustomers(){var q=String((document.getElementById('sellerChatSearch')||{}).value||'').trim().toLowerCase();var rows=document.querySelectorAll('#sellerChatCustomerRows .seller-chat-customer-row');for(var i=0;i<rows.length;i++)rows[i].hidden=!!q&&String(rows[i].getAttribute('data-search')||'').indexOf(q)<0;}
     function renderSellerBroadcastPane(){var host=document.getElementById('sellerChatBroadcastPane');if(!host||host.dataset.ready==='1')return;host.dataset.ready='1';host.innerHTML='<div class="seller-broadcast-card"><div class="seller-broadcast-heading"><span class="seller-eyebrow">SHOP ANNOUNCEMENT</span><h2>บรอดแคสต์ถึงลูกค้า</h2><p>ส่งการแจ้งเตือนให้ลูกค้าที่เคยแชต ติดตามร้าน หรือมีคำสั่งซื้อกับร้านนี้ โดยระบบจะไม่สร้างห้องแชตใหม่ให้ลูกค้าอัตโนมัติ</p></div><div class="seller-broadcast-form"><label>หัวข้อประกาศ<input id="sellerBroadcastTitle" maxlength="140" placeholder="เช่น โปรโมชันประจำสัปดาห์"></label><label>ข้อความประกาศ<textarea id="sellerBroadcastMessage" rows="5" maxlength="500" placeholder="เขียนรายละเอียดข่าวสารหรือโปรโมชัน..."></textarea></label><div class="seller-broadcast-target"><label><input type="radio" name="sellerBroadcastTarget" value="all" checked> ลูกค้าที่เกี่ยวข้องทั้งหมด</label><label><input type="radio" name="sellerBroadcastTarget" value="selected"> เลือกเฉพาะลูกค้าจากรายชื่อแชต</label></div><div class="seller-broadcast-recipient-list" id="sellerBroadcastRecipientList">'+sellerBroadcastRecipientMarkup()+'</div><div class="seller-broadcast-footer"><small>ส่งผ่านการแจ้งเตือนในบัญชีลูกค้า · เลือกลูกค้าได้เฉพาะผู้ที่มีความสัมพันธ์กับร้าน</small><button type="button" class="btn btn-primary" onclick="sendSellerBroadcast()"><i class="fa-solid fa-paper-plane"></i> ส่งบรอดแคสต์</button></div></div></div>';
@@ -7058,33 +7072,55 @@ function refreshSellerChatUnreadRows(){if(!APP.customerToken||APP.sellerPage!=='
     function sendSellerBroadcast(){var title=(document.getElementById('sellerBroadcastTitle')||{}).value||'',message=(document.getElementById('sellerBroadcastMessage')||{}).value||'',target=document.querySelector('input[name="sellerBroadcastTarget"]:checked'),mode=target?target.value:'all',selected=[];if(mode==='selected'){var boxes=document.querySelectorAll('.seller-broadcast-recipient:checked');for(var i=0;i<boxes.length;i++)selected.push(boxes[i].value);if(!selected.length){alertError('กรุณาเลือกลูกค้าอย่างน้อย 1 ราย');return;}}if(!title.trim()||!message.trim()){alertError('กรุณากรอกหัวข้อและข้อความประกาศ');return;}Swal.fire({title:'ยืนยันส่งบรอดแคสต์?',text:mode==='all'?'ระบบจะส่งถึงลูกค้าที่เกี่ยวข้องกับร้านทั้งหมด':'ระบบจะส่งถึงลูกค้าที่เลือก '+selected.length+' ราย',icon:'question',showCancelButton:true,confirmButtonText:'ยืนยันส่ง',cancelButtonText:'ตรวจสอบอีกครั้ง',showLoaderOnConfirm:true,preConfirm:function(){return new Promise(function(resolve){apiCall('sellerSendChatBroadcast',[APP.customerToken,{title:title.trim(),message:message.trim(),mode:mode,customerIds:selected}],function(r){if(!r||!r.success){Swal.showValidationMessage(r&&r.message||'ส่งบรอดแคสต์ไม่สำเร็จ');resolve(false);return;}resolve(r);},false);});}}).then(function(result){if(result.isConfirmed&&result.value&&result.value.success){toast('ส่งบรอดแคสต์แล้ว','success','ส่งการแจ้งเตือนถึงลูกค้า '+Number(result.value.data&&result.value.data.sent||0).toLocaleString('th-TH')+' ราย');}});}
     function openSellerChatThread(threadId){
       if(APP.sellerChatPollTimer){clearInterval(APP.sellerChatPollTimer);APP.sellerChatPollTimer=null;}
-      APP.chatThread={id:threadId};APP.chatMode='seller';APP.sellerChatActiveThread=String(threadId);APP.chatLastMessageAt='';APP.chatLastReadAt='';APP.chatSeenMessageIds={};APP.chatPollBusy=false;
+      APP.chatThread={id:threadId};
+      APP.chatMode='seller';
+      APP.sellerChatActiveThread=String(threadId);
+      APP.chatLastMessageAt='';
+      APP.chatLastReadAt='';
+      APP.chatSeenMessageIds={};
+      APP.chatPollBusy=false;
       var thread=safeArray(APP.sellerChatThreads).filter(function(t){return String(t.id)===String(threadId);})[0];
-      var rows=document.querySelectorAll('.seller-chat-customer-row');for(var i=0;i<rows.length;i++)rows[i].classList.toggle('active',rows[i].getAttribute('data-thread-id')===String(threadId));
-      var host=document.getElementById('sellerChatWindow');if(host)host.innerHTML='<div class="market-chat-skeleton" aria-hidden="true"><div class="market-chat-skeleton-bubble left"><i class="market-skeleton-block w-70"></i><i class="market-skeleton-block w-45"></i></div><div class="market-chat-skeleton-bubble right"><i class="market-skeleton-block w-55"></i><i class="market-skeleton-block w-30"></i></div><div class="market-chat-skeleton-bubble left"><i class="market-skeleton-block w-85"></i><i class="market-skeleton-block w-35"></i></div></div>';
+      var rows=document.querySelectorAll('.seller-chat-customer-row');
+      for(var i=0;i<rows.length;i++)rows[i].classList.toggle('active',rows[i].getAttribute('data-thread-id')===String(threadId));
+      var host=document.getElementById('sellerChatWindow');
+      if(host)host.innerHTML='<div class="market-chat-skeleton" aria-hidden="true"><div class="market-chat-skeleton-bubble left"><i class="market-skeleton-block w-70"></i><i class="market-skeleton-block w-45"></i></div><div class="market-chat-skeleton-bubble right"><i class="market-skeleton-block w-55"></i><i class="market-skeleton-block w-30"></i></div><div class="market-chat-skeleton-bubble left"><i class="market-skeleton-block w-85"></i><i class="market-skeleton-block w-35"></i></div></div>';
       if(thread){
-        var name=thread.customerName||('ลูกค้า '+thread.customerId),phone=String(thread.customerPhone||'').trim();
+        var name=thread.customerName||('ลูกค้า '+thread.customerId);
+        var phone=String(thread.customerPhone||'').trim();
         var chatHead=document.getElementById('sellerChatConversationHeader');
         if(chatHead)chatHead.innerHTML='<div class="seller-chat-conversation-identity"><b>'+esc(name)+'</b><small>'+(phone?'เบอร์โทร: '+esc(phone):'ยังไม่ระบุเบอร์โทร')+'</small></div><a href="#" onclick="sellerOpenCustomerProfile(\''+esc(thread.customerId)+'\');return false"><i class="fa-regular fa-id-card"></i> ดูข้อมูลลูกค้า</a>';
-        var profile=document.getElementById('sellerChatCustomerProfile');
-        if(profile)profile.innerHTML='<div class="seller-chat-profile-card"><div class="seller-chat-profile-avatar">'+(thread.customerImage?'<img src="'+imageUrl(thread.customerImage)+'" onerror="imageFallback(this)" alt="">':'<i class="fa-regular fa-user"></i>')+'</div><b>'+esc(name)+'</b><small>'+(phone?'เบอร์โทร: '+esc(phone):'ยังไม่ระบุเบอร์โทร')+'</small><a href="#" onclick="sellerOpenCustomerProfile(\''+esc(thread.customerId)+'\');return false"><i class="fa-solid fa-arrow-up-right-from-square"></i> ดูข้อมูลลูกค้า</a><div class="seller-chat-profile-data" id="sellerChatProfileData"><span>กำลังโหลดข้อมูลลูกค้า...</span></div></div>';
       }
       apiCall('getSellerChatMessages',[APP.customerToken,threadId],function(r){
         if(APP.sellerChatActiveThread!==String(threadId))return;
-        if(r&&r.success){renderChatMessages('sellerChatWindow',safeArray(r.data),'seller');APP.chatLastReadAt=new Date().toISOString();refreshSellerChatUnreadRows();startSellerChatRealtime(threadId);apiCall('sellerGetChatCustomerProfile',[APP.customerToken,thread?thread.customerId:''],function(p){if(p&&p.success&&APP.sellerChatActiveThread===String(threadId))renderSellerChatCustomerProfile(p.data);},false);}
-        else{var w=document.getElementById('sellerChatWindow');if(w)w.innerHTML='<div class="seller-chat-empty">'+esc(r&&r.message||'โหลดข้อความไม่สำเร็จ')+'</div>';}
+        if(r&&r.success){
+          renderChatMessages('sellerChatWindow',safeArray(r.data),'seller');
+          APP.chatLastReadAt=new Date().toISOString();
+          refreshSellerChatUnreadRows();
+          startSellerChatRealtime(threadId);
+        }else{
+          var w=document.getElementById('sellerChatWindow');
+          if(w)w.innerHTML='<div class="seller-chat-empty">'+esc(r&&r.message||'โหลดข้อความไม่สำเร็จ')+'</div>';
+        }
       },false);
     }
-function renderSellerChatCustomerProfile(data){var host=document.getElementById('sellerChatProfileData');if(!host||!data)return;var c=data.customer||{};host.innerHTML='<div><small>เบอร์โทรศัพท์</small><b>'+(c.phone?'<a href="tel:'+esc(c.phone)+'">'+esc(c.phone)+'</a>':'ยังไม่ระบุ')+'</b></div><div><small>อีเมล</small><b>'+(c.email?'<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>':'ยังไม่ระบุ')+'</b></div><div><small>วันที่เป็นสมาชิก</small><b>'+esc(formatThaiChatTime(c.createdAt,true)||'—')+'</b></div><div><small>จำนวนห้องสนทนากับร้าน</small><b>'+Number(data.threadCount||0).toLocaleString('th-TH')+'</b></div>';}
+    function renderSellerChatCustomerProfile(data){var host=document.getElementById('sellerChatProfileData');if(!host||!data)return;var c=data.customer||{};host.innerHTML='<div><small>เบอร์โทรศัพท์</small><b>'+(c.phone?'<a href="tel:'+esc(c.phone)+'">'+esc(c.phone)+'</a>':'ยังไม่ระบุ')+'</b></div><div><small>อีเมล</small><b>'+(c.email?'<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>':'ยังไม่ระบุ')+'</b></div><div><small>วันที่เป็นสมาชิก</small><b>'+esc(formatThaiChatTime(c.createdAt,true)||'—')+'</b></div><div><small>จำนวนห้องสนทนากับร้าน</small><b>'+Number(data.threadCount||0).toLocaleString('th-TH')+'</b></div>';}
     function sellerOpenCustomerProfile(customerId){var t=safeArray(APP.sellerChatThreads).filter(function(x){return x.customerId===customerId;})[0];if(!t)return;Swal.fire({title:'ข้อมูลลูกค้า',html:'<div class="seller-profile-modal-loading">กำลังโหลดข้อมูลลูกค้า...</div>',showConfirmButton:true,confirmButtonText:'ปิด',didOpen:function(){apiCall('sellerGetChatCustomerProfile',[APP.customerToken,customerId],function(r){if(!r||!r.success){Swal.update({html:'<p>'+esc(r&&r.message||'ไม่สามารถโหลดข้อมูลได้')+'</p>'});return;}var c=r.data.customer||{};Swal.update({html:'<div class="seller-profile-modal"><b>'+esc([c.firstname,c.lastname].filter(Boolean).join(' ')||c.username||c.id)+'</b><p>ID: '+esc(c.id)+'</p><p>โทร: '+esc(c.phone||'—')+'</p><p>อีเมล: '+esc(c.email||'—')+'</p></div>'});},false);}});}
     function renderSellerLive(rows){document.getElementById('sellerContent').innerHTML='<div class="section-head"><div><h2>ตารางถ่ายทอดสด</h2><p class="muted">กำหนดเวลาและใส่ลิงก์ถ่ายทอดสดจาก YouTube หรือแพลตฟอร์มวิดีโอ</p></div><button class="btn btn-primary" onclick="sellerLiveDialog()">เพิ่มรายการถ่ายทอดสด</button></div><div class="table-scroll"><table class="market-table"><thead><tr><th>ชื่อรายการถ่ายทอดสด</th><th>เวลา</th><th>สถานะ</th><th>ลิงก์</th></tr></thead><tbody>'+(rows.length?rows.map(function(v){return '<tr><td>'+esc(v.title)+'</td><td>'+esc(formatThaiChatTime(v.scheduledAt,true))+'</td><td>'+esc(v.status)+'</td><td><a target="_blank" rel="noopener" href="'+safeHref(v.streamUrl,'#')+'">เปิดลิงก์</a></td></tr>';}).join(''):'<tr><td colspan="4">ยังไม่มี ตารางถ่ายทอดสด</td></tr>')+'</tbody></table></div>' ;}
     function sellerLiveDialog(){var html='<div class="modal-form-grid"><div class="modal-field full"><label>ชื่อรายการ</label><input id="liveTitle"></div><div class="modal-field full"><label>URL ถ่ายทอดสด (HTTPS)</label><input id="liveUrl" placeholder="https://www.youtube.com/... "></div><div class="modal-field"><label>วันเวลา</label><input id="liveTime" type="datetime-local"></div><div class="modal-field"><label>สถานะ</label><select id="liveStatus"><option value="Scheduled">กำหนดเวลาแล้ว</option><option value="Live">กำลังถ่ายทอดสด</option><option value="Ended">สิ้นสุดแล้ว</option></select></div></div>'+richEditorMarkup('liveDesc','รายละเอียดการถ่ายทอดสด','','รายละเอียดรายการ Live');Swal.fire({title:'กำหนดเวลาถ่ายทอดสด',html:html,showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึก',cancelButtonText:'ยกเลิก',allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){var d={title:document.getElementById('liveTitle').value,streamUrl:document.getElementById('liveUrl').value,scheduledAt:thaiLocalDateTimeToIso(document.getElementById('liveTime').value),description:getRichEditorHtml('liveDesc'),status:document.getElementById('liveStatus').value};if(!d.title||!d.streamUrl){Swal.showValidationMessage('กรุณากรอกชื่อและ URL ถ่ายทอดสด');return false;}return runSellerModalMutation('sellerSaveLiveRoom',[APP.customerToken,d],'live');}});}
     function openChatWithStore(storeId,productId){if(!APP.customerToken){openCustomerAuth('login');return;}apiCall('createChatThread',[APP.customerToken,storeId,productId||''],function(r){if(!r||!r.success){alertError(r&&r.message||'เปิดแชตร้านค้าไม่สำเร็จ');return;}APP.chatThread=r.data;APP.chatMode='customer';openChatInbox(storeId);});}
     function customerChatStoreRowsMarkup(rows){
-      rows=safeArray(rows);if(!rows.length)return '<div class="seller-chat-no-customers"><i class="fa-regular fa-message"></i><br>ยังไม่มีร้านค้าที่เคยติดต่อ</div>';
-      return rows.map(function(s){var nm=s.storeName||('ร้านค้า '+s.storeId);return '<button type="button" class="seller-chat-customer-row customer-chat-store-row" data-store-id="'+esc(s.storeId)+'" data-search="'+esc([s.storeId,nm,s.storeSlug||''].join(' ').toLowerCase())+'" onclick="openCustomerStoreChat(\''+esc(s.storeId)+'\')"><span class="seller-chat-customer-avatar">'+(s.storeLogo?'<img src="'+imageUrl(s.storeLogo)+'" onerror="imageFallback(this)" alt="">':'<i class="fa-solid fa-store"></i>')+'</span><span class="seller-chat-customer-meta"><b>'+esc(nm)+'</b><small class="seller-chat-preview">'+esc(s.lastMessage||'เริ่มบทสนทนา')+'</small></span><span class="seller-chat-row-trailing"><span class="seller-chat-row-time">'+esc(formatChatListTime(s.lastMessageAt)||'—')+'</span>'+chatUnreadBadgeMarkup(s.unreadCount)+'</span></button>';}).join('');
+      rows=safeArray(rows);
+      if(!rows.length)return '<div class="seller-chat-no-customers"><i class="fa-regular fa-message"></i><br>ยังไม่มีร้านค้าที่เคยติดต่อ</div>';
+      return rows.map(function(s){
+        var nm=s.storeName||('ร้านค้า '+s.storeId);
+        return '<button type="button" class="seller-chat-customer-row customer-chat-store-row" data-store-id="'+esc(s.storeId)+'" data-search="'+esc([s.storeId,nm,s.storeSlug||''].join(' ').toLowerCase())+'" onclick="openCustomerStoreChat(\''+esc(s.storeId)+'\')">'+
+          '<span class="seller-chat-customer-avatar">'+(s.storeLogo?'<img src="'+imageUrl(s.storeLogo)+'" onerror="imageFallback(this)" alt="">':'<i class="fa-solid fa-store"></i>')+'</span>'+
+          '<span class="seller-chat-customer-meta"><b>'+esc(nm)+'</b></span>'+
+          '<span class="seller-chat-row-trailing"><span class="seller-chat-row-time">'+esc(formatChatListTime(s.lastMessageAt)||'—')+'</span>'+chatUnreadBadgeMarkup(s.unreadCount)+'</span>'+
+        '</button>';
+      }).join('');
     }
-function refreshCustomerChatUnreadRows(){if(!APP.customerToken||APP.currentView!=='chatInbox')return;apiCall('getCustomerChatThreads',[APP.customerToken],function(r){if(!r||!r.success)return;APP.customerChatStores=safeArray(r.data);var host=document.getElementById('customerChatStoreRows');if(!host)return;var scrollTop=host.scrollTop,q=String((document.getElementById('customerChatStoreSearch')||{}).value||'').trim().toLowerCase(),active=String(APP.customerChatActiveStoreId||'');host.innerHTML=customerChatStoreRowsMarkup(APP.customerChatStores);host.scrollTop=scrollTop;var rows=host.querySelectorAll('.customer-chat-store-row');for(var i=0;i<rows.length;i++){rows[i].classList.toggle('active',rows[i].getAttribute('data-store-id')===active);rows[i].hidden=!!q&&String(rows[i].getAttribute('data-search')||'').indexOf(q)<0;}var total=APP.customerChatStores.reduce(function(n,t){return n+Number(t.unreadCount||0);},0),heading=host.parentNode&&host.parentNode.querySelector('.seller-chat-list-heading');if(heading){var badge=heading.querySelector('.chat-unread-total');if(!badge&&total){badge=document.createElement('span');badge.className='chat-unread-total';heading.appendChild(badge);}if(badge){badge.textContent=total?('ยังไม่อ่าน '+total.toLocaleString('th-TH')):'';badge.hidden=!total;}}},false); }
+    function refreshCustomerChatUnreadRows(){if(!APP.customerToken||APP.currentView!=='chatInbox')return;apiCall('getCustomerChatThreads',[APP.customerToken],function(r){if(!r||!r.success)return;APP.customerChatStores=safeArray(r.data);var host=document.getElementById('customerChatStoreRows');if(!host)return;var scrollTop=host.scrollTop,q=String((document.getElementById('customerChatStoreSearch')||{}).value||'').trim().toLowerCase(),active=String(APP.customerChatActiveStoreId||'');host.innerHTML=customerChatStoreRowsMarkup(APP.customerChatStores);host.scrollTop=scrollTop;var rows=host.querySelectorAll('.customer-chat-store-row');for(var i=0;i<rows.length;i++){rows[i].classList.toggle('active',rows[i].getAttribute('data-store-id')===active);rows[i].hidden=!!q&&String(rows[i].getAttribute('data-search')||'').indexOf(q)<0;}var total=APP.customerChatStores.reduce(function(n,t){return n+Number(t.unreadCount||0);},0),heading=host.parentNode&&host.parentNode.querySelector('.seller-chat-list-heading');if(heading){var badge=heading.querySelector('.chat-unread-total');if(!badge&&total){badge=document.createElement('span');badge.className='chat-unread-total';heading.appendChild(badge);}if(badge){badge.textContent=total?('ยังไม่อ่าน '+total.toLocaleString('th-TH')):'';badge.hidden=!total;}}},false); }
 
     function openChatInbox(selectStoreId){if(!APP.customerToken){openCustomerAuth('login');return;}if(!customerPortalEnsureShell('chat'))return;APP.currentView='chatInbox';stopCustomerChatRealtime();var chatMarkup='<div class="seller-chat-page buyer-chat-page"><div class="seller-chat-page-heading"><div><span class="seller-eyebrow">MARKETPLACE MESSAGES</span><h1>แชตกับร้านค้า</h1><p>ติดต่อร้านค้าเกี่ยวกับสินค้าและคำสั่งซื้อ พร้อมแนบรูปภาพได้</p></div><div class="seller-chat-summary"><b id="customerChatStoreCount">—</b><span>ร้านค้าที่ติดต่อ</span></div></div><div class="seller-chat-workspace buyer-chat-workspace"><aside class="seller-chat-customer-list"><div class="seller-chat-list-heading"><b>รายชื่อร้านค้า</b><span id="customerChatStoreCountSmall">—</span></div><label class="seller-chat-search"><i class="fa-solid fa-magnifying-glass"></i><input id="customerChatStoreSearch" type="search" placeholder="ค้นหาชื่อร้านค้า หรือ ID ร้านค้า..." oninput="filterCustomerChatStores()"></label><div id="customerChatStoreRows" class="seller-chat-customer-rows"><div class="market-chat-list-skeleton" aria-hidden="true"><div class="market-chat-list-skeleton-row"><i class="market-skeleton-block"></i><span><i class="market-skeleton-block w-70"></i><i class="market-skeleton-block w-45"></i></span></div><div class="market-chat-list-skeleton-row"><i class="market-skeleton-block"></i><span><i class="market-skeleton-block w-70"></i><i class="market-skeleton-block w-45"></i></span></div><div class="market-chat-list-skeleton-row"><i class="market-skeleton-block"></i><span><i class="market-skeleton-block w-70"></i><i class="market-skeleton-block w-45"></i></span></div><div class="market-chat-list-skeleton-row"><i class="market-skeleton-block"></i><span><i class="market-skeleton-block w-70"></i><i class="market-skeleton-block w-45"></i></span></div><div class="market-chat-list-skeleton-row"><i class="market-skeleton-block"></i><span><i class="market-skeleton-block w-70"></i><i class="market-skeleton-block w-45"></i></span></div></div></div></aside><section class="seller-chat-center"><header class="seller-chat-conversation-header" id="customerChatConversationHeader"><div class="seller-chat-conversation-identity"><b>เลือกแชตกับร้านค้า</b><small>เลือกร้านค้าจากรายการด้านซ้าย</small></div></header><div class="seller-chat-window" id="buyerChatWindow"><div class="seller-chat-empty"><i class="fa-regular fa-comments"></i><b>พูดคุยกับร้านค้าได้ที่นี่</b><span>เลือกร้านค้าที่ต้องการติดต่อจากรายชื่อด้านซ้าย</span></div></div></section></div></div>';customerPortalSetContent(chatMarkup);
       apiCall('getCustomerChatThreads',[APP.customerToken],function(r){if(!r||!r.success){var list=document.getElementById('customerChatStoreRows');if(list)list.innerHTML='<div class="seller-chat-no-customers">'+esc(r&&r.message||'โหลดรายชื่อร้านค้าไม่สำเร็จ')+'</div>';return;}APP.customerChatStores=safeArray(r.data);var count=document.getElementById('customerChatStoreCount'),small=document.getElementById('customerChatStoreCountSmall'),rows=document.getElementById('customerChatStoreRows');if(count)count.textContent=APP.customerChatStores.length.toLocaleString('th-TH');if(small)small.textContent=APP.customerChatStores.length.toLocaleString('th-TH');if(rows)rows.innerHTML=customerChatStoreRowsMarkup(APP.customerChatStores);startCustomerChatListRealtime();var target=selectStoreId||APP.customerChatActiveStoreId;if(target&&APP.customerChatStores.some(function(s){return String(s.storeId)===String(target);}))openCustomerStoreChat(target);else if(APP.customerChatStores.length)openCustomerStoreChat(APP.customerChatStores[0].storeId);},false);}
@@ -10063,5 +10099,60 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     })();
   </script>
 
+
+
+<style id="chat-restore-previous-layout">
+/* Restore simple two-pane chat workspaces: conversation list beside the message thread. */
+.portal-mode-seller #sellerContent.seller-chat-full-mode .seller-chat-workspace {
+  display:grid!important;
+  grid-template-columns:minmax(250px,310px) minmax(0,1fr)!important;
+  grid-template-rows:minmax(0,1fr)!important;
+  gap:12px!important;
+}
+.portal-mode-seller #sellerContent.seller-chat-full-mode .seller-chat-profile {
+  display:none!important;
+}
+.portal-mode-seller #sellerContent.seller-chat-full-mode .seller-chat-page-heading {
+  flex:0 0 auto;
+}
+.portal-mode-seller #sellerContent.seller-chat-full-mode .seller-chat-window {
+  min-width:0;
+}
+.customer-portal-content.customer-chat-full-mode .buyer-chat-workspace {
+  grid-template-columns:minmax(250px,320px) minmax(0,1fr)!important;
+  grid-template-rows:minmax(0,1fr)!important;
+}
+.customer-chat-store-row .seller-chat-customer-meta {
+  display:flex;
+  align-items:center;
+  min-width:0;
+}
+.customer-chat-store-row .seller-chat-row-time {
+  white-space:nowrap;
+}
+@media(max-width:760px) {
+  .portal-mode-seller #sellerContent.seller-chat-full-mode .seller-chat-workspace,
+  .customer-portal-content.customer-chat-full-mode .buyer-chat-workspace {
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:minmax(135px,30%) minmax(0,1fr)!important;
+    gap:8px!important;
+  }
+  .portal-mode-seller #sellerContent.seller-chat-full-mode .seller-chat-customer-list,
+  .customer-portal-content.customer-chat-full-mode .seller-chat-customer-list {
+    min-height:0;
+    max-height:none;
+    height:100%;
+  }
+  .portal-mode-seller #sellerContent.seller-chat-full-mode .seller-chat-center,
+  .customer-portal-content.customer-chat-full-mode .seller-chat-center {
+    min-height:0;
+    height:100%;
+  }
+  .portal-mode-seller #sellerContent.seller-chat-full-mode .seller-chat-tabs {
+    display:none!important;
+  }
+}
+</style>
 </body>
 </html>
