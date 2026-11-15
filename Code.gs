@@ -5334,3 +5334,149 @@ function deleteCustomerBankAccount(customerToken,id) {
   try {var c=requireCustomer_(customerToken);ensureCustomerAuxTable_('CustomerBankAccounts');var rows=readTable_('CustomerBankAccounts',false),target=rows.filter(function(x){return x.id===id&&x.customerId===c.id;})[0];if(!target)throw new Error('ไม่พบบัญชีธนาคาร');deleteRows_('CustomerBankAccounts',function(x){return x.id===id&&x.customerId===c.id;});if(parseBool_(target.isDefault)){var next=readTable_('CustomerBankAccounts',false).filter(function(x){return x.customerId===c.id;})[0];if(next)updateRecord_('CustomerBankAccounts',next.id,{isDefault:true,updatedAt:now_()});}return ok_(true,'ลบบัญชีธนาคารแล้ว');}
   catch(e){return fail_(safeError_(e));}
 }
+
+
+/* -------------------------- SIDEBAR NOTIFICATION BADGES -------------------------- */
+function sidebarBadgeCacheGet_(key) {
+  try {
+    var raw = CacheService.getScriptCache().get(key);
+    return raw ? safeJson_(raw, null) : null;
+  } catch (e) { return null; }
+}
+function sidebarBadgeCachePut_(key, value) {
+  try { CacheService.getScriptCache().put(key, JSON.stringify(value), 20); } catch (e) {}
+}
+function sidebarBadgePendingStatus_(value) {
+  return ['pending','pending review','pending approval','awaiting approval','pending admin review']
+    .indexOf(String(value || '').trim().toLowerCase()) >= 0;
+}
+function getAdminSidebarBadgeCounts(token) {
+  try {
+    var user = requireAdmin_(token, '');
+    var permissions = safeArray_(safeJson_(user.permissions, []));
+    var isFullAccess = user.role === 'Super Admin' || user.role === 'Admin' || permissions.indexOf('*') >= 0;
+    function can(permission) { return isFullAccess || permissions.indexOf(permission) >= 0; }
+    var cacheKey = 'sidebar_badges_admin_' + sha256_(String(user.id || '') + '|' + JSON.stringify(permissions)).substring(0, 28);
+    var cached = sidebarBadgeCacheGet_(cacheKey);
+    if (cached) return ok_(cached);
+    var counts = {products:0,inventory:0,orders:0,payments:0,sellers:0,marketplaceReturns:0,marketplacePayouts:0,reviews:0};
+    if (can('sellers.manage')) {
+      counts.sellers = readTable_('Stores', false).filter(function(row) {
+        return ['Pending','Pending Review','Awaiting Approval'].indexOf(String(row.status || '')) >= 0;
+      }).length;
+    }
+    var needsOrders = can('orders.view') || can('payments.view');
+    var orders = needsOrders ? readTable_('Orders', false) : [];
+    if (can('orders.view')) {
+      counts.orders = orders.filter(function(row) {
+        return ['Pending','Awaiting Payment'].indexOf(String(row.orderStatus || '')) >= 0 &&
+          String(row.paymentStatus || '') !== 'Pending Verification';
+      }).length;
+    }
+    if (can('payments.view')) {
+      counts.payments = orders.filter(function(row) {
+        return String(row.paymentStatus || '') === 'Pending Verification';
+      }).length;
+    }
+    if (can('products.view')) {
+      counts.products = readTable_('Products', false).filter(function(row) {
+        return sidebarBadgePendingStatus_(row.status);
+      }).length;
+    }
+    if (can('inventory.view')) {
+      counts.inventory = readTable_('Inventory', false).filter(function(row) {
+        var threshold = number_(row.minimumStock, 0);
+        var available = Math.max(0, number_(row.quantity, 0) - number_(row.reserved, 0));
+        return threshold > 0 && available <= threshold;
+      }).length;
+    }
+    if (can('returns.manage')) {
+      counts.marketplaceReturns = readTable_('ReturnRequests', false).filter(function(row) {
+        return ['Pending Seller Review','Refund Pending','Pending Admin Review'].indexOf(String(row.status || '')) >= 0;
+      }).length;
+    }
+    if (can('payouts.manage')) {
+      counts.marketplacePayouts = readTable_('SellerPayouts', false).filter(function(row) {
+        return String(row.status || '') === 'Pending';
+      }).length;
+    }
+    if (can('reviews.view')) {
+      counts.reviews = readTable_('Reviews', false).filter(function(row) {
+        return sidebarBadgePendingStatus_(row.status);
+      }).length;
+    }
+    sidebarBadgeCachePut_(cacheKey, counts);
+    return ok_(counts);
+  } catch (e) { return fail_(safeError_(e)); }
+}
+function getSellerSidebarBadgeCounts(customerToken) {
+  try {
+    var seller = requireSeller_(customerToken);
+    var storeId = String(seller.store.id || '');
+    var cacheKey = 'sidebar_badges_seller_' + sha256_(storeId).substring(0, 28);
+    var cached = sidebarBadgeCacheGet_(cacheKey);
+    if (cached) return ok_(cached);
+    var sellerOrders = readTable_('SellerOrders', false).filter(function(row) { return String(row.sellerId || '') === storeId; });
+    var products = readTable_('Products', false).filter(function(row) { return String(row.sellerId || '') === storeId; });
+    var returns = readTable_('ReturnRequests', false).filter(function(row) { return String(row.sellerId || '') === storeId; });
+    var payouts = readTable_('SellerPayouts', false).filter(function(row) { return String(row.sellerId || '') === storeId; });
+    var threadIds = Object.create(null);
+    readTable_('ChatThreads', false).forEach(function(thread) {
+      if (String(thread.sellerId || '') === storeId) threadIds[String(thread.id || '')] = true;
+    });
+    var unreadChats = readTable_('ChatMessages', false).filter(function(message) {
+      return !!threadIds[String(message.threadId || '')] && String(message.senderType || '') === 'customer' &&
+        !parseBool_(message.isRead) && !message.deletedAt;
+    }).length;
+    var counts = {
+      products: products.filter(function(row) { return sidebarBadgePendingStatus_(row.status); }).length,
+      orders: sellerOrders.filter(function(row) { return ['Awaiting Payment','Processing','Packed'].indexOf(String(row.status || '')) >= 0; }).length,
+      returns: returns.filter(function(row) { return String(row.status || '') === 'Pending Seller Review'; }).length,
+      chat: unreadChats,
+      payouts: payouts.filter(function(row) { return String(row.status || '') === 'Pending'; }).length
+    };
+    sidebarBadgeCachePut_(cacheKey, counts);
+    return ok_(counts);
+  } catch (e) { return fail_(safeError_(e)); }
+}
+function getCustomerSidebarBadgeCounts(customerToken) {
+  try {
+    var customer = requireCustomer_(customerToken);
+    var customerId = String(customer.id || '');
+    var cacheKey = 'sidebar_badges_customer_' + sha256_(customerId).substring(0, 28);
+    var cached = sidebarBadgeCacheGet_(cacheKey);
+    if (cached) return ok_(cached);
+    var orders = readTable_('Orders', false).filter(function(row) { return String(row.customerId || '') === customerId; });
+    var activeStatuses = ['Pending','Awaiting Payment','Paid','Processing','Packed','Shipped','Delivered'];
+    var returns = readTable_('ReturnRequests', false).filter(function(row) { return String(row.customerId || '') === customerId; });
+    var notices = readTable_('Notifications', false).filter(function(row) {
+      return row.recipientType === 'customer' && String(row.recipientId || '') === customerId && !parseBool_(row.isRead);
+    });
+    var threadIds = Object.create(null);
+    readTable_('ChatThreads', false).forEach(function(thread) {
+      if (String(thread.customerId || '') === customerId) threadIds[String(thread.id || '')] = true;
+    });
+    var unreadChats = readTable_('ChatMessages', false).filter(function(message) {
+      return !!threadIds[String(message.threadId || '')] && String(message.senderType || '') === 'seller' &&
+        !parseBool_(message.isRead) && !message.deletedAt;
+    }).length;
+    var orderNoticeCount = notices.filter(function(row) {
+      return /(order|payment|ship|delivery|return)/i.test(String(row.type || ''));
+    }).length;
+    var promoNoticeCount = notices.filter(function(row) {
+      return /(promo|promotion|coupon|voucher|campaign)/i.test(String(row.type || ''));
+    }).length;
+    var counts = {
+      purchase: orders.filter(function(row) { return activeStatuses.indexOf(String(row.orderStatus || 'Pending')) >= 0; }).length,
+      orderNotices: orderNoticeCount,
+      promoNotices: promoNoticeCount,
+      allNotices: notices.length,
+      returns: returns.filter(function(row) {
+        return ['Pending Seller Review','Approved','Return Shipped','Received','Refund Pending'].indexOf(String(row.status || '')) >= 0;
+      }).length,
+      chat: unreadChats
+    };
+    sidebarBadgeCachePut_(cacheKey, counts);
+    return ok_(counts);
+  } catch (e) { return fail_(safeError_(e)); }
+}

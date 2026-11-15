@@ -1988,6 +1988,32 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     }
   </style>
 
+
+  <style id="sidebar-notification-badges-v1">
+    .portal-mode-owner .admin-menu button{position:relative}
+    .portal-mode-owner .admin-menu-badge,.seller-nav-badge,.customer-portal-nav-badge{
+      display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+      min-width:19px;height:19px;padding:0 5px;margin-left:auto;border-radius:999px;
+      background:#e5484d;color:#fff;font-size:9px;font-weight:800;line-height:1;
+      font-variant-numeric:tabular-nums;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.12)
+    }
+    .portal-mode-owner .admin-menu-badge[hidden],.seller-nav-badge[hidden],.customer-portal-nav-badge[hidden]{display:none!important}
+    .portal-mode-owner .admin-layout.sidebar-collapsed .admin-menu-badge{
+      position:absolute;top:2px;right:2px;min-width:16px;height:16px;padding:0 3px;
+      border:2px solid var(--surface);font-size:8px
+    }
+    .seller-nav-item{position:relative}
+    .seller-nav-badge{margin-left:auto}
+    .seller-console.is-collapsed .seller-nav-badge{
+      position:absolute;top:2px;right:2px;min-width:16px;height:16px;padding:0 3px;
+      border:2px solid var(--surface);font-size:8px
+    }
+    .customer-portal-nav-link{position:relative}
+    .customer-portal-nav-heading .customer-portal-nav-badge{margin-left:auto;margin-right:8px}
+    .customer-portal-nav-link .customer-portal-nav-badge{margin-left:auto}
+    @media(max-width:600px){.customer-portal-nav-badge{min-width:18px;height:18px}}
+  </style>
+
 </head>
 <body data-qr-login="<?= qrLoginChallenge ?>" data-portal-entry="<?= portalEntry ?>" data-web-app-url="<?= webAppUrl ?>">
   <header class="top-header">
@@ -4213,10 +4239,10 @@ function loadPublicData(onComplete){
     function customerPortalName(){var c=APP.customer||{};return [c.firstname,c.lastname].filter(Boolean).join(' ')||c.username||c.email||'สมาชิก';}
     function customerPortalAvatarSrc(photo){return photo?imageUrl(photo):'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="40" fill="#e9edf3"/><circle cx="40" cy="29" r="14" fill="#94a3b8"/><path d="M14 74c2-17 13-26 26-26s24 9 26 26" fill="#94a3b8"/></svg>');}
     function customerPortalMenuMarkup(){
-      var group=function(id,title,icon,children,open){return '<div class="customer-portal-nav-group '+(open?'is-open':'')+'" data-cp-group="'+id+'"><button type="button" class="customer-portal-nav-heading" aria-expanded="'+(open?'true':'false')+'" onclick="customerPortalToggleGroup(\''+id+'\')"><span><i class="fa-solid '+icon+'"></i>'+title+'</span><i class="fa-solid fa-chevron-down cp-chevron"></i></button><div class="customer-portal-nav-children">'+children+'</div></div>';};
-      var link=function(id,title,icon){return '<button type="button" class="customer-portal-nav-link" data-cp-nav="'+id+'" onclick="customerPortalNavigate(\''+id+'\')"><i class="fa-solid '+icon+'"></i><span>'+title+'</span></button>';};
+      var group=function(id,title,icon,children,open){var badge=id==='notifications'?'<b class="customer-portal-nav-badge" id="customerBadge_notifications" hidden></b>':'';return '<div class="customer-portal-nav-group '+(open?'is-open':'')+'" data-cp-group="'+id+'"><button type="button" class="customer-portal-nav-heading" aria-expanded="'+(open?'true':'false')+'" onclick="customerPortalToggleGroup(\''+id+'\')"><span><i class="fa-solid '+icon+'"></i>'+title+'</span>'+badge+'<i class="fa-solid fa-chevron-down cp-chevron"></i></button><div class="customer-portal-nav-children">'+children+'</div></div>';};
+      var link=function(id,title,icon){var badgeIds={orderNotices:'orderNotices',promoNotices:'promoNotices',returns:'returns',chat:'chat',allNotices:'allNotices'};var badge=badgeIds[id]?'<b class="customer-portal-nav-badge" id="customerBadge_'+badgeIds[id]+'" hidden></b>':'';return '<button type="button" class="customer-portal-nav-link" data-cp-nav="'+id+'" onclick="customerPortalNavigate(\''+id+'\')"><i class="fa-solid '+icon+'"></i><span>'+title+'</span>'+badge+'</button>';};
       return group('account','บัญชีของฉัน','fa-user-circle',link('history','ประวัติ','fa-user-circle')+link('bank','บัญชีธนาคาร & บัตร','fa-building-columns')+link('addresses','ที่อยู่','fa-location-dot')+link('password','เปลี่ยนรหัสผ่าน','fa-lock')+link('privacy','การตั้งค่าความเป็นส่วนตัว','fa-shield-halved')+link('notificationSettings','ตั้งค่าการแจ้งเตือน','fa-bell')+link('orderSettings','Order Settings','fa-sliders'),true)+
-        '<button type="button" class="customer-portal-nav-link customer-portal-nav-direct" data-cp-nav="purchase" onclick="customerPortalNavigate(\'purchase\')"><i class="fa-solid fa-bag-shopping"></i><span>การซื้อของฉัน</span></button>'+
+        '<button type="button" class="customer-portal-nav-link customer-portal-nav-direct" data-cp-nav="purchase" onclick="customerPortalNavigate(\'purchase\')"><i class="fa-solid fa-bag-shopping"></i><span>การซื้อของฉัน</span><b class="customer-portal-nav-badge" id="customerBadge_purchase" hidden></b></button>'+
         group('notifications','การแจ้งเตือน','fa-bell',link('orderNotices','อัปเดตคำสั่งซื้อ','fa-truck-fast')+link('promoNotices','เรื่องโปรโมชั่น','fa-tags'),false)+
         '<button type="button" class="customer-portal-nav-link customer-portal-nav-direct" data-cp-nav="discounts" onclick="customerPortalNavigate(\'discounts\')"><i class="fa-solid fa-ticket"></i><span>โค้ดส่วนลดของฉัน</span></button>'+
         group('more','เพิ่มเติม','fa-ellipsis',link('coins','เหรียญ','fa-coins')+link('vouchers','คูปองของฉัน','fa-ticket')+link('returns','คืนสินค้า','fa-rotate-left')+link('chat','แชต','fa-comments')+link('allNotices','แจ้งเตือน','fa-bell')+link('following','ร้านที่ติดตาม','fa-heart'),false);
@@ -4228,7 +4254,7 @@ function loadPublicData(onComplete){
         var c=APP.customer||{},photo=c.profileImage||'',name=customerPortalName(),id=c.id||'—';
         root.innerHTML='<div class="customer-portal-layout" id="customerPortalLayout"><div class="customer-portal-overlay" onclick="customerPortalToggleMobile(false)"></div><aside class="customer-portal-sidebar" id="customerPortalSidebar"><div class="customer-portal-profile"><div class="customer-portal-profile-top"><img class="customer-portal-avatar" id="customerPortalAvatar" src="'+customerPortalAvatarSrc(photo)+'" onerror="imageFallback(this)" alt="รูปโปรไฟล์"><div class="customer-portal-profile-copy"><b id="customerPortalName">'+esc(name)+'</b><small>รหัสลูกค้า</small><small id="customerPortalCustomerId">'+esc(id)+'</small></div></div><button type="button" class="customer-portal-edit-profile" onclick="editCustomerProfile()"><i class="fa-regular fa-pen-to-square"></i> แก้ไขข้อมูลส่วนตัว</button></div><nav class="customer-portal-nav">'+customerPortalMenuMarkup()+'</nav><div class="customer-portal-sidebar-footer"><button type="button" onclick="customerSignOut()"><i class="fa-solid fa-arrow-right-from-bracket"></i> ออกจากระบบ</button></div></aside><section class="customer-portal-main"><div class="customer-portal-mobile-head"><button type="button" onclick="customerPortalToggleMobile(true)" aria-label="เปิดเมนู"><i class="fa-solid fa-bars"></i></button><b>บัญชีลูกค้า</b></div><div class="customer-portal-content" id="customerPortalContent"></div></section></div>';
       }
-      customerPortalSetActive(activeId||'history');return true;
+      customerPortalSetActive(activeId||'history');loadCustomerSidebarBadges();startSidebarBadgePolling_('customer');return true;
     }
     function customerPortalRefreshProfile(){var c=APP.customer||{},name=customerPortalName(),photo=c.profileImage||'';var n=document.getElementById('customerPortalName'),i=document.getElementById('customerPortalAvatar'),id=document.getElementById('customerPortalCustomerId');if(n)n.textContent=name;if(i)i.src=customerPortalAvatarSrc(photo);if(id)id.textContent=c.id||'—';}
     function customerPortalSetActive(id){var nodes=document.querySelectorAll('[data-cp-nav]');for(var i=0;i<nodes.length;i++)nodes[i].classList.toggle('active',nodes[i].getAttribute('data-cp-nav')===id);var group=id==='orderNotices'||id==='promoNotices'?'notifications':(['coins','vouchers','returns','chat','allNotices','following'].indexOf(id)>=0?'more':'account');if(id==='purchase'||id==='discounts')group='';var groups=document.querySelectorAll('[data-cp-group]');for(var j=0;j<groups.length;j++){var g=groups[j].getAttribute('data-cp-group');if(g===group){groups[j].classList.add('is-open');var b=groups[j].querySelector('.customer-portal-nav-heading');if(b)b.setAttribute('aria-expanded','true');}}}
@@ -4839,10 +4865,10 @@ function loadPublicData(onComplete){
       {id:'newsletters',label:'ผู้รับข่าวสาร',icon:'fa-envelope'}, {id:'demo',label:'ข้อมูลตัวอย่าง',icon:'fa-flask'}, {id:'backup',label:'สำรองข้อมูล',icon:'fa-database'}
     ];
     function forceAdminPasswordChange(){Swal.fire({title:'เปลี่ยนรหัสผ่านเริ่มต้น',text:'เพื่อความปลอดภัย กรุณาตั้งรหัสผ่านใหม่ก่อนใช้งานระบบ',input:'password',inputLabel:'รหัสผ่านใหม่อย่างน้อย 8 ตัวอักษร',allowOutsideClick:false,confirmButtonText:'บันทึกรหัสผ่าน',preConfirm:function(v){if(!v||v.length<8){Swal.showValidationMessage('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');return false;}return v;}}).then(function(r){if(r.isConfirmed)apiCall('changePassword',[APP.adminToken,'',r.value],function(x){if(x.success){toast(x.message);openAdmin('dashboard');}else alertError(x.message);},true,'กำลังเปลี่ยนรหัสผ่าน...');});}
-    function openAdmin(initialPage){applyAccessMode('owner');APP.currentView='admin';APP.adminRequestId=Number(APP.adminRequestId||0)+1;renderAdminShell();var page=initialPage&&ADMIN_MENUS.some(function(m){return m.id===initialPage;})?initialPage:getPortalRoutePage('owner',APP.adminToken,ADMIN_MENUS.map(function(m){return m.id;}),'dashboard');loadAdminPage(page);}
+    function openAdmin(initialPage){applyAccessMode('owner');APP.currentView='admin';APP.adminRequestId=Number(APP.adminRequestId||0)+1;renderAdminShell();var page=initialPage&&ADMIN_MENUS.some(function(m){return m.id===initialPage;})?initialPage:getPortalRoutePage('owner',APP.adminToken,ADMIN_MENUS.map(function(m){return m.id;}),'dashboard');loadAdminPage(page);startSidebarBadgePolling_('admin');}
     function renderAdminShell(){
       var adminName=APP.adminUser?APP.adminUser.name:'Administrator';
-      var menuHtml=ADMIN_MENUS.map(function(m){return (m.group?'<div class="admin-label" data-menu-group="'+esc(m.group)+'">'+esc(m.group)+'</div>':'')+'<button id="nav_'+m.id+'" data-menu-id="'+m.id+'" title="'+esc(m.label)+'" type="button" onclick="loadAdminPage(\''+m.id+'\')"><i class="fa-solid '+m.icon+'"></i><span>'+esc(m.label)+'</span></button>';}).join('');
+      var menuHtml=ADMIN_MENUS.map(function(m){return (m.group?'<div class="admin-label" data-menu-group="'+esc(m.group)+'">'+esc(m.group)+'</div>':'')+'<button id="nav_'+m.id+'" data-menu-id="'+m.id+'" title="'+esc(m.label)+'" type="button" onclick="loadAdminPage(\''+m.id+'\')"><i class="fa-solid '+m.icon+'"></i><span>'+esc(m.label)+'</span><b class="admin-menu-badge" id="adminBadge_'+m.id+'" hidden></b></button>';}).join('');
       var avatar=esc(String(adminName||'A').trim().charAt(0).toUpperCase());
       document.getElementById('appRoot').innerHTML='<div class="admin-layout" id="adminLayout">'+
         '<aside class="admin-sidebar" id="adminSidebar">'+
@@ -4933,7 +4959,7 @@ function loadPublicData(onComplete){
     }
     function loadAdminPage(page){
       if(APP.adminPage&&APP.adminPage!==page)rememberAdminPageDom_(APP.adminPage);
-      APP.adminPage=page;savePortalRoutePage('owner',APP.adminToken,page,ADMIN_MENUS.map(function(m){return m.id;}));APP.adminRequestId=Number(APP.adminRequestId||0)+1;
+      APP.adminPage=page;loadAdminSidebarBadges();savePortalRoutePage('owner',APP.adminToken,page,ADMIN_MENUS.map(function(m){return m.id;}));APP.adminRequestId=Number(APP.adminRequestId||0)+1;
       var active=document.querySelectorAll('.admin-menu button');active.forEach(function(b){b.classList.remove('active');});
       var nav=document.getElementById('nav_'+page);if(nav)nav.classList.add('active');
       var menu=ADMIN_MENUS.filter(function(x){return x.id===page;})[0],title=menu?menu.label:'แดชบอร์ด';
@@ -6823,7 +6849,7 @@ function adjustInventoryDialog(productId,variantId){
       var store=APP.sellerStore||{},collapsed=false;try{collapsed=localStorage.getItem('seller_sidebar_collapsed')==='1';}catch(e){}
       var avatar=store.logo?'<img src="'+imageUrl(store.logo)+'" alt="โลโก้ร้าน" onerror="imageFallback(this)">':'<span>'+esc(sellerInitials(store.shopName))+'</span>';
       var nav=SELLER_MENU_GROUPS.map(function(group){
-        var links=group.items.map(function(key){var m=SELLER_MENU.filter(function(x){return x[0]===key;})[0];if(!m)return '';return '<button type="button" class="seller-nav-item" id="sellerNav_'+m[0]+'" title="'+esc(m[1])+'" aria-label="'+esc(m[1])+'" onclick="loadSellerPage(\''+m[0]+'\')"><i class="fa-solid '+m[2]+'"></i><span>'+esc(m[1])+'</span><em></em></button>';}).join('');
+        var links=group.items.map(function(key){var m=SELLER_MENU.filter(function(x){return x[0]===key;})[0];if(!m)return '';return '<button type="button" class="seller-nav-item" id="sellerNav_'+m[0]+'" title="'+esc(m[1])+'" aria-label="'+esc(m[1])+'" onclick="loadSellerPage(\''+m[0]+'\')"><i class="fa-solid '+m[2]+'"></i><span>'+esc(m[1])+'</span><b class="seller-nav-badge" id="sellerBadge_'+m[0]+'" hidden></b></button>';}).join('');
         return '<div class="seller-nav-group"><div class="seller-nav-label">'+esc(group.label)+'</div>'+links+'</div>';
       }).join('');
       document.getElementById('appRoot').innerHTML=
@@ -6845,7 +6871,7 @@ function adjustInventoryDialog(productId,variantId){
             '<footer class="seller-footer-v2"><span>ศูนย์ผู้ขาย</span><span>พื้นที่จัดการร้านค้าอย่างปลอดภัย</span></footer>'+
           '</div>'+
         '</div>';
-      APP.sellerPage=APP.sellerPage||'dashboard';
+      APP.sellerPage=APP.sellerPage||'dashboard';loadSellerSidebarBadges();startSidebarBadgePolling_('seller');
       document.getElementById('sellerCurrentPageTitle').textContent=sellerMenuTitle(APP.sellerPage);
       if(window.innerWidth<=980){document.getElementById('sellerConsole').classList.remove('is-collapsed');}
     }
@@ -6900,6 +6926,7 @@ function adjustInventoryDialog(productId,variantId){
       else if (page === 'payouts') renderSellerPayouts(safeArray(data));
       else if (page === 'live') renderSellerLive(safeArray(data));
       else if (page === 'store') renderSellerStoreProfile(data);
+      loadSellerSidebarBadges();
     }
     function loadSellerPage(page,onLoaded,silent,keepTableState,forceRefresh){
       APP.currentView='seller';
@@ -11401,5 +11428,59 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
 .official-store-create-card small{margin-top:5px;color:var(--muted);font-size:11px}
 @media(max-width:760px){.official-store-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.official-store-work-grid{grid-template-columns:1fr}.official-store-hero{align-items:flex-start;padding:15px}.official-store-hero-icon{width:54px;height:54px;flex-basis:54px;font-size:22px}.official-store-hero h2{font-size:16px}.official-store-create-card{align-items:flex-start;flex-direction:column}}
 </style>
+
+  <script id="sidebar-notification-badges-v1-js">
+    var SIDEBAR_BADGE_POLLERS_ = {admin:null,seller:null,customer:null};
+    function setSidebarBadge_(id,value,label){
+      var node=document.getElementById(id);if(!node)return;
+      var count=Math.max(0,Math.floor(Number(value||0)));
+      node.textContent=count>99?'99+':String(count);node.hidden=count<=0;
+      node.title=count.toLocaleString('th-TH')+(label||' รายการที่ต้องติดตาม');
+      node.setAttribute('aria-label',node.title);
+    }
+    function loadAdminSidebarBadges(){
+      if(!APP||!APP.adminToken||!document.getElementById('adminSidebar'))return;
+      apiCall('getAdminSidebarBadgeCounts',[APP.adminToken],function(r){
+        if(!r||!r.success||!r.data)return;
+        ['products','inventory','orders','payments','sellers','marketplaceReturns','marketplacePayouts','reviews'].forEach(function(key){
+          setSidebarBadge_('adminBadge_'+key,r.data[key],' รายการที่ต้องดำเนินการ');
+        });
+      },false);
+    }
+    function loadSellerSidebarBadges(){
+      if(!APP||!APP.customerToken||!document.getElementById('sellerSidebar'))return;
+      apiCall('getSellerSidebarBadgeCounts',[APP.customerToken],function(r){
+        if(!r||!r.success||!r.data)return;
+        ['products','orders','returns','chat','payouts'].forEach(function(key){
+          setSidebarBadge_('sellerBadge_'+key,r.data[key],key==='chat'?' ข้อความที่ยังไม่อ่าน':' รายการที่ต้องติดตาม');
+        });
+      },false);
+    }
+    function loadCustomerSidebarBadges(){
+      if(!APP||!APP.customerToken||!document.getElementById('customerPortalLayout'))return;
+      apiCall('getCustomerSidebarBadgeCounts',[APP.customerToken],function(r){
+        if(!r||!r.success||!r.data)return;
+        ['purchase','orderNotices','promoNotices','allNotices','returns','chat'].forEach(function(key){
+          setSidebarBadge_('customerBadge_'+key,r.data[key],key==='chat'?' ข้อความที่ยังไม่อ่าน':' รายการที่ยังไม่อ่าน');
+        });
+        setSidebarBadge_('customerBadge_notifications',r.data.allNotices,' การแจ้งเตือนที่ยังไม่อ่าน');
+      },false);
+    }
+    function startSidebarBadgePolling_(portal){
+      if(SIDEBAR_BADGE_POLLERS_[portal])window.clearInterval(SIDEBAR_BADGE_POLLERS_[portal]);
+      SIDEBAR_BADGE_POLLERS_[portal]=window.setInterval(function(){
+        var alive=portal==='admin'
+          ? !!(APP&&APP.currentView==='admin'&&document.getElementById('adminSidebar'))
+          : portal==='seller'
+            ? !!(APP&&APP.currentView==='seller'&&document.getElementById('sellerSidebar'))
+            : !!(APP&&APP.customerToken&&document.getElementById('customerPortalLayout'));
+        if(!alive){window.clearInterval(SIDEBAR_BADGE_POLLERS_[portal]);SIDEBAR_BADGE_POLLERS_[portal]=null;return;}
+        if(portal==='admin')loadAdminSidebarBadges();
+        else if(portal==='seller')loadSellerSidebarBadges();
+        else loadCustomerSidebarBadges();
+      },45000);
+    }
+  </script>
+
 </body>
 </html>
