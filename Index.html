@@ -4745,7 +4745,7 @@ function loadPublicData(onComplete){
         '</section></div>';
       var savedCollapsed=localStorage.getItem('owner_sidebar_collapsed')==='1';var layout=document.getElementById('adminLayout');if(layout)layout.classList.toggle('sidebar-collapsed',savedCollapsed);
       var toggle=document.getElementById('adminSidebarToggle');if(toggle)toggle.setAttribute('aria-expanded',savedCollapsed?'false':'true');
-      if(typeof ADMIN_LANGUAGE==='undefined')ADMIN_LANGUAGE='th';applyAdminLanguage(ADMIN_LANGUAGE);bindAdminPopoverDismiss();loadAdminNotifications(false);
+      if(typeof ADMIN_LANGUAGE==='undefined')ADMIN_LANGUAGE='th';applyAdminLanguage(ADMIN_LANGUAGE);bindAdminPopoverDismiss();observeAdminPageDomCache_();loadAdminNotifications(false);
     }
     function toggleAdminSidebar(force){
       var side=document.getElementById('adminSidebar'),backdrop=document.getElementById('adminSidebarBackdrop'),layout=document.getElementById('adminLayout'),toggle=document.getElementById('adminSidebarToggle');
@@ -4790,14 +4790,42 @@ function loadPublicData(onComplete){
       if(page==='reports')return '<div class="admin-skeleton-panel"><span class="skeleton skeleton-heading"></span><span class="skeleton skeleton-chart"></span></div>';
       return '<div class="admin-skeleton-panel admin-skeleton-table"><div class="admin-skeleton-table-head"><span class="skeleton skeleton-heading"></span><span class="skeleton skeleton-button"></span></div>'+rows+'</div>';
     }
+    /* Keep completed owner pages in memory so menu switching restores the last view instantly. */
+    var ADMIN_PAGE_DOM_CACHE=Object.create(null),ADMIN_PAGE_DOM_CACHE_LIMIT=14,ADMIN_PAGE_DOM_CACHE_OWNER='';
+    function adminPageDomCacheKey_(page){return String(APP.adminToken||'')+'|'+String(page||'');}
+    function rememberAdminPageDom_(page){
+      var host=document.getElementById('adminContent');
+      if(!host||!page||host.getAttribute('aria-busy')==='true'||!host.innerHTML||/admin-skeleton|eg-grid-skeleton/.test(host.innerHTML))return;
+      var key=adminPageDomCacheKey_(page);
+      ADMIN_PAGE_DOM_CACHE[key]={html:host.innerHTML,at:Date.now()};
+      var keys=Object.keys(ADMIN_PAGE_DOM_CACHE);
+      if(keys.length>ADMIN_PAGE_DOM_CACHE_LIMIT){
+        keys.sort(function(a,b){return Number(ADMIN_PAGE_DOM_CACHE[a].at||0)-Number(ADMIN_PAGE_DOM_CACHE[b].at||0);});
+        while(keys.length>ADMIN_PAGE_DOM_CACHE_LIMIT)delete ADMIN_PAGE_DOM_CACHE[keys.shift()];
+      }
+    }
+    function observeAdminPageDomCache_(){
+      var host=document.getElementById('adminContent');
+      if(!host||host.__adminDomCacheObserver)return;
+      var observer=new MutationObserver(function(){
+        if(host.getAttribute('aria-busy')!=='true')rememberAdminPageDom_(APP.adminPage);
+      });
+      observer.observe(host,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-busy']});
+      host.__adminDomCacheObserver=observer;
+    }
     function loadAdminPage(page){
+      if(APP.adminPage&&APP.adminPage!==page)rememberAdminPageDom_(APP.adminPage);
       APP.adminPage=page;savePortalRoutePage('owner',APP.adminToken,page,ADMIN_MENUS.map(function(m){return m.id;}));APP.adminRequestId=Number(APP.adminRequestId||0)+1;
       var active=document.querySelectorAll('.admin-menu button');active.forEach(function(b){b.classList.remove('active');});
       var nav=document.getElementById('nav_'+page);if(nav)nav.classList.add('active');
       var menu=ADMIN_MENUS.filter(function(x){return x.id===page;})[0],title=menu?menu.label:'แดชบอร์ด';
       var titleNode=document.getElementById('adminPageTitle'),subtitleNode=document.getElementById('adminPageSubtitle'),content=document.getElementById('adminContent'),main=document.getElementById('adminMain');
+      var cached=ADMIN_PAGE_DOM_CACHE[adminPageDomCacheKey_(page)];
       if(titleNode)titleNode.textContent=adminMenuLabel(page);if(subtitleNode)subtitleNode.textContent=page==='dashboard'?adminLangText('dashboardSub'):adminLangText('pageSub')+' '+adminMenuLabel(page);
-      if(content){content.setAttribute('aria-busy','true');content.innerHTML=adminSkeleton(page);}
+      if(content){
+        if(cached&&cached.html){content.innerHTML=cached.html;content.setAttribute('aria-busy','false');content.removeAttribute('data-refreshing');}
+        else{content.setAttribute('aria-busy','true');content.innerHTML=adminSkeleton(page);}
+      }
       var side=document.getElementById('adminSidebar');if(side)side.classList.remove('open');var backdrop=document.getElementById('adminSidebarBackdrop');if(backdrop)backdrop.classList.remove('show');var sidebarToggle=document.getElementById('adminSidebarToggle');if(sidebarToggle)sidebarToggle.setAttribute('aria-expanded','false');
       if(main)main.scrollTop=0;
       if(page==='dashboard'){loadAdminDashboard();return;}if(page==='settings'){loadAdminSettings();return;}if(page==='reports'){loadAdminReports();return;}if(page==='demo'){renderDemoAdmin();if(document.documentElement.hasAttribute('data-store-browser-reload'))window.setTimeout(finishBrowserRefreshSkeleton,90);return;}if(page==='backup'){loadBackupAdmin();return;}if(page==='shipping'){loadShippingAdmin();return;}if(['sellers','flashDeals','marketplaceReturns','marketplacePayouts'].indexOf(page)>=0){loadMarketplaceAdmin(page);return;}loadAdminModule(page);
