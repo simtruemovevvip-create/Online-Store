@@ -4980,7 +4980,7 @@ function loadPublicData(onComplete){
     var ADMIN_GRID_PAGE_CACHE = window.ADMIN_GRID_PAGE_CACHE || {};
     window.ADMIN_GRID_PAGE_CACHE = ADMIN_GRID_PAGE_CACHE;
     var ADMIN_GRID_CACHE_FRESH_MS = 5000;
-    var ADMIN_GRID_CACHE_STALE_MS = 180000;
+    var ADMIN_GRID_CACHE_STALE_MS = 30 * 24 * 60 * 60 * 1000;
     function adminGridInvalidatePageCache_(page) {
       var prefix = String(APP.adminToken || '') + '|';
       var pagePrefix = page ? prefix + String(page) + '|' : prefix;
@@ -6405,7 +6405,7 @@ function adjustInventoryDialog(productId,variantId){
     var SELLER_PAGE_CACHE = window.SELLER_PAGE_CACHE || {};
     window.SELLER_PAGE_CACHE = SELLER_PAGE_CACHE;
     var SELLER_PAGE_CACHE_FRESH_MS = 5000;
-    var SELLER_PAGE_CACHE_STALE_MS = 180000;
+    var SELLER_PAGE_CACHE_STALE_MS = 30 * 24 * 60 * 60 * 1000;
     function sellerInvalidatePageCache_(page) {
       var prefix = String(APP.customerToken || '') + '|' +
         String(APP.sellerStore && APP.sellerStore.id || '') + '|';
