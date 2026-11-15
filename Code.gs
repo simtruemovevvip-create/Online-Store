@@ -76,6 +76,73 @@ var DEFAULT_SETTINGS_ = {
   marketplaceCommissionRate: '5', returnWindowDays: '7', coinRewardRate: '1', sellerRegistrationEnabled: 'true'
 };
 
+
+/** Independent source-table revisions for screen-level Smart Data Loading. */
+var DATASET_TABLES_ = {
+  publicSettings:['Settings'], publicCategories:['Categories'], publicBanners:['Banners'],
+  publicProducts:['Products','ProductVariants','Inventory','Categories','Stores','FlashDeals','Orders','OrderItems','Reviews','Favorites'],
+  publicPromotions:['Promotions','Products','Categories'],
+  publicStores:['Stores','StoreFollows','Products','Reviews'],
+  publicFlashDeals:['FlashDeals','Products','Stores','Inventory','ProductVariants','Orders','OrderItems','Reviews','Favorites'],
+  publicVouchers:['Coupons','Stores'], publicLiveRooms:['LiveRooms','Stores'],
+  admin_dashboard:['Orders','OrderItems','Products','Customers','Inventory','Payments','Reviews','SellerOrders','SellerPayouts'],
+  admin_products:['Products','ProductVariants','Inventory','Categories','Stores'],
+  admin_categories:['Categories'], admin_inventory:['Inventory','ProductVariants','Products'],
+  admin_orders:['Orders','Payments','OrderItems','SellerOrders','Inventory','ProductVariants'],
+  admin_payments:['Payments','Orders'], admin_shipping:['ShippingMethods'],
+  admin_customers:['Customers','Orders','Addresses'], admin_sellers:['Stores','Customers','Products','StoreFollows'],
+  admin_flashDeals:['FlashDeals','Products','Stores','Inventory'],
+  admin_marketplaceReturns:['ReturnRequests','Orders','OrderItems','Products'],
+  admin_marketplacePayouts:['SellerPayouts','SellerOrders','Stores'],
+  admin_promotions:['Promotions','Products','Categories'], admin_coupons:['Coupons','Stores','CollectedVouchers'],
+  admin_reviews:['Reviews','Products','Customers'], admin_banners:['Banners','Stores'],
+  admin_users:['Users'], admin_logs:['Logs'], admin_newsletters:['Newsletters'], admin_backup:['Backups'],
+  seller_dashboard:['Stores','SellerOrders','Orders','Products','SellerPayouts'],
+  seller_products:['Products','Categories','ProductVariants','Inventory'],
+  seller_orders:['SellerOrders','Orders','OrderItems','Payments'],
+  seller_customers:['SellerOrders','Orders','OrderItems','Customers','ChatThreads','ChatMessages','SellerCustomerNotes'],
+  seller_vouchers:['Coupons'], seller_deals:['FlashDeals','Products','Inventory','ProductVariants'],
+  seller_returns:['ReturnRequests','Orders','OrderItems'], seller_payouts:['SellerPayouts','SellerOrders'],
+  seller_live:['LiveRooms'], seller_store:['Stores']
+};
+function currentDatasetVersions_(datasetNames) {
+  var properties = {};
+  try { properties = PropertiesService.getScriptProperties().getProperties() || {}; } catch (e) {}
+  var result = {};
+  safeArray_(datasetNames).forEach(function(datasetName) {
+    var key = String(datasetName || ''), tables = DATASET_TABLES_[key] || [];
+    result[key] = tables.map(function(tableName) {
+      return String(tableName) + ':' + String(properties['data_revision_' + tableName] || '0');
+    }).join('|');
+  });
+  return result;
+}
+function currentDatasetVersion_(datasetName) {
+  var key = String(datasetName || '');
+  return currentDatasetVersions_([key])[key] || '';
+}
+/** Installable trigger for edits made directly in Google Sheets. */
+function handleSpreadsheetDataEdit(e) {
+  try {
+    if (!e || !e.range) return;
+    var sheetName = e.range.getSheet().getName();
+    if (Object.prototype.hasOwnProperty.call(SCHEMA_, sheetName)) invalidateTable_(sheetName);
+  } catch (error) {
+    console.warn('Spreadsheet edit revision update failed: ' + String(error && error.message || error));
+  }
+}
+function installDataVersionEditTrigger() {
+  try {
+    var spreadsheet = getSpreadsheet_(), sourceId = spreadsheet.getId();
+    var exists = ScriptApp.getProjectTriggers().some(function(trigger) {
+      try { return trigger.getHandlerFunction() === 'handleSpreadsheetDataEdit' && trigger.getTriggerSourceId() === sourceId; }
+      catch (e) { return false; }
+    });
+    if (!exists) ScriptApp.newTrigger('handleSpreadsheetDataEdit').forSpreadsheet(spreadsheet).onEdit().create();
+    return ok_({installed:true,alreadyInstalled:exists}, exists ? 'ระบบตรวจการแก้ไขชีตติดตั้งอยู่แล้ว' : 'ติดตั้งระบบตรวจการแก้ไข Google Sheets แล้ว');
+  } catch (error) { return fail_(safeError_(error)); }
+}
+
 function doGet(e) {
   var params = e && e.parameter ? e.parameter : {};
   var qrChallenge = String(params.qr || '');
@@ -228,7 +295,7 @@ function setupSystem() {
         mustChangePassword: true, createdAt: now, updatedAt: now
       });
     }
-    clearRuntimeCaches_();
+    clearRuntimeCaches_(Object.keys(SCHEMA_));
     result.success = true;
     result.message = 'ตั้งค่าระบบสำเร็จ: สร้างตาราง ตรวจสอบ Drive และเตรียมบัญชีผู้ดูแลแล้ว';
     return result;
@@ -378,21 +445,13 @@ function productPublicMetricsCacheKey_() {
   return 'product_public_metrics_v2_' + currentMonthKey + '_' + weekStartKey;
 }
 
-function clearRuntimeCaches_() {
-  var cache = CacheService.getScriptCache();
-  // Clear every schema-backed table cache, including tables added in later migrations.
-  Object.keys(SCHEMA_).forEach(function(name) {
-    try { cache.remove('table_' + name); } catch (e) {}
+function clearRuntimeCaches_(changedTables) {
+  // This is an explicit migration/maintenance helper, not a blanket flush.
+  // Ordinary CRUD helpers already call invalidateTable_ for each changed table.
+  var changed = Array.isArray(changedTables) ? changedTables : (changedTables ? [changedTables] : []);
+  changed.forEach(function(name) {
+    if (name && (Object.prototype.hasOwnProperty.call(SCHEMA_, String(name)) || String(name) === 'SellerCustomerNotes')) invalidateTable_(String(name));
   });
-  [
-    'dashboard',
-    'public_settings',
-    'product_public_metrics_v1',
-    'inventory_variant_reconcile_v1'
-  ].forEach(function(key) {
-    try { cache.remove(key); } catch (e) {}
-  });
-  try { cache.remove(productPublicMetricsCacheKey_()); } catch (e) {}
   return true;
 }
 
@@ -725,7 +784,7 @@ function migrateLegacyDriveAssetUrlsToGoogleusercontent() {
       }
     }
     SpreadsheetApp.flush();
-    clearRuntimeCaches_();
+    clearRuntimeCaches_(Object.keys(SCHEMA_));
     Logger.log('DRIVE_ASSET_URL_MIGRATION: ' + JSON.stringify(report));
     return report;
   } catch (error) {
@@ -815,17 +874,19 @@ function deleteRows_(name, predicate) {
 }
 
 function invalidateTable_(name) {
-  var cache = CacheService.getScriptCache();
-  try { cache.remove('table_' + name); } catch (e) {}
-  // Dashboard totals depend on orders, products, customers and stock.
-  try { cache.remove('dashboard'); } catch (e2) {}
-
-  if (name === 'Settings') {
-    try { cache.remove('public_settings'); } catch (settingsCacheError) {}
+  var tableName = String(name || ''), cache = CacheService.getScriptCache();
+  try { cache.remove('table_' + tableName); } catch (e) {}
+  // Persistent opaque revision: CacheService is only an expendable accelerator.
+  try { if (tableName) PropertiesService.getScriptProperties().setProperty('data_revision_' + tableName, Utilities.getUuid()); }
+  catch (revisionError) { console.warn('Data revision update failed for ' + tableName + ': ' + String(revisionError && revisionError.message || revisionError)); }
+  if (['Orders','OrderItems','Products','Customers','Inventory','Payments','Reviews','SellerOrders','SellerPayouts'].indexOf(tableName) >= 0) {
+    try { cache.remove('dashboard'); } catch (e2) {}
   }
-
-  // Public sales/rating aggregates are derived from these source tables.
-  if (['Orders', 'OrderItems', 'Reviews'].indexOf(String(name)) >= 0) {
+  if (tableName === 'Settings') { try { cache.remove('public_settings'); } catch (settingsCacheError) {} }
+  if (['Products','ProductVariants','Inventory','InventoryMovements','Carts','OrderItems'].indexOf(tableName) >= 0) {
+    try { cache.remove('inventory_variant_reconcile_v1'); } catch (reconcileError) {}
+  }
+  if (['Orders','OrderItems','Reviews'].indexOf(tableName) >= 0) {
     try { cache.remove('product_public_metrics_v1'); } catch (oldMetricsError) {}
     try { cache.remove(productPublicMetricsCacheKey_()); } catch (metricsError) {}
   }
@@ -1312,7 +1373,7 @@ function migrateLegacySmsOtpArtifacts_() {
 function migrateLegacySmsOtpToEmailOtp() {
   try {
     migrateLegacySmsOtpArtifacts_();
-    clearRuntimeCaches_();
+    clearRuntimeCaches_(['Settings','EmailOtpChallenges','Customers']);
     return ok_({ migrated: true }, 'นำระบบ SMS OTP และการตั้งค่า Twilio เดิมออกแล้ว');
   } catch (e) { return fail_(safeError_(e)); }
 }
@@ -3070,6 +3131,40 @@ function getBannerStoreOptions(token) {
   } catch(e) { return fail_(safeError_(e)); }
 }
 
+/** One RPC for all initial public home datasets; unchanged datasets are omitted. */
+function getPublicHomeBundle(clientVersions, group) {
+  try {
+    clientVersions = clientVersions || {};
+    group = String(group || 'primary');
+    var primaryNames = ['publicSettings','publicCategories','publicBanners','publicProducts'];
+    var secondaryNames = ['publicPromotions','publicStores','publicFlashDeals','publicVouchers','publicLiveRooms'];
+    var names = group === 'secondary' ? secondaryNames : (group === 'all' ? primaryNames.concat(secondaryNames) : primaryNames);
+    var versions = currentDatasetVersions_(names);
+    var loaders = {
+      publicSettings:function(){return getSettings();},
+      publicCategories:function(){return getCategories({});},
+      publicBanners:function(){return getBanners({});},
+      publicProducts:function(){return getProducts({page:1,pageSize:100,sort:'relevance'});},
+      publicPromotions:function(){return getPromotions('');},
+      publicStores:function(){return getMarketplaceStores({page:1,pageSize:12});},
+      publicFlashDeals:function(){return getMarketplaceFlashDeals();},
+      publicVouchers:function(){return getMarketplaceVouchers();},
+      publicLiveRooms:function(){return getMarketplaceLiveRooms();}
+    };
+    var changed = names.filter(function(name){return String(clientVersions[name] || '') !== String(versions[name] || '');});
+    if (!changed.length) return ok_({unchanged:true,group:group,versions:versions,datasets:{},errors:{},changed:[]}, 'ข้อมูลหน้าแรกยังไม่มีการเปลี่ยนแปลง');
+    var datasets = {}, returnedVersions = {}, errors = {};
+    changed.forEach(function(name) {
+      try {
+        var response = loaders[name]();
+        if (response && response.success) { datasets[name] = response.data; returnedVersions[name] = versions[name]; }
+        else errors[name] = response && response.message || 'โหลดข้อมูลไม่สำเร็จ';
+      } catch (loadError) { errors[name] = safeError_(loadError); }
+    });
+    return ok_({unchanged:false,group:group,versions:returnedVersions,datasets:datasets,errors:errors,changed:changed}, 'ตรวจสอบข้อมูลหน้าแรกแล้ว');
+  } catch (error) { return fail_(safeError_(error)); }
+}
+
 function getBanners(options){try{options=options||{};var isAdmin=false;if(options.token){try{requireAdmin_(options.token,'banners.view');isAdmin=true;}catch(authError){}}var rows=readTable_('Banners',true).filter(function(x){if(isAdmin)return true;var n=Date.now();return x.status==='Active'&&(!x.startDate||new Date(x.startDate).getTime()<=n)&&(!x.endDate||new Date(x.endDate).getTime()>=n);});rows.sort(function(a,b){return number_(a.order,0)-number_(b.order,0);});return ok_(rows);}catch(e){return fail_(safeError_(e));}}
 function saveBanner(token,data){
   try {
@@ -3516,6 +3611,20 @@ function getDashboardStats(token){
 function getSalesReports(token,filters){
   try{requireAdmin_(token,'reports.view');filters=filters||{};var orders=readTable_('Orders',true).filter(function(o){return o.paymentStatus==='Verified'&&o.orderStatus!=='Cancelled';});var start=filters.startDate?new Date(filters.startDate).getTime():0,end=filters.endDate?new Date(filters.endDate+'T23:59:59').getTime():Date.now();orders=orders.filter(function(o){var t=new Date(o.createdAt).getTime();return t>=start&&t<=end;});var byDay={},byPayment={},top={},allOrderItems=readTable_('OrderItems',true);orders.forEach(function(o){var d=String(o.createdAt).substring(0,10);byDay[d]=(byDay[d]||0)+number_(o.grandTotal,0);byPayment[o.paymentMethod]=(byPayment[o.paymentMethod]||0)+number_(o.grandTotal,0);allOrderItems.filter(function(i){return i.orderId===o.id;}).forEach(function(i){top[i.productName]=(top[i.productName]||0)+number_(i.quantity,0);});});var days=Object.keys(byDay).sort();return ok_({orders:orders,labels:days,sales:days.map(function(d){return byDay[d];}),paymentMethods:Object.keys(byPayment).map(function(k){return {name:k,value:byPayment[k]};}),topProducts:Object.keys(top).sort(function(a,b){return top[b]-top[a];}).slice(0,10).map(function(k){return {name:k,quantity:top[k]};}),total:orders.reduce(function(s,o){return s+number_(o.grandTotal,0);},0)});}catch(e){return fail_(safeError_(e));}
 }
+/** Return dashboard metrics and report chart in one version-checked request. */
+function getAdminDashboardBundle(token, knownVersion) {
+  try {
+    requireAdmin_(token, 'reports.view');
+    var version = currentDatasetVersion_('admin_dashboard');
+    if (knownVersion && String(knownVersion) === String(version)) return ok_({unchanged:true,version:version}, 'แดชบอร์ดยังไม่มีการเปลี่ยนแปลง');
+    var dashboard = getDashboardStats(token);
+    if (!dashboard || !dashboard.success) return fail_(dashboard && dashboard.message || 'โหลดแดชบอร์ดไม่สำเร็จ');
+    var reports = getSalesReports(token, {});
+    if (!reports || !reports.success) return fail_(reports && reports.message || 'โหลดกราฟรายงานไม่สำเร็จ');
+    return ok_({unchanged:false,version:version,dashboard:dashboard.data || {},reports:reports.data || {}}, 'โหลดแดชบอร์ดแล้ว');
+  } catch (error) { return fail_(safeError_(error)); }
+}
+
 function recordVisitor(clientKey,userAgent){
   try{var date=new Date().toISOString().substring(0,10),hash=sha256_(text_(clientKey,200)+'|'+date),rows=readTable_('Visitors',false),found=rows.filter(function(x){return x.date===date&&x.ipHash===hash;})[0];if(found)updateRecord_('Visitors',found.id,{count:number_(found.count,0)+1});else appendRecord_('Visitors',{id:newId_('VIS'),date:date,ipHash:hash,userAgent:text_(userAgent,250),count:1,createdAt:now_()});return ok_(true);}catch(e){return fail_(safeError_(e));}
 }
@@ -3785,6 +3894,35 @@ function sellerDeleteProductVariant(customerToken,variantId) {
     clearRuntimeCaches_();return ok_(true,'ลบตัวเลือกสินค้าแล้ว');
   }catch(e){return fail_(safeError_(e));}
 }
+/** Seller page bundle. Re-check auth/store ownership before any cache/version shortcut. */
+function getSellerPageBundle(customerToken, page, options, knownVersion) {
+  try {
+    var context = requireSeller_(customerToken);
+    options = options || {}; page = String(page || '');
+    if (page === 'chat') return fail_('หน้าแชตต้องใช้การโหลดแบบเรียลไทม์');
+    var datasetName = 'seller_' + page;
+    if (!Object.prototype.hasOwnProperty.call(DATASET_TABLES_, datasetName)) throw new Error('ไม่รองรับหน้าศูนย์ผู้ขาย');
+    var version = currentDatasetVersion_(datasetName);
+    if (knownVersion && String(knownVersion) === String(version)) return ok_({unchanged:true,version:version,storeId:String(context.store.id)}, 'ข้อมูลหน้านี้ยังไม่มีการเปลี่ยนแปลง');
+    var response;
+    switch (page) {
+      case 'dashboard': response = sellerDashboard(customerToken); break;
+      case 'products': response = sellerGetProducts(customerToken, options); break;
+      case 'orders': response = sellerGetOrders(customerToken, options); break;
+      case 'customers': response = sellerGetCustomers(customerToken, options); break;
+      case 'vouchers': response = sellerGetVouchers(customerToken); break;
+      case 'deals': response = sellerGetFlashDeals(customerToken); break;
+      case 'returns': response = sellerGetReturns(customerToken); break;
+      case 'payouts': response = sellerGetPayouts(customerToken); break;
+      case 'live': response = sellerGetLiveRooms(customerToken); break;
+      case 'store': response = sellerGetStoreProfile(customerToken); break;
+      default: throw new Error('ไม่รองรับหน้าศูนย์ผู้ขาย');
+    }
+    if (!response || !response.success) return fail_(response && response.message || 'โหลดข้อมูลศูนย์ผู้ขายไม่สำเร็จ');
+    return ok_({unchanged:false,version:version,storeId:String(context.store.id),data:response.data}, response.message || 'โหลดข้อมูลหน้าแล้ว');
+  } catch (error) { return fail_(safeError_(error)); }
+}
+
 function sellerDashboard(customerToken) {try{var x=requireSeller_(customerToken),sid=x.store.id,orders=readTable_('SellerOrders',false).filter(function(o){return o.sellerId===sid;}),products=readTable_('Products',false).filter(function(p){return p.sellerId===sid;}),payouts=readTable_('SellerPayouts',false).filter(function(p){return p.sellerId===sid;});return ok_({store:publicStore_(x.store),productCount:products.length,activeProducts:products.filter(function(p){return p.status==='Active';}).length,orderCount:orders.length,pendingOrders:orders.filter(function(o){return ['Awaiting Payment','Processing','Packed'].indexOf(o.status)>=0;}).length,revenue:orders.filter(function(o){return ['Delivered','Completed'].indexOf(o.status)>=0;}).reduce(function(s,o){return s+number_(o.subtotal,0);},0),pendingPayout:payouts.filter(function(p){return p.status!=='Paid';}).reduce(function(s,p){return s+number_(p.netAmount,0);},0)});}catch(e){return fail_(safeError_(e));}}
 function sellerGetProducts(customerToken, filters) {
   try {
@@ -4643,7 +4781,7 @@ function groupRowsByField_(rows, fieldName) {
   return groups;
 }
 
-function getAdminGridPage(token, moduleName, options) {
+function getAdminGridPage(token, moduleName, options, knownVersion) {
   try {
     options = options || {};
     var moduleMap = {
@@ -4670,8 +4808,13 @@ function getAdminGridPage(token, moduleName, options) {
     var config = moduleMap[String(moduleName || '')];
     if (!config) throw new Error('ไม่รองรับตารางที่ร้องขอ');
     requireAdmin_(token, config.permission);
+    var dataVersion = currentDatasetVersion_('admin_' + String(moduleName));
+    if (knownVersion && String(knownVersion) === String(dataVersion)) return ok_({unchanged:true,version:dataVersion}, 'ข้อมูลตารางยังไม่มีการเปลี่ยนแปลง');
     var fastPage = getAdminGridPageFast_(moduleName, config, options);
-    if (fastPage) return fastPage;
+    if (fastPage) {
+      if (fastPage.success && fastPage.data) fastPage.data.version = dataVersion;
+      return fastPage;
+    }
     if(moduleName==='inventory')withLock_(function(){reconcileDuplicateProductVariants_();});
 
     var rows = readTable_(config.table, true).map(function(row, index) {
@@ -4859,7 +5002,7 @@ function getAdminGridPage(token, moduleName, options) {
     var pages = exportAll ? 1 : Math.max(1, Math.ceil(filteredTotal / pageSize));
     var page = exportAll ? 1 : Math.max(1, Math.min(pages, Math.floor(Number(options.page || 1)) || 1));
     var items = rows.slice((page - 1) * pageSize, page * pageSize);
-    return ok_({items:items,total:total,filteredTotal:filteredTotal,page:page,pageSize:pageSize,pages:pages,summary:summary,statusOptions:statusOptions,sortKey:sortKey,sortDir:sortDir,exportLimited:exportAll && filteredTotal > items.length}, 'โหลดข้อมูลตารางแล้ว');
+    return ok_({items:items,total:total,filteredTotal:filteredTotal,page:page,pageSize:pageSize,pages:pages,summary:summary,statusOptions:statusOptions,sortKey:sortKey,sortDir:sortDir,exportLimited:exportAll && filteredTotal > items.length,version:dataVersion}, 'โหลดข้อมูลตารางแล้ว');
   } catch (error) {
     return fail_(safeError_(error));
   }

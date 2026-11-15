@@ -2049,7 +2049,7 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
   <input type="file" id="adminUploadInput" accept="image/*" style="display:none" onchange="handleAdminUpload(this)">
   <script>
     var APP = {
-      settings:{}, categories:[], products:[], banners:[], promotions:[], stores:[], flashDeals:[], vouchers:[], liveRooms:[], cart:{items:[],subtotal:0,count:0},
+      settings:{}, categories:[], products:[], banners:[], promotions:[], stores:[], flashDeals:[], vouchers:[], liveRooms:[], publicDataVersions:{}, publicDataLoaded:false, publicVisitorRecorded:false, cart:{items:[],subtotal:0,count:0},
       sessionId:'', customerToken:'', customer:null, adminToken:'', adminUser:null, adminPage:'dashboard', adminData:[],
       currentProduct:null, currentVariants:[], selectedVariant:'', currentQuantity:1, currentView:'home', chart:null, uploadTarget:null, productPage:1, productPageSize:20, productTotal:0, addresses:[], currentStore:null, sellerStore:null, sellerPage:'dashboard', chatThread:null, chatMode:'customer', customerChatStores:[], customerChatActiveStoreId:'', customerChatPollTimer:null, customerChatListPollTimer:null, sellerChatPollTimer:null, sellerChatListPollTimer:null, chatVisibilityListenerBound:false, chatLastMessageAt:'', chatLastReadAt:'', chatSeenMessageIds:{}, chatOutbox:{}, chatSending:false, chatPollBusy:false, chatPendingFile:null, chatPendingPreviewUrl:'', qrLoginChallenge:'', authProviders:null,
       authDestination: 'customer', registration:null, registrationTimer:null, accessMode:'guest', pageLoadingCount:0, lastActionButton:null, lastActionAt:0, lastActionIsNavigation:false, pendingInitialAccount:false, adminRequestId:0, driveImageCache:{}
@@ -2177,11 +2177,35 @@ function beginApiLoading(text){
       return params.toString();
     }
 
+    var API_INFLIGHT_READ_APIS = {
+      getSettings:1,getCategories:1,getProducts:1,getBanners:1,getPromotions:1,
+      getMarketplaceStores:1,getMarketplaceFlashDeals:1,getMarketplaceVouchers:1,getMarketplaceLiveRooms:1,
+      getPublicHomeBundle:1,
+      sellerDashboard:1,sellerGetProducts:1,sellerGetOrders:1,sellerGetCustomers:1,sellerGetVouchers:1,
+      sellerGetFlashDeals:1,sellerGetReturns:1,sellerGetPayouts:1,sellerGetLiveRooms:1,sellerGetStoreProfile:1
+    };
+    var API_INFLIGHT = window.API_INFLIGHT || {};
+    window.API_INFLIGHT = API_INFLIGHT;
     function apiCall(name,args,callback,showLoading,loadingText,silentError){
-      args=safeArray(args);var done=typeof callback==='function'?callback:function(){};
+      args=safeArray(args);
+      var callbackList=[typeof callback==='function'?callback:function(){}],inflightKey='';
+      if(API_INFLIGHT_READ_APIS[name]){
+        try{inflightKey=String(name)+'|'+JSON.stringify(args);}catch(keyError){inflightKey='';}
+        if(inflightKey&&API_INFLIGHT[inflightKey]){API_INFLIGHT[inflightKey].callbacks.push(callbackList[0]);return;}
+        if(inflightKey)API_INFLIGHT[inflightKey]={callbacks:callbackList};
+      }
+      function clearInflight(){if(inflightKey){delete API_INFLIGHT[inflightKey];inflightKey='';}}
+      var done=function(result){
+        var callbacks=callbackList;
+        if(inflightKey){
+          var pending=API_INFLIGHT[inflightKey];delete API_INFLIGHT[inflightKey];inflightKey='';
+          if(pending&&pending.callbacks)callbacks=pending.callbacks;
+        }
+        callbacks.forEach(function(fn){try{fn(result);}catch(callbackError){console.error('API callback failed: '+name,callbackError);if(!silentError)alertError('เกิดข้อผิดพลาดขณะเปิดหน้า กรุณาลองใหม่อีกครั้ง');}});
+      };
       var portalSkeletonRequest=APP.customerPortalSkeletonPending?Number(APP.customerPortalSkeletonRequestId||0):0;
       var pendingNavigation=!!(APP.lastActionButton&&Date.now()-Number(APP.lastActionAt||0)<1400&&APP.lastActionIsNavigation&&document.documentElement.contains(APP.lastActionButton));
-      var adminReadApis=['getDashboardStats','getSalesReports','getAdminSettings','getEmailOtpServiceStatus','getProductsAdmin','getCategories','getInventory','getOrders','getPayments','getShippingMethods','getCustomers','getCoupons','getReviewsAdmin','getBannersAdmin','getPromotionsAdmin','getUsers','getLogs','getNewsletters','getBackups','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getAdminGridPage'];
+      var adminReadApis=['getDashboardStats','getAdminDashboardBundle','getSalesReports','getAdminSettings','getEmailOtpServiceStatus','getProductsAdmin','getCategories','getInventory','getOrders','getPayments','getShippingMethods','getCustomers','getCoupons','getReviewsAdmin','getBannersAdmin','getPromotionsAdmin','getUsers','getLogs','getNewsletters','getBackups','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getAdminGridPage'];
       var guardAdminPage=APP.currentView==='admin'&&adminReadApis.indexOf(name)>=0;
       var requestAdminPage=guardAdminPage?APP.adminPage:'';
       var requestAdminId=guardAdminPage?Number(APP.adminRequestId||0):0;
@@ -2194,7 +2218,7 @@ function beginApiLoading(text){
       function finishPortalSkeleton(){if(portalSkeletonRequest){try{customerPortalFinishSkeleton(portalSkeletonRequest);}catch(skeletonError){console.warn('Portal skeleton cleanup failed',skeletonError);}}}
       requestTimer=setTimeout(function(){
         if(!finishRequest())return;
-        if(isStaleAdminPage())return;
+        if(isStaleAdminPage()){clearInflight();return;}
         var timeoutMessage='เซิร์ฟเวอร์ใช้เวลานานเกิน 45 วินาที กรุณาลองโหลดหน้านี้ใหม่อีกครั้ง';
         if(!silentError)alertError(timeoutMessage);
         deliverApiResult({success:false,message:timeoutMessage,timeout:true});
@@ -2205,9 +2229,10 @@ function beginApiLoading(text){
         runner=google.script.run.withSuccessHandler(function(result){
           if(!finishRequest())return;
           if(!isStaleAdminPage()){deliverApiResult(result||{success:false,message:'ไม่ได้รับข้อมูลจากเซิร์ฟเวอร์'});finishPortalSkeleton();}
+          else clearInflight();
         }).withFailureHandler(function(error){
           if(!finishRequest())return;
-          if(isStaleAdminPage())return;
+          if(isStaleAdminPage()){clearInflight();return;}
           var msg=error&&error.message?error.message:'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ';
           if(!silentError)alertError(msg);
           deliverApiResult({success:false,message:msg});
@@ -2332,7 +2357,10 @@ function beginApiLoading(text){
         case 'getAdminSettings': runner.getAdminSettings(args[0]); break;
         case 'saveSettings': runner.saveSettings(args[0],args[1]); break;
         case 'getDashboardStats': runner.getDashboardStats(args[0]); break;
-        case 'getAdminGridPage': runner.getAdminGridPage(args[0],args[1],args[2]); break;
+        case 'getAdminDashboardBundle': runner.getAdminDashboardBundle(args[0],args[1]); break;
+        case 'getAdminGridPage': runner.getAdminGridPage(args[0],args[1],args[2],args[3]); break;
+        case 'getPublicHomeBundle': runner.getPublicHomeBundle(args[0]); break;
+        case 'getSellerPageBundle': runner.getSellerPageBundle(args[0],args[1],args[2],args[3]); break;
         case 'getOwnerNotificationSummary': runner.getOwnerNotificationSummary(args[0]); break;
         case 'getSalesReports': runner.getSalesReports(args[0],args[1]); break;
         case 'getVisitorStats': runner.getVisitorStats(args[0]); break;
@@ -2583,67 +2611,79 @@ function beginApiLoading(text){
     }
 
 function loadPublicData(onComplete){
-      var criticalPending=3,criticalComplete=false,completedCallback=false,secondaryStarted=false;
       var loadId=Number(APP.publicDataLoadRequestId||0)+1;
       APP.publicDataLoadRequestId=loadId;
-      APP.homeDataInitialPending=true;
-      APP.homePublicProductsLoaded=false;
-      APP.homeDailyDiscoverLoaded=false;
-      APP.homeDailyDiscoverLoading=false;
-      APP.homeDailyDiscoverFailed=false;
+      var hasWarmData=!!APP.publicDataLoaded,secondaryStarted=false;
+      APP.homeDataInitialPending=!hasWarmData;
+      if(!hasWarmData){
+        APP.homePublicProductsLoaded=false;
+        APP.homeDailyDiscoverLoaded=false;
+        APP.homeDailyDiscoverLoading=false;
+        APP.homeDailyDiscoverFailed=false;
+      }
       function isCurrentLoad(){return Number(APP.publicDataLoadRequestId||0)===loadId;}
       function isPublicHome(){return isCurrentLoad()&&(APP.accessMode==='guest'||APP.accessMode==='customer')&&APP.currentView==='home';}
       function renderPublicHome(){if(isPublicHome())renderHome();}
-      function finishCritical(){
-        if(!isCurrentLoad()||criticalComplete)return;
-        criticalPending--;
-        // Refresh the real page after each response rather than waiting for the slowest call.
-        renderPublicHome();
-        if(criticalPending<=0){
-          criticalComplete=true;
-          APP.homeDataInitialPending=false;
-          renderPublicHome();
-          if(!completedCallback&&typeof onComplete==='function'){
-            completedCallback=true;
-            try{onComplete();}catch(callbackError){console.error('Public data completion callback failed',callbackError);}
-          }
+      function finish(){if(typeof onComplete==='function'){try{onComplete();}catch(error){console.error('Public data completion callback failed',error);}}}
+      function applyBundle(payload){
+        payload=payload||{};
+        var datasets=payload.datasets||{};
+        if(Object.prototype.hasOwnProperty.call(datasets,'publicSettings')){APP.settings=datasets.publicSettings||{};applySettings();}
+        if(Object.prototype.hasOwnProperty.call(datasets,'publicCategories'))applySharedCategoryRows(safeArray(datasets.publicCategories),false);
+        if(Object.prototype.hasOwnProperty.call(datasets,'publicBanners'))APP.banners=safeArray(datasets.publicBanners);
+        if(Object.prototype.hasOwnProperty.call(datasets,'publicProducts')){
+          var p=datasets.publicProducts||{};
+          APP.products=Array.isArray(p.items)?p.items:safeArray(p);
+          APP.homePublicProductsLoaded=true;
         }
+        if(Object.prototype.hasOwnProperty.call(datasets,'publicPromotions'))APP.promotions=safeArray(datasets.publicPromotions);
+        if(Object.prototype.hasOwnProperty.call(datasets,'publicStores')){
+          var st=datasets.publicStores||{};
+          APP.stores=Array.isArray(st.items)?st.items:safeArray(st);
+        }
+        if(Object.prototype.hasOwnProperty.call(datasets,'publicFlashDeals'))APP.flashDeals=safeArray(datasets.publicFlashDeals);
+        if(Object.prototype.hasOwnProperty.call(datasets,'publicVouchers'))APP.vouchers=safeArray(datasets.publicVouchers);
+        if(Object.prototype.hasOwnProperty.call(datasets,'publicLiveRooms'))APP.liveRooms=safeArray(datasets.publicLiveRooms);
+        APP.publicDataVersions=Object.assign({},APP.publicDataVersions||{},payload.versions||{});
+        if(APP.publicDataVersions.publicProducts)APP.homePublicProductsLoaded=true;
+        APP.publicDataLoaded=!!(APP.publicDataVersions.publicProducts||APP.publicDataVersions.publicCategories||APP.publicDataVersions.publicSettings);
+        if(payload.errors&&Object.keys(payload.errors).length)console.warn('Some public datasets could not be refreshed',payload.errors);
       }
       function startSecondaryLoads(){
         if(secondaryStarted||!isCurrentLoad())return;
         secondaryStarted=true;
-        // Keep nonessential marketplace requests out of the first request burst.
-        apiCall('getPromotions',[{}],function(r){if(!isCurrentLoad())return;APP.promotions=r&&r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
-        apiCall('getMarketplaceStores',[{page:1,pageSize:12}],function(r){if(!isCurrentLoad())return;APP.stores=r&&r.success&&r.data?safeArray(r.data.items):[];if(criticalComplete)renderPublicHome();},false,'',true);
-        apiCall('getMarketplaceFlashDeals',[],function(r){if(!isCurrentLoad())return;APP.flashDeals=r&&r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
-        apiCall('getMarketplaceVouchers',[],function(r){if(!isCurrentLoad())return;APP.vouchers=r&&r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();refreshVisibleProductCardOffers();},false,'',true);
-        apiCall('getMarketplaceLiveRooms',[],function(r){if(!isCurrentLoad())return;APP.liveRooms=r&&r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
+        apiCall('getPublicHomeBundle',[APP.publicDataVersions||{},'secondary'],function(response){
+          if(!isCurrentLoad())return;
+          if(response&&response.success){
+            applyBundle(response.data||{});
+            renderPublicHome();
+            refreshVisibleProductCardOffers();
+          }else console.warn('Secondary marketplace data could not be refreshed',response&&response.message||'');
+        },false,'',true);
+      }
+      // Restore warm content first. Critical content is fetched as one RPC;
+      // below-the-fold marketplace sections are fetched in a second deferred batch.
+      renderPublicHome();
+      apiCall('getPublicHomeBundle',[APP.publicDataVersions||{},'primary'],function(response){
+        if(!isCurrentLoad())return;
+        if(response&&response.success){
+          applyBundle(response.data||{});
+        }else if(!hasWarmData){
+          APP.publicDataLoaded=false;
+        }
+        APP.homeDataInitialPending=false;
+        renderPublicHome();
+        refreshVisibleProductCardOffers();
+        finish();
+        window.setTimeout(startSecondaryLoads,900);
+      },false,'',true);
+      if(!APP.publicVisitorRecorded){
         var visitorKey=localStorage.getItem('visitor_key');
         if(!visitorKey){visitorKey=makeKey();localStorage.setItem('visitor_key',visitorKey);}
         apiCall('recordVisitor',[visitorKey,navigator.userAgent],function(){},false,'',true);
-        refreshCartCount();
+        APP.publicVisitorRecorded=true;
       }
-      // Paint the homepage immediately so a slow Sheets query cannot block navigation.
-      renderPublicHome();
-      apiCall('getCategories',[{}],function(r){
-        if(!isCurrentLoad())return;
-        if(r&&r.success)applySharedCategoryRows(safeArray(r.data),false);
-        else{APP.categories=[];APP.sharedCategories=[];APP.sharedCategoriesFetchedAt=Date.now();}
-        finishCritical();
-      },false,'',true);
-      apiCall('getBanners',[{}],function(r){
-        if(!isCurrentLoad())return;
-        APP.banners=r&&r.success?safeArray(r.data):[];
-        finishCritical();
-      },false,'',true);
-      apiCall('getProducts',[{page:1,pageSize:100,sort:'relevance'}],function(r){
-        if(!isCurrentLoad())return;
-        APP.products=r&&r.success&&r.data?safeArray(r.data.items):[];
-        APP.homePublicProductsLoaded=!!(r&&r.success);
-        finishCritical();
-      },false,'',true);
-      // Delay the secondary data calls slightly to reduce Apps Script concurrency at startup.
-      window.setTimeout(startSecondaryLoads,900);
+      refreshCartCount();
     }
     function toggleMobileNav(){document.getElementById('mainNav').classList.toggle('open');}
     function toggleTheme(){document.body.classList.toggle('dark');var dark=document.body.classList.contains('dark');localStorage.setItem('store_theme',dark?'dark':'light');var icon=document.getElementById('themeIcon');if(icon)icon.className=dark?'fa-regular fa-sun':'fa-regular fa-moon';}
@@ -4238,6 +4278,11 @@ function loadPublicData(onComplete){
       APP.adminRequestId=Number(APP.adminRequestId||0)+1;
       APP.customerPortalSkeletonPending=false;
       clearPortalRoutePage('owner',APP.adminToken);clearPortalRoutePage('seller',APP.customerToken);clearPortalRoutePage('customer',APP.customerToken);clearPortalRoutePage('customerPurchaseTab',APP.customerToken);
+      try{
+        if(typeof adminGridInvalidatePageCache_==='function')adminGridInvalidatePageCache_();
+        if(typeof sellerInvalidatePageCache_==='function')sellerInvalidatePageCache_();
+        if(APP.adminToken&&typeof ADMIN_DASHBOARD_CACHE!=='undefined')delete ADMIN_DASHBOARD_CACHE[String(APP.adminToken)];
+      }catch(cacheClearError){}
       APP.adminToken='';APP.adminUser=null;
       APP.customerToken='';APP.customer=null;APP.sellerStore=null;
       APP.accessMode='guest';APP.currentView='home';APP.adminPage='';
@@ -4772,11 +4817,49 @@ function loadPublicData(onComplete){
     }
     function adminLogout(){
       var token=APP.adminToken;
+      adminGridInvalidatePageCache_();
+      if(token)delete ADMIN_DASHBOARD_CACHE[String(token)];
       transitionToGuestHomeAfterLogout('ออกจากระบบเจ้าของระบบแล้ว');
       if(token)apiCall('logout',[token],function(r){if(!r||!r.success)console.warn('Owner logout session could not be revoked',r&&r.message||'');},false,'',true);
     }
-    function loadAdminDashboard(){apiCall('getDashboardStats',[APP.adminToken],function(r){if(!r.success){showAdminError(r.message);return;}var d=r.data;var html='<div class="stat-grid">'+statCard('ยอดขายวันนี้',money(d.todaySales),'fa-coins')+statCard('ยอดขายเดือนนี้',money(d.monthSales),'fa-chart-line')+statCard('คำสั่งซื้อทั้งหมด',d.orderCount,'fa-receipt')+statCard('รอดำเนินการ',d.pendingOrders,'fa-clock')+statCard('รอชำระเงิน',d.awaitingPayment,'fa-credit-card')+statCard('จำนวนสินค้า',d.productCount,'fa-box')+statCard('สินค้าใกล้หมด',d.lowStock,'fa-triangle-exclamation')+statCard('ลูกค้าทั้งหมด',d.customerCount,'fa-users')+'</div><div class="admin-panels"><div class="admin-card"><h3>ภาพรวมยอดขาย</h3><canvas id="salesChart" height="130"></canvas></div><div class="admin-card"><h3>สถานะคลังสินค้า</h3><div style="font-size:13px;line-height:2.4"><div>รายได้สุทธิ <b style="float:right">'+money(d.netRevenue)+'</b></div><div>สินค้าหมด <b style="float:right;color:#dc2626">'+d.outOfStock+'</b></div><div>ยอดขายเมื่อวาน <b style="float:right">'+money(d.yesterdaySales)+'</b></div><div>ยอดขายปีนี้ <b style="float:right">'+money(d.yearSales)+'</b></div></div><button class="btn btn-primary btn-small" onclick="loadAdminPage(\'reports\')">ดูรายงานทั้งหมด</button></div></div>';
-      document.getElementById('adminContent').innerHTML=html;document.getElementById('adminContent').setAttribute('aria-busy','false');apiCall('getSalesReports',[APP.adminToken,{}],function(x){if(!x.success)return;var canvas=document.getElementById('salesChart');if(!canvas||!window.Chart)return;if(APP.chart)APP.chart.destroy();APP.chart=new Chart(canvas,{type:'line',data:{labels:x.data.labels,datasets:[{label:'ยอดขาย',data:x.data.sales,tension:.32,fill:true,borderWidth:2}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});});},true,'กำลังเปิดแดชบอร์ดเจ้าของระบบ...');}
+    function renderAdminDashboardBundle_(bundle){
+      bundle=bundle||{};
+      var d=bundle.dashboard||{},report=bundle.reports||{};
+      var markup='<div class="stat-grid">'+statCard('ยอดขายวันนี้',money(d.todaySales),'fa-coins')+statCard('ยอดขายเดือนนี้',money(d.monthSales),'fa-chart-line')+statCard('คำสั่งซื้อทั้งหมด',d.orderCount,'fa-receipt')+statCard('รอดำเนินการ',d.pendingOrders,'fa-clock')+statCard('รอชำระเงิน',d.awaitingPayment,'fa-credit-card')+statCard('จำนวนสินค้า',d.productCount,'fa-box')+statCard('สินค้าใกล้หมด',d.lowStock,'fa-triangle-exclamation')+statCard('ลูกค้าทั้งหมด',d.customerCount,'fa-users')+'</div><div class="admin-panels"><div class="admin-card"><h3>ภาพรวมยอดขาย</h3><canvas id="salesChart" height="130"></canvas></div><div class="admin-card"><h3>สถานะคลังสินค้า</h3><div style="font-size:13px;line-height:2.4"><div>รายได้สุทธิ <b style="float:right">'+money(d.netRevenue)+'</b></div><div>สินค้าหมด <b style="float:right;color:#dc2626">'+d.outOfStock+'</b></div><div>ยอดขายเมื่อวาน <b style="float:right">'+money(d.yesterdaySales)+'</b></div><div>ยอดขายปีนี้ <b style="float:right">'+money(d.yearSales)+'</b></div></div><button class="btn btn-primary btn-small" onclick="loadAdminPage(\'reports\')">ดูรายงานทั้งหมด</button></div></div>';
+      var host=document.getElementById('adminContent');
+      if(host){host.innerHTML=markup;host.setAttribute('aria-busy','false');host.removeAttribute('data-refreshing');}
+      var canvas=document.getElementById('salesChart');
+      if(canvas&&window.Chart){
+        if(APP.chart)APP.chart.destroy();
+        APP.chart=new Chart(canvas,{type:'line',data:{labels:safeArray(report.labels),datasets:[{label:'ยอดขาย',data:safeArray(report.sales),tension:.32,fill:true,borderWidth:2}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+      }
+    }
+    function loadAdminDashboard(){
+      var token=String(APP.adminToken||''),cached=ADMIN_DASHBOARD_CACHE[token]||null;
+      var age=cached?Math.max(0,Date.now()-Number(cached.at||0)):Infinity;
+      var host=document.getElementById('adminContent');
+      if(cached){
+        renderAdminDashboardBundle_(cached.data);
+        if(host&&age>ADMIN_DASHBOARD_CACHE_CHECK_MS)host.setAttribute('data-refreshing','true');
+        if(age<=ADMIN_DASHBOARD_CACHE_CHECK_MS){if(host)host.setAttribute('aria-busy','false');return;}
+      }
+      apiCall('getAdminDashboardBundle',[token,cached?cached.version:''],function(response){
+        if(!response||!response.success){
+          if(!cached)showAdminError(response&&response.message||'โหลดแดชบอร์ดไม่สำเร็จ');
+          else if(host){host.setAttribute('aria-busy','false');host.removeAttribute('data-refreshing');}
+          return;
+        }
+        var result=response.data||{};
+        if(result.unchanged){
+          if(cached){cached.at=Date.now();cached.version=result.version||cached.version||'';}
+          if(host){host.setAttribute('aria-busy','false');host.removeAttribute('data-refreshing');}
+          return;
+        }
+        var data={dashboard:result.dashboard||{},reports:result.reports||{}};
+        ADMIN_DASHBOARD_CACHE[token]={at:Date.now(),version:result.version||'',data:data};
+        renderAdminDashboardBundle_(data);
+      },!cached,'กำลังเปิดแดชบอร์ดเจ้าของระบบ...',!!cached);
+    }
     function statCard(label,value,icon){return '<div class="stat-card"><div class="stat-icon"><i class="fa-solid '+icon+'"></i></div><small>'+label+'</small><strong>'+value+'</strong></div>';}
     function showAdminError(message){document.getElementById('adminContent').innerHTML='<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><h3>ไม่สามารถโหลดข้อมูลได้</h3><p>'+esc(message)+'</p><button class="btn btn-outline btn-small" onclick="loadAdminPage(\''+APP.adminPage+'\')">ลองอีกครั้ง</button></div>';document.getElementById('adminContent').setAttribute('aria-busy','false');}
     function moduleApi(page){var map={products:'getProductsAdmin',categories:'getCategories',inventory:'getInventory',orders:'getOrders',payments:'getPayments',customers:'getCustomers',promotions:'getPromotionsAdmin',coupons:'getCoupons',reviews:'getReviewsAdmin',banners:'getBannersAdmin',users:'getUsers',logs:'getLogs',newsletters:'getNewsletters'};return map[page]||'';}
@@ -4891,10 +4974,13 @@ function loadPublicData(onComplete){
     var ADMIN_GRID_STATES = window.ADMIN_GRID_STATES || {};
     window.ADMIN_GRID_STATES = ADMIN_GRID_STATES;
     // In-memory cache only: private admin records are never persisted to browser storage.
+    var ADMIN_DASHBOARD_CACHE = window.ADMIN_DASHBOARD_CACHE || {};
+    window.ADMIN_DASHBOARD_CACHE = ADMIN_DASHBOARD_CACHE;
+    var ADMIN_DASHBOARD_CACHE_CHECK_MS = 5000;
     var ADMIN_GRID_PAGE_CACHE = window.ADMIN_GRID_PAGE_CACHE || {};
     window.ADMIN_GRID_PAGE_CACHE = ADMIN_GRID_PAGE_CACHE;
-    var ADMIN_GRID_CACHE_FRESH_MS = 60000;
-    var ADMIN_GRID_CACHE_STALE_MS = 180000;
+    var ADMIN_GRID_CACHE_FRESH_MS = 5000;
+    var ADMIN_GRID_CACHE_STALE_MS = 30 * 24 * 60 * 60 * 1000;
     function adminGridInvalidatePageCache_(page) {
       var prefix = String(APP.adminToken || '') + '|';
       var pagePrefix = page ? prefix + String(page) + '|' : prefix;
@@ -4985,7 +5071,7 @@ function loadPublicData(onComplete){
 
       state.requestId = Number(state.requestId || 0) + 1;
       var requestId = state.requestId;
-      apiCall('getAdminGridPage', [APP.adminToken, page, requestOptions], function(result) {
+      apiCall('getAdminGridPage', [APP.adminToken, page, requestOptions, cached && !forceRefresh ? cached.version || '' : ''], function(result) {
         if (requestId !== state.requestId) return;
         if (!result || !result.success) {
           if (host) {
@@ -5003,8 +5089,15 @@ function loadPublicData(onComplete){
         }
 
         var data = result.data || {};
+        if (data.unchanged) {
+          if (cached) { cached.at = Date.now(); cached.version = data.version || cached.version || ''; }
+          if (host) { host.setAttribute('aria-busy','false'); host.removeAttribute('data-refreshing'); }
+          if (typeof callback === 'function') callback(true,'');
+          return;
+        }
         ADMIN_GRID_PAGE_CACHE[cacheKey] = {
           at: Date.now(),
+          version: data.version || '',
           data: JSON.parse(JSON.stringify(data))
         };
         var cacheKeys = Object.keys(ADMIN_GRID_PAGE_CACHE);
@@ -6311,8 +6404,8 @@ function adjustInventoryDialog(productId,variantId){
     }
     var SELLER_PAGE_CACHE = window.SELLER_PAGE_CACHE || {};
     window.SELLER_PAGE_CACHE = SELLER_PAGE_CACHE;
-    var SELLER_PAGE_CACHE_FRESH_MS = 60000;
-    var SELLER_PAGE_CACHE_STALE_MS = 180000;
+    var SELLER_PAGE_CACHE_FRESH_MS = 5000;
+    var SELLER_PAGE_CACHE_STALE_MS = 30 * 24 * 60 * 60 * 1000;
     function sellerInvalidatePageCache_(page) {
       var prefix = String(APP.customerToken || '') + '|' +
         String(APP.sellerStore && APP.sellerStore.id || '') + '|';
@@ -6398,7 +6491,9 @@ function adjustInventoryDialog(productId,variantId){
         return;
       }
 
-      apiCall(apis[page],[APP.customerToken,pageOptions],function(result){
+      var pageApi=page==='chat'?'getSellerChatThreads':'getSellerPageBundle';
+      var pageArgs=page==='chat'?[APP.customerToken]:[APP.customerToken,page,pageOptions,cached&&!forceRefresh?cached.version||'':''];
+      apiCall(pageApi,pageArgs,function(result){
         if(requestId!==APP.sellerRequestId||APP.sellerPage!==page)return;
         if(!result||!result.success){
           if(!hasCache)sellerError(result&&result.message||'ไม่สามารถโหลดข้อมูลได้');
@@ -6406,9 +6501,17 @@ function adjustInventoryDialog(productId,variantId){
           if(typeof onLoaded==='function')onLoaded(false,result&&result.message||'ไม่สามารถโหลดข้อมูลได้');
           return;
         }
-        var data=result.data;
+        var bundle=result.data||{};
+        if(page!=='chat'&&bundle.unchanged){
+          if(cached){cached.at=Date.now();cached.version=bundle.version||cached.version||'';}
+          if(host){host.setAttribute('aria-busy','false');host.removeAttribute('data-refreshing');}
+          if(typeof onLoaded==='function')onLoaded(true,'');
+          return;
+        }
+        var data=page==='chat'?bundle:bundle.data;
+        var dataVersion=page==='chat'?'':(bundle.version||'');
         if(cacheKey){
-          SELLER_PAGE_CACHE[cacheKey]={at:Date.now(),data:JSON.parse(JSON.stringify(data))};
+          SELLER_PAGE_CACHE[cacheKey]={at:Date.now(),version:dataVersion,data:JSON.parse(JSON.stringify(data))};
           var keys=Object.keys(SELLER_PAGE_CACHE);
           if(keys.length>35){
             keys.sort(function(a,b){return Number(SELLER_PAGE_CACHE[a].at||0)-Number(SELLER_PAGE_CACHE[b].at||0);})
