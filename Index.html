@@ -9367,5 +9367,187 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
     })();
   </script>
 
+
+  <script id="atomic-first-page-render-v1">
+    (function(){
+      if(window.__STORE_ATOMIC_FIRST_PAGE_RENDER_V1__)return;
+      window.__STORE_ATOMIC_FIRST_PAGE_RENDER_V1__=true;
+
+      var atomic={admin:null,seller:null};
+      window.__STORE_ATOMIC_PAGE_TRANSITIONS__=atomic;
+
+      function takeChildren(host){
+        if(!host)return null;
+        var fragment=document.createDocumentFragment();
+        while(host.firstChild)fragment.appendChild(host.firstChild);
+        return fragment;
+      }
+      function restoreChildren(host,fragment){
+        if(!host||!fragment)return;
+        while(host.firstChild)host.removeChild(host.firstChild);
+        host.appendChild(fragment);
+        host.removeAttribute('aria-busy');
+        host.removeAttribute('data-refreshing');
+      }
+      function hasRealContent(host,blockedPattern){
+        if(!host)return false;
+        var html=String(host.innerHTML||'').trim();
+        return html.length>80&&!(blockedPattern&&blockedPattern.test(html));
+      }
+      function commitAdmin(pending){
+        if(!pending||atomic.admin!==pending||pending.committed)return;
+        if(APP.currentView!=='admin'||String(APP.adminPage||'')!==pending.page)return;
+        var host=document.getElementById('adminContent');
+        if(!hasRealContent(host,/(?:admin-skeleton|eg-skeleton-grid)/i))return;
+        var titleNode=document.getElementById('adminPageTitle');
+        var subtitleNode=document.getElementById('adminPageSubtitle');
+        if(titleNode)titleNode.textContent=adminMenuLabel(pending.page);
+        if(subtitleNode)subtitleNode.textContent=pending.page==='dashboard'?adminLangText('dashboardSub'):adminLangText('pageSub')+' '+adminMenuLabel(pending.page);
+        if(host){host.removeAttribute('aria-busy');host.removeAttribute('data-refreshing');}
+        pending.committed=true;
+        atomic.admin=null;
+      }
+      function commitSeller(pending){
+        if(!pending||atomic.seller!==pending||pending.committed)return;
+        if(APP.currentView!=='seller'||String(APP.sellerPage||'')!==pending.page)return;
+        var host=document.getElementById('sellerContent');
+        if(!hasRealContent(host,/(?:seller-skeleton)/i))return;
+        var title=document.getElementById('sellerCurrentPageTitle');
+        if(title)title.textContent=sellerMenuTitle(pending.page);
+        if(host){host.removeAttribute('aria-busy');host.removeAttribute('data-refreshing');}
+        pending.committed=true;
+        atomic.seller=null;
+      }
+
+      /* Preserve the existing owner page until the next page has finished rendering. */
+      var originalLoadAdminPage=window.loadAdminPage;
+      if(typeof originalLoadAdminPage==='function'&&!originalLoadAdminPage.__atomicFirstRenderWrapped){
+        var wrappedAdminLoad=function(page){
+          page=String(page||'dashboard');
+          var host=document.getElementById('adminContent');
+          var titleNode=document.getElementById('adminPageTitle');
+          var subtitleNode=document.getElementById('adminPageSubtitle');
+          var previousTitle=titleNode?titleNode.textContent:'';
+          var previousSubtitle=subtitleNode?subtitleNode.textContent:'';
+          var previousNodes=takeChildren(host);
+          var pending={page:page,requestId:0,apiSeen:false,committed:false};
+          atomic.admin=pending;
+          var result;
+          try{result=originalLoadAdminPage.apply(this,arguments);}
+          catch(error){
+            restoreChildren(host,previousNodes);
+            if(titleNode)titleNode.textContent=previousTitle;
+            if(subtitleNode)subtitleNode.textContent=previousSubtitle;
+            if(atomic.admin===pending)atomic.admin=null;
+            throw error;
+          }
+          pending.requestId=Number(APP.adminRequestId||0);
+          if(hasRealContent(host,/(?:admin-skeleton|eg-skeleton-grid)/i)){
+            commitAdmin(pending);
+          }else{
+            restoreChildren(host,previousNodes);
+            if(titleNode)titleNode.textContent=previousTitle;
+            if(subtitleNode)subtitleNode.textContent=previousSubtitle;
+            /* Synchronous pages (for example Reports and Demo) have no API wait. */
+            window.setTimeout(function(){commitAdmin(pending);},0);
+          }
+          return result;
+        };
+        wrappedAdminLoad.__atomicFirstRenderWrapped=true;
+        wrappedAdminLoad.__atomicFirstRenderOriginal=originalLoadAdminPage;
+        window.loadAdminPage=wrappedAdminLoad;
+      }
+
+      /* A table page refresh/pagination also keeps the current table visible until replacement data arrives. */
+      var originalAdminGridLoad=window.adminGridLoad;
+      if(typeof originalAdminGridLoad==='function'&&!originalAdminGridLoad.__atomicFirstRenderWrapped){
+        var wrappedAdminGridLoad=function(){
+          var host=document.getElementById('adminContent');
+          var previousNodes=takeChildren(host);
+          var result=originalAdminGridLoad.apply(this,arguments);
+          if(host&&!host.firstChild&&previousNodes&&previousNodes.childNodes.length){
+            restoreChildren(host,previousNodes);
+          }else if(host&&host.firstChild&&previousNodes){
+            /* A synchronous cache hit has already rendered the new table; discard the old nodes. */
+          }
+          return result;
+        };
+        wrappedAdminGridLoad.__atomicFirstRenderWrapped=true;
+        window.adminGridLoad=wrappedAdminGridLoad;
+      }
+
+      /* Keep owner title + table synchronized on the first successful response for a navigation. */
+      var originalApiCall=window.apiCall;
+      if(typeof originalApiCall==='function'&&!originalApiCall.__atomicFirstRenderWrapped){
+        var wrappedApiCall=function(name,args,callback,showLoading,loadingText,silentError){
+          var adminPending=atomic.admin;
+          var sellerPending=atomic.seller;
+          var captureAdmin=!!(adminPending&&!adminPending.apiSeen&&APP.currentView==='admin'&&String(APP.adminPage||'')===adminPending.page);
+          var captureSeller=!!(sellerPending&&!sellerPending.apiSeen&&APP.currentView==='seller'&&String(APP.sellerPage||'')===sellerPending.page&&sellerPending.page!=='chat');
+          if(captureAdmin)adminPending.apiSeen=true;
+          if(captureSeller)sellerPending.apiSeen=true;
+          var wrappedCallback=callback;
+          if(captureAdmin||captureSeller){
+            wrappedCallback=function(result){
+              try{if(typeof callback==='function')callback(result);}
+              finally{
+                window.setTimeout(function(){
+                  if(captureAdmin)commitAdmin(adminPending);
+                  if(captureSeller)commitSeller(sellerPending);
+                },0);
+              }
+            };
+          }
+          return originalApiCall.call(this,name,args,wrappedCallback,showLoading,loadingText,silentError);
+        };
+        wrappedApiCall.__atomicFirstRenderWrapped=true;
+        wrappedApiCall.__atomicFirstRenderOriginal=originalApiCall;
+        window.apiCall=wrappedApiCall;
+      }
+
+      /* Apply the same atomic title/content swap to Seller Center pages. */
+      var originalLoadSellerPage=window.loadSellerPage;
+      if(typeof originalLoadSellerPage==='function'&&!originalLoadSellerPage.__atomicFirstRenderWrapped){
+        var wrappedSellerLoad=function(page){
+          page=String(page||'dashboard');
+          var host=document.getElementById('sellerContent');
+          var titleNode=document.getElementById('sellerCurrentPageTitle');
+          var previousTitle=titleNode?titleNode.textContent:'';
+          var previousNodes=page==='chat'?null:takeChildren(host);
+          var pending={page:page,requestId:0,apiSeen:false,committed:false};
+          if(page!=='chat')atomic.seller=pending;
+          var result;
+          try{result=originalLoadSellerPage.apply(this,arguments);}
+          catch(error){
+            if(page!=='chat')restoreChildren(host,previousNodes);
+            if(titleNode)titleNode.textContent=previousTitle;
+            if(atomic.seller===pending)atomic.seller=null;
+            throw error;
+          }
+          pending.requestId=Number(APP.sellerRequestId||0);
+          if(page!=='chat'){
+            if(hasRealContent(host,/(?:seller-skeleton)/i)){
+              commitSeller(pending);
+            }else{
+              restoreChildren(host,previousNodes);
+              if(titleNode)titleNode.textContent=previousTitle;
+              /* On first entry the content and page title are committed together by apiCall. */
+            }
+          }
+          return result;
+        };
+        wrappedSellerLoad.__atomicFirstRenderWrapped=true;
+        wrappedSellerLoad.__atomicFirstRenderOriginal=originalLoadSellerPage;
+        window.loadSellerPage=wrappedSellerLoad;
+      }
+
+      /* If the owner or seller page already has a fresh cached result, commit both parts immediately. */
+      window.setTimeout(function(){
+        if(atomic.admin)commitAdmin(atomic.admin);
+        if(atomic.seller)commitSeller(atomic.seller);
+      },0);
+    })();
+  </script>
+
 </body>
 </html>
