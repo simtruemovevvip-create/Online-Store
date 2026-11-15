@@ -3702,6 +3702,109 @@ function getMarketplaceStore(storeId, summaryOnly) {
     return ok_(info);
   }catch(e){return fail_(safeError_(e));}
 }
+
+function getMarketplaceStorefront(storeId, customerToken, page, pageSize, sort, categoryId) {
+  try {
+    storeId=String(storeId||'');
+    var st=readTable_('Stores',false).filter(function(x){return String(x.id)===storeId&&x.status==='Active';})[0];
+    if(!st)throw new Error('ไม่พบร้านค้าหรือร้านค้ายังไม่เปิด');
+
+    var info=publicStore_(st);
+    var activeProducts=readTable_('Products',true).filter(function(p){
+      return String(p.sellerId)===storeId&&String(p.status)==='Active';
+    });
+    var productIds=Object.create(null);
+    activeProducts.forEach(function(p){productIds[String(p.id)]=true;});
+    info.productCount=activeProducts.length;
+
+    var reviews=readTable_('Reviews',true).filter(function(r){
+      return productIds[String(r.productId||'')]&&['Approved','Active','Published'].indexOf(String(r.status||'Approved'))>=0&&number_(r.rating,0)>0;
+    });
+    info.reviewCount=reviews.length;
+    if(reviews.length){
+      var totalRating=reviews.reduce(function(sum,r){return sum+number_(r.rating,0);},0);
+      info.rating=Math.round((totalRating/reviews.length)*10)/10;
+    }
+
+    var follows=readTable_('StoreFollows',true);
+    info.followers=follows.filter(function(f){return String(f.storeId)===storeId;}).length;
+    info.followingCount=st.ownerCustomerId?follows.filter(function(f){return String(f.customerId)===String(st.ownerCustomerId);}).length:0;
+    var isFollowing=false;
+    if(customerToken){
+      try{
+        var currentCustomer=requireCustomer_(customerToken);
+        isFollowing=follows.some(function(f){return String(f.storeId)===storeId&&String(f.customerId)===String(currentCustomer.id);});
+      }catch(authError){isFollowing=false;}
+    }
+    info.isFollowing=isFollowing;
+    info.online=false;
+    info.chatResponseRate=null;
+
+    var categories=readTable_('Categories',true),categoryById=Object.create(null),categoryCounts=Object.create(null);
+    categories.forEach(function(c){if(String(c.status)==='Active')categoryById[String(c.id)]=c;});
+    activeProducts.forEach(function(p){
+      var id=String(p.categoryId||'');
+      if(id&&categoryById[id])categoryCounts[id]=(categoryCounts[id]||0)+1;
+    });
+    var storeCategories=Object.keys(categoryCounts).map(function(id){
+      var c=categoryById[id];
+      return {id:String(c.id),name:String(c.name||''),slug:String(c.slug||''),image:String(c.image||''),order:number_(c.order,0),productCount:categoryCounts[id]};
+    });
+    storeCategories.sort(function(a,b){return a.order-b.order||a.name.localeCompare(b.name);});
+
+    function getProductSet(options){
+      var query=Object.assign({storeId:storeId,page:1,pageSize:6,sort:'relevance'},options||{});
+      var result=getProducts(query);
+      return result&&result.success&&result.data?safeArray_(result.data.items):[];
+    }
+    var currentPage=Math.max(1,Math.floor(number_(page,1)));
+    var size=Math.max(5,Math.min(50,Math.floor(number_(pageSize,20))));
+    var sortBy=String(sort||'relevance');
+    if(['relevance','newest','best_seller','price_asc','price_desc'].indexOf(sortBy)<0)sortBy='relevance';
+    var listOptions={storeId:storeId,page:currentPage,pageSize:size,sort:sortBy};
+    if(categoryId)listOptions.categoryId=String(categoryId);
+    var listResult=getProducts(listOptions);
+    if(!listResult||!listResult.success)throw new Error(listResult&&listResult.message||'โหลดสินค้าของร้านไม่สำเร็จ');
+
+    var featured=getProductSet({featured:true});
+    var promotion=getProductSet({promotions:['discount'],sort:'newest'});
+    var bestSeller=getProductSet({bestSeller:true,sort:'best_seller'});
+    var categoryShelves=storeCategories.slice(0,2).map(function(category){
+      return {id:category.id,name:category.name,products:getProductSet({categoryId:category.id,sort:'best_seller'})};
+    });
+    var now=Date.now();
+    var vouchers=readTable_('Coupons',true).filter(function(c){
+      if(String(c.sellerId)!==storeId||String(c.status)!=='Active')return false;
+      var start=c.startDate?new Date(c.startDate).getTime():0;
+      var end=c.endDate?new Date(c.endDate).getTime():Infinity;
+      if(start&&!isNaN(start)&&start>now)return false;
+      if(end!==Infinity&&!isNaN(end)&&end<now)return false;
+      var limit=number_(c.usageLimit,0);
+      return !limit||number_(c.usedCount,0)<limit;
+    }).slice(0,8).map(function(c){
+      return {id:c.id,code:c.code,title:c.title||c.code,discountType:c.discountType,discountValue:c.discountValue,minimumOrder:c.minimumOrder,endDate:c.endDate};
+    });
+
+    return ok_({
+      store:info,
+      categories:storeCategories,
+      page:{
+        items:safeArray_(listResult.data.items),
+        total:number_(listResult.data.total,activeProducts.length),
+        page:number_(listResult.data.page,currentPage),
+        pageSize:number_(listResult.data.pageSize,size),
+        pages:Math.max(1,number_(listResult.data.pages,Math.ceil(activeProducts.length/size)))
+      },
+      shelves:{
+        recommended:featured,
+        promotions:promotion,
+        bestSellers:bestSeller,
+        categories:categoryShelves
+      },
+      vouchers:vouchers
+    });
+  }catch(e){return fail_(safeError_(e));}
+}
 function applySeller(customerToken,data) {
   try {var c=requireCustomer_(customerToken);data=data||{};if(String(getSettingValue_('sellerRegistrationEnabled'))==='false')throw new Error('ขณะนี้ปิดรับสมัครผู้ขาย');var exists=readTable_('Stores',false).filter(function(x){return x.ownerCustomerId===c.id;})[0];if(exists)return ok_(publicStore_(exists),exists.status==='Pending'?'ใบสมัครกำลังรออนุมัติ':'บัญชีนี้มีร้านค้าอยู่แล้ว');
     var name=text_(data.shopName,120),phone=text_(data.phone||c.phone,40),email=text_(data.email||c.email,160).toLowerCase();if(!name||!phone||!email)throw new Error('กรุณาระบุชื่อร้าน เบอร์โทร และอีเมล');
