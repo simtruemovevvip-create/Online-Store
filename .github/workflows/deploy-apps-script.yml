@@ -33,17 +33,18 @@ jobs:
         id: config
         shell: bash
         run: |
-          DEPLOY_ID="$GAS_DEPLOYMENT_ID"
-          if [[ -z "$DEPLOY_ID" ]]; then
-            DEPLOY_ID="$(node <<'NODE'
+          DEPLOY_ID="$(node <<'NODE'
           const fs = require("fs");
           const source = fs.readFileSync("Code.gs", "utf8");
-          const prefix = "https://script.google.com/macros/s/";
-          const start = source.indexOf(prefix);
-          const deploymentId = start >= 0 ? source.slice(start + prefix.length).split("/")[0] : "";
-          if (deploymentId) process.stdout.write(deploymentId);
+          const match = source.match(/const\\s+WEB_APP_URL\\s*=\\s*["']https:\\/\\/script\\.google\\.com\\/macros\\/s\\/([^/"']+)\\/exec["']\\s*;/);
+          if (match && match[1]) process.stdout.write(match[1]);
           NODE
           )"
+
+          if [[ -z "$DEPLOY_ID" ]]; then
+            DEPLOY_ID="$GAS_DEPLOYMENT_ID"
+          elif [[ -n "$GAS_DEPLOYMENT_ID" && "$GAS_DEPLOYMENT_ID" != "$DEPLOY_ID" ]]; then
+            echo "::notice::Code.gs WEB_APP_URL takes priority over the GAS_DEPLOYMENT_ID repository variable."
           fi
 
           if [[ -n "$DEPLOY_ID" ]]; then
