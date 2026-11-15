@@ -9157,6 +9157,13 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
         return pageIdentity(type)+'|'+String(page||'')+'|'+String(extra||'');
       }
       function currentPage(){
+        var active=window.__STORE_ACTIVE_PAGE_CACHE_ROUTE__;
+        if(active&&active.type){
+          var route={type:active.type,page:String(active.page||''),extra:String(active.extra||'')};
+          if(route.type==='owner')route.extra=adminOptionsKey(route.page);
+          else if(route.type==='seller')route.extra=sellerOptionsKey(route.page);
+          return route;
+        }
         var view=String(APP.currentView||'home');
         if(view==='admin')return {type:'owner',page:String(APP.adminPage||'dashboard'),extra:adminOptionsKey(APP.adminPage)};
         if(view==='seller')return {type:'seller',page:String(APP.sellerPage||'dashboard'),extra:sellerOptionsKey(APP.sellerPage)};
@@ -9168,6 +9175,10 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
         if(view==='detail')extra=String(APP.currentProduct&&APP.currentProduct.id||'');
         else if(view==='store')extra=String(APP.currentStore&&APP.currentStore.id||'');
         else if(view==='recommended')extra=String(APP.recommendedPage||APP.productPage||1);
+        else if(view==='products'){
+          var q=document.getElementById('catalogSearch'),sort=document.getElementById('catalogSort');
+          extra=String(q&&q.value||'')+'|'+String(sort&&sort.value||'relevance');
+        }
         return {type:'public',page:view,extra:extra};
       }
       function adminOptionsKey(page){
@@ -9226,9 +9237,9 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
         if(name==='openAccount')return {type:'customer',page:'purchase',extra:''};
         if(name==='customerPortalNavigate')return {type:'customer',page:String(args[0]||'purchase'),extra:String(args[0]||'')==='chat'?'realtime':''};
         if(name==='openSellerCenter')return {type:'seller',page:'dashboard',extra:''};
-        if(name==='loadSellerPage')return {type:'seller',page:String(args[0]||'dashboard'),extra:args[4]?'force':sellerOptionsKey(String(args[0]||'dashboard'))};
+        if(name==='loadSellerPage')return {type:'seller',page:String(args[0]||'dashboard'),extra:args[4]?'force':''};
         if(name==='openAdmin')return {type:'owner',page:'dashboard',extra:''};
-        if(name==='loadAdminPage')return {type:'owner',page:String(args[0]||'dashboard'),extra:adminOptionsKey(String(args[0]||'dashboard'))};
+        if(name==='loadAdminPage')return {type:'owner',page:String(args[0]||'dashboard'),extra:''};
         return null;
       }
       function restorePage(route){
@@ -9258,7 +9269,12 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
           rememberCurrentPage();
           var route=targetRoute(name,args);
           var result=original.apply(this,args);
-          if(route)restorePage(route);
+          if(route){
+            if(route.type==='owner')route.extra=adminOptionsKey(route.page);
+            else if(route.type==='seller'&&!route.extra)route.extra=sellerOptionsKey(route.page);
+            window.__STORE_ACTIVE_PAGE_CACHE_ROUTE__=route;
+            restorePage(route);
+          }
           return result;
         };
         wrapped.__instantPageWrapped=true;
