@@ -5438,7 +5438,7 @@ function getSellerSidebarBadgeCounts(customerToken) {
       if (String(thread.sellerId || '') === storeId) threadIds[String(thread.id || '')] = true;
     });
     var unreadChats = readTable_('ChatMessages', false).filter(function(message) {
-      return !!threadIds[String(message.threadId || '')] && (String(message.senderType || '') === 'customer' || (String(message.senderType || '') === 'admin' && String(message.threadId || '').indexOf('')>=0)) &&
+      return !!threadIds[String(message.threadId || '')] && (String(message.senderType || '') === 'customer' || String(message.senderType || '') === 'admin') &&
         !parseBool_(message.isRead) && !message.deletedAt;
     }).length;
     var counts = {
