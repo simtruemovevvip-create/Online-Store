@@ -2613,7 +2613,7 @@ function beginApiLoading(text){
 function loadPublicData(onComplete){
       var loadId=Number(APP.publicDataLoadRequestId||0)+1;
       APP.publicDataLoadRequestId=loadId;
-      var hasWarmData=!!APP.publicDataLoaded;
+      var hasWarmData=!!APP.publicDataLoaded,secondaryStarted=false;
       APP.homeDataInitialPending=!hasWarmData;
       if(!hasWarmData){
         APP.homePublicProductsLoaded=false;
@@ -2625,19 +2625,10 @@ function loadPublicData(onComplete){
       function isPublicHome(){return isCurrentLoad()&&(APP.accessMode==='guest'||APP.accessMode==='customer')&&APP.currentView==='home';}
       function renderPublicHome(){if(isPublicHome())renderHome();}
       function finish(){if(typeof onComplete==='function'){try{onComplete();}catch(error){console.error('Public data completion callback failed',error);}}}
-      renderPublicHome();
-      apiCall('getPublicHomeBundle',[APP.publicDataVersions||{}],function(response){
-        if(!isCurrentLoad())return;
-        if(!response||!response.success){
-          APP.homeDataInitialPending=false;
-          if(!hasWarmData)APP.publicDataLoaded=false;
-          renderPublicHome();finish();return;
-        }
-        var payload=response.data||{},datasets=payload.datasets||{};
-        if(Object.prototype.hasOwnProperty.call(datasets,'publicSettings')){
-          APP.settings=datasets.publicSettings||{};
-          applySettings();
-        }
+      function applyBundle(payload){
+        payload=payload||{};
+        var datasets=payload.datasets||{};
+        if(Object.prototype.hasOwnProperty.call(datasets,'publicSettings')){APP.settings=datasets.publicSettings||{};applySettings();}
         if(Object.prototype.hasOwnProperty.call(datasets,'publicCategories'))applySharedCategoryRows(safeArray(datasets.publicCategories),false);
         if(Object.prototype.hasOwnProperty.call(datasets,'publicBanners'))APP.banners=safeArray(datasets.publicBanners);
         if(Object.prototype.hasOwnProperty.call(datasets,'publicProducts')){
@@ -2654,13 +2645,37 @@ function loadPublicData(onComplete){
         if(Object.prototype.hasOwnProperty.call(datasets,'publicVouchers'))APP.vouchers=safeArray(datasets.publicVouchers);
         if(Object.prototype.hasOwnProperty.call(datasets,'publicLiveRooms'))APP.liveRooms=safeArray(datasets.publicLiveRooms);
         APP.publicDataVersions=Object.assign({},APP.publicDataVersions||{},payload.versions||{});
-        APP.publicDataLoaded=Object.keys(APP.publicDataVersions).length>0;
-        if(!APP.homePublicProductsLoaded&&APP.publicDataVersions.publicProducts)APP.homePublicProductsLoaded=true;
+        if(APP.publicDataVersions.publicProducts)APP.homePublicProductsLoaded=true;
+        APP.publicDataLoaded=!!(APP.publicDataVersions.publicProducts||APP.publicDataVersions.publicCategories||APP.publicDataVersions.publicSettings);
+        if(payload.errors&&Object.keys(payload.errors).length)console.warn('Some public datasets could not be refreshed',payload.errors);
+      }
+      function startSecondaryLoads(){
+        if(secondaryStarted||!isCurrentLoad())return;
+        secondaryStarted=true;
+        apiCall('getPublicHomeBundle',[APP.publicDataVersions||{},'secondary'],function(response){
+          if(!isCurrentLoad())return;
+          if(response&&response.success){
+            applyBundle(response.data||{});
+            renderPublicHome();
+            refreshVisibleProductCardOffers();
+          }else console.warn('Secondary marketplace data could not be refreshed',response&&response.message||'');
+        },false,'',true);
+      }
+      // Restore warm content first. Critical content is fetched as one RPC;
+      // below-the-fold marketplace sections are fetched in a second deferred batch.
+      renderPublicHome();
+      apiCall('getPublicHomeBundle',[APP.publicDataVersions||{},'primary'],function(response){
+        if(!isCurrentLoad())return;
+        if(response&&response.success){
+          applyBundle(response.data||{});
+        }else if(!hasWarmData){
+          APP.publicDataLoaded=false;
+        }
         APP.homeDataInitialPending=false;
         renderPublicHome();
-        if(payload.errors&&Object.keys(payload.errors).length)console.warn('Some public datasets could not be refreshed',payload.errors);
         refreshVisibleProductCardOffers();
         finish();
+        window.setTimeout(startSecondaryLoads,900);
       },false,'',true);
       if(!APP.publicVisitorRecorded){
         var visitorKey=localStorage.getItem('visitor_key');
