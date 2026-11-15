@@ -5004,7 +5004,7 @@ function loadPublicData(onComplete){
     }
     function loadAdminPage(page){
       if(APP.adminPage&&APP.adminPage!==page)rememberAdminPageDom_(APP.adminPage);
-      APP.adminPage=page;loadAdminSidebarBadges();savePortalRoutePage('owner',APP.adminToken,page,ADMIN_MENUS.map(function(m){return m.id;}));APP.adminRequestId=Number(APP.adminRequestId||0)+1;
+      APP.adminPage=page;savePortalRoutePage('owner',APP.adminToken,page,ADMIN_MENUS.map(function(m){return m.id;}));APP.adminRequestId=Number(APP.adminRequestId||0)+1;loadAdminSidebarBadges();
       var active=document.querySelectorAll('.admin-menu button');active.forEach(function(b){b.classList.remove('active');});
       var nav=document.getElementById('nav_'+page);if(nav)nav.classList.add('active');
       var menu=ADMIN_MENUS.filter(function(x){return x.id===page;})[0],title=menu?menu.label:'แดชบอร์ด';
