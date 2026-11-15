@@ -2205,7 +2205,7 @@ function beginApiLoading(text){
       };
       var portalSkeletonRequest=APP.customerPortalSkeletonPending?Number(APP.customerPortalSkeletonRequestId||0):0;
       var pendingNavigation=!!(APP.lastActionButton&&Date.now()-Number(APP.lastActionAt||0)<1400&&APP.lastActionIsNavigation&&document.documentElement.contains(APP.lastActionButton));
-      var adminReadApis=['getDashboardStats','getAdminDashboardBundle','getSalesReports','getAdminSettings','getEmailOtpServiceStatus','getProductsAdmin','getCategories','getInventory','getOrders','getPayments','getShippingMethods','getCustomers','getCoupons','getReviewsAdmin','getBannersAdmin','getPromotionsAdmin','getUsers','getLogs','getNewsletters','getBackups','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getAdminGridPage'];
+      var adminReadApis=['getBannerStoreOptions','getDashboardStats','getAdminDashboardBundle','getSalesReports','getAdminSettings','getEmailOtpServiceStatus','getProductsAdmin','getCategories','getInventory','getOrders','getPayments','getShippingMethods','getCustomers','getCoupons','getReviewsAdmin','getBannersAdmin','getPromotionsAdmin','getUsers','getLogs','getNewsletters','getBackups','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getAdminGridPage'];
       var guardAdminPage=APP.currentView==='admin'&&adminReadApis.indexOf(name)>=0;
       var requestAdminPage=guardAdminPage?APP.adminPage:'';
       var requestAdminId=guardAdminPage?Number(APP.adminRequestId||0):0;
@@ -2373,6 +2373,7 @@ function beginApiLoading(text){
         case 'getNewsletters': runner.getNewsletters(args[0]); break;
         case 'getPromotionsAdmin': runner.getPromotions(args[0]); break;
         case 'getBannersAdmin': runner.getBanners(args[0]); break;
+        case 'getBannerStoreOptions': runner.getBannerStoreOptions(args[0]); break;
         case 'getReviewsAdmin': runner.getReviews(args[0],args[1]); break;
         case 'updateReviewStatus': runner.updateReviewStatus(args[0],args[1],args[2]); break;
         case 'uploadFile': runner.uploadFileFromUrlEncoded(args[0],encodeUploadPayloadWithUrlSearchParams(args[1])); break;
