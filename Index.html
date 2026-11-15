@@ -7248,7 +7248,7 @@ function openChatThreadPage(threadId){apiCall('getCustomerChatThreads',[APP.cust
       m=m||{};var mine=mode==='seller'?m.senderType==='seller':m.senderType==='customer',deleted=!!m.deletedAt,stamp=formatThaiChatTime(m.createdAt,false),status=m.clientStatus||'',canDelete=mode==='seller'&&mine&&!deleted&&!status&&!parseChatBool(m.isRead)&&Date.now()-new Date(m.createdAt).getTime()<=5*60*1000,attachment=m.attachmentUrl?chatImageSource(m.attachmentUrl):'';
       var statusMarkup=status==='sending'?'<span class="chat-send-state">กำลังส่ง…</span>':status==='failed'?'<span class="chat-send-state is-failed">ส่งไม่สำเร็จ</span><button type="button" class="chat-retry-send" onclick="retryChatMessage(\''+esc(m.localId||'')+'\')">ลองอีกครั้ง</button>':(mine&&mode==='seller'&&!deleted?'<span class="chat-read-status '+(parseChatBool(m.isRead)?'is-read':'')+'">'+(parseChatBool(m.isRead)?'อ่านแล้ว':'ส่งแล้ว')+'</span>':'');
       var body=deleted?'<em>ข้อความนี้ถูกลบแล้ว</em>':(m.message?'<div class="chat-message-text">'+esc(m.message)+'</div>':'')+(attachment?'<button type="button" class="chat-image-link" data-image-url="'+esc(attachment)+'" onclick="showChatImageModalFromButton(this)" aria-label="กดเพื่อขยายรูปภาพ"><img src="'+esc(attachment)+'" onerror="imageFallback(this)" alt="รูปภาพที่ส่งในแชต กดเพื่อขยาย"><span class="chat-image-zoom-hint"><i class="fa-solid fa-magnifying-glass-plus"></i> กดเพื่อขยาย</span></button>':'');
-      return '<div class="chat-bubble '+(mine?'mine ':'')+(deleted?'is-deleted ':'')+(status?'is-'+status+' ':'')+'" data-chat-message-id="'+esc(m.id||'')+'" '+(m.localId?'data-chat-local-id="'+esc(m.localId)+'"':'')+'>'+body+'<small class="chat-message-meta"><span>'+esc(stamp)+'</span>'+statusMarkup+(canDelete?'<button type="button" class="chat-delete-message" onclick="sellerDeleteChatMessage(\''+esc(m.id)+'\')" title="ลบข้อความภายใน 5 นาที"><i class="fa-regular fa-trash-can"></i> ลบ</button>':'')+'</small></div>';
+      return '<div class="chat-bubble '+(mine?'mine ':'')+(deleted?'is-deleted ':'')+(status?'is-'+status+' ':'')+'" data-chat-message-id="'+esc(m.id||'')+'" '+(m.localId?'data-chat-local-id="'+esc(m.localId)+'"':'')+'>'+body+'<small class="chat-message-meta"><span>'+esc(stamp)+'</span>'+statusMarkup+(canDelete?'<button type="button" class="chat-delete-message" onclick="sellerDeleteChatMessage(\''+esc(m.id)+'\')" title="ลบข้อความภายใน 5 นาที">ลบ</button>':'')+'</small></div>';
     }
     function updateChatCursor(value){var ms=new Date(value||0).getTime();if(!isFinite(ms)||ms<=0)return;var old=new Date(APP.chatLastMessageAt||0).getTime()||0;if(ms>old)APP.chatLastMessageAt=new Date(ms).toISOString();}
     function renderChatMessages(hostId,rows,mode){
@@ -10966,6 +10966,41 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
   .portal-mode-seller #sellerContent.seller-chat-full-mode .seller-chat-summary {min-width:68px;padding:7px 9px}
 }
 
+
+/* Seller chat delete action is text-only: no icon, fill, border or button box. */
+.portal-mode-seller #sellerContent .chat-delete-message {
+  display:inline!important;
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:0!important;
+  min-height:0!important;
+  margin:0 0 0 6px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  color:var(--danger,#dc2626)!important;
+  font:inherit!important;
+  font-size:10px!important;
+  font-weight:700!important;
+  line-height:1.2!important;
+  text-decoration:none!important;
+  cursor:pointer;
+}
+.portal-mode-seller #sellerContent .chat-delete-message:hover,
+.portal-mode-seller #sellerContent .chat-delete-message:focus-visible {
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  text-decoration:underline!important;
+  text-underline-offset:2px;
+}
+.portal-mode-seller #sellerContent .chat-delete-message:focus-visible {
+  outline:1px solid currentColor!important;
+  outline-offset:2px;
+}
 </style>
 </body>
 </html>
