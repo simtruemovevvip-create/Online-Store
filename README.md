@@ -28,8 +28,9 @@ This is a transitional architecture. It avoids exposing the Apps Script deployme
 - The original Google Apps Script files (`Code.gs`, `Index.html`) remain on the `main` branch and are not deleted or overwritten.
 - This branch introduces a Vite + TypeScript frontend and a Cloudflare Workers API entry point.
 - `GET /api/health` reports whether the Apps Script URL is configured.
-- `GET /api/legacy` and `POST /api/legacy` proxy requests to the configured Apps Script Web App.
-- The bridge is infrastructure only: it does not automatically make the old Apps Script functions compatible with the new frontend. Frontend screens must be connected to the actual legacy API actions and their response formats.
+- `GET /api/legacy` and `POST /api/legacy` are transport routes to the configured Apps Script Web App.
+- **The existing Apps Script project is not yet a confirmed JSON REST API.** Its current `doGet(e)` serves the legacy HTML application; a JSON `doPost(e)` dispatcher and a documented action contract still need to be implemented and tested before the new frontend can use this bridge for data operations.
+- The bridge is infrastructure only: it does not automatically expose existing Apps Script functions or make them compatible with the new frontend. Frontend screens must be connected to explicit API actions and their response formats.
 - Authentication, authorization, payment, order, inventory, and media workflows have **not** been migrated or fully tested in the new frontend.
 - No production deployment has been performed from this branch. Keep the existing GAS application available until feature parity and data integrity are verified.
 
@@ -60,7 +61,7 @@ npm run dev
 4. Paste the Apps Script Web App URL ending in `/exec` when prompted.
 5. Deploy the Worker only after reviewing access controls and testing the bridge.
 
-The Worker accepts only HTTPS Apps Script Web App URLs on `script.google.com` matching the `/macros/s/.../exec` path. It supports GET and POST on `/api/legacy`. Query parameters are forwarded; POST request bodies and their content type are forwarded.
+The Worker accepts only HTTPS Apps Script Web App URLs on `script.google.com` matching the `/macros/s/.../exec` path. It supports GET and POST on `/api/legacy`. Query parameters are forwarded; POST request bodies and their content type are forwarded. This transport alone is not sufficient: add and test a JSON `doPost(e)` dispatcher in Apps Script before using it as an API.
 
 **Important:** the bridge does not add user authentication by itself. The Apps Script backend must enforce authentication and permissions for every operation. Do not expose privileged Apps Script functions through a public deployment without those checks.
 
