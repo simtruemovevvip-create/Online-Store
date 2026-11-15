@@ -2198,6 +2198,8 @@ function beginApiLoading(text){
 
     // Central in-memory data store shared by every portal page.
     var PORTAL_DATA_CACHE=window.PORTAL_DATA_CACHE||Object.create(null);
+    var PORTAL_DATA_INFLIGHT=window.PORTAL_DATA_INFLIGHT||Object.create(null);
+    window.PORTAL_DATA_INFLIGHT=PORTAL_DATA_INFLIGHT;
     window.PORTAL_DATA_CACHE=PORTAL_DATA_CACHE;
     var PORTAL_DATA_CACHE_FRESH_MS=60000;
     var PORTAL_DATA_CACHE_MAX=120;
@@ -2239,6 +2241,15 @@ function beginApiLoading(text){
     }
     function portalDataCacheClear_(){
       Object.keys(PORTAL_DATA_CACHE).forEach(function(key){delete PORTAL_DATA_CACHE[key];});
+    }
+    function portalDataInflightFinish_(key,result){
+      if(!key||!PORTAL_DATA_INFLIGHT[key])return;
+      var pending=PORTAL_DATA_INFLIGHT[key].callbacks||[];
+      delete PORTAL_DATA_INFLIGHT[key];
+      pending.forEach(function(callback){
+        try{callback(portalDataCacheClone_(result));}
+        catch(error){console.error('Shared API response callback failed',error);}
+      });
     }
     function portalDataApiMutates_(name){
       return /^(systemOwnerLogin|sellerLogin|customerLogin|customerSocialLogin|customerRegister|save|delete|update|create|add|remove|submit|verify|reject|adjust|cancel|confirm|mark|set|collect|follow|apply|request|resend|begin|customerComplete|adminResolve|adminSet|sellerRespond|sellerSave|sellerDelete|sellerUpdate|sellerSend|send|change|reset|logout|customerLogout|upload|clear|merge|subscribe|approve)/i.test(String(name||''));
@@ -2285,6 +2296,24 @@ function beginApiLoading(text){
         },0);
         return;
       }
+      var existingPortalRequest=portalCacheable?PORTAL_DATA_INFLIGHT[portalCacheKey]:null;
+      if(existingPortalRequest){
+        existingPortalRequest.callbacks.push(function(sharedResult){
+          if(isStaleAdminPage())return;
+          try{done(sharedResult);}catch(sharedCallbackError){console.error('Shared API callback failed: '+name,sharedCallbackError);if(!silentError)alertError('เกิดข้อผิดพลาดขณะเปิดหน้า กรุณาลองใหม่อีกครั้ง');}
+          if(portalSkeletonRequest){try{customerPortalFinishSkeleton(portalSkeletonRequest);}catch(sharedSkeletonError){console.warn('Shared portal skeleton cleanup failed',sharedSkeletonError);}}
+          if(document.documentElement.hasAttribute('data-store-browser-reload')){
+            var sharedPrimaryReady=false;
+            if(APP.accessMode==='owner')sharedPrimaryReady=APP.currentView==='admin'&&adminReadApis.indexOf(name)>=0;
+            else if(APP.accessMode==='seller')sharedPrimaryReady=APP.currentView==='seller'&&(/^seller/.test(name)||name==='getSellerChatThreads');
+            else if(APP.accessMode==='customer')sharedPrimaryReady=APP.currentView!=='home'&&['getSettings','checkCustomerPortalSession','mergeGuestCart'].indexOf(name)<0;
+            else if(APP.accessMode==='guest')sharedPrimaryReady=APP.currentView!=='home'&&name!=='getSettings';
+            if(sharedPrimaryReady)window.setTimeout(finishBrowserRefreshSkeleton,90);
+          }
+        });
+        return;
+      }
+      if(portalCacheable)PORTAL_DATA_INFLIGHT[portalCacheKey]={callbacks:[]};
       var apiActivityHandle=beginApiActivity(name,loadingText||(showLoading?'กำลังประมวลผล...':'กำลังโหลดข้อมูล...'));
       var loadHandle=(!guardAdminPage&&(showLoading||pendingNavigation))?beginApiLoading(loadingText||(pendingNavigation?'กำลังเปิดหน้า...':'กำลังประมวลผล...')):null;
       var requestFinished=false,requestTimer=null;
@@ -2294,6 +2323,7 @@ function beginApiLoading(text){
         if(portalCacheable&&result&&result.success===true)portalDataCacheWrite_(portalCacheKey,result);
         else if(!isPrefetchApiRequest&&portalDataApiMutates_(name)&&result&&result.success===true)portalDataCacheClear_();
         try{done(result);}catch(callbackError){console.error('API callback failed: '+name,callbackError);if(!silentError)alertError('เกิดข้อผิดพลาดขณะเปิดหน้า กรุณาลองใหม่อีกครั้ง');}
+        if(portalCacheable)portalDataInflightFinish_(portalCacheKey,result);
         if(!isPrefetchApiRequest&&document.documentElement.hasAttribute('data-store-browser-reload')){
           var primaryReady=false;
           if(APP.accessMode==='owner')primaryReady=APP.currentView==='admin'&&adminReadApis.indexOf(name)>=0;
@@ -2306,8 +2336,8 @@ function beginApiLoading(text){
       function finishPortalSkeleton(){if(portalSkeletonRequest){try{customerPortalFinishSkeleton(portalSkeletonRequest);}catch(skeletonError){console.warn('Portal skeleton cleanup failed',skeletonError);}}}
       requestTimer=setTimeout(function(){
         if(!finishRequest())return;
-        if(isStaleAdminPage())return;
         var timeoutMessage='เซิร์ฟเวอร์ใช้เวลานานเกิน 45 วินาที กรุณาลองโหลดหน้านี้ใหม่อีกครั้ง';
+        if(isStaleAdminPage()){if(portalCacheable)portalDataInflightFinish_(portalCacheKey,{success:false,message:timeoutMessage,timeout:true});return;}
         if(!silentError)alertError(timeoutMessage);
         deliverApiResult({success:false,message:timeoutMessage,timeout:true});
         finishPortalSkeleton();
@@ -2509,14 +2539,18 @@ function beginApiLoading(text){
       if(requestPromise){
         requestPromise.then(function(result){
           if(!finishRequest())return;
+          result=result||{success:false,message:'ไม่ได้รับข้อมูลจากเซิร์ฟเวอร์'};
           if(!isStaleAdminPage()){
-            deliverApiResult(result||{success:false,message:'ไม่ได้รับข้อมูลจากเซิร์ฟเวอร์'});
+            deliverApiResult(result);
             finishPortalSkeleton();
+          }else if(portalCacheable){
+            if(result.success===true)portalDataCacheWrite_(portalCacheKey,result);
+            portalDataInflightFinish_(portalCacheKey,result);
           }
         }).catch(function(error){
           if(!finishRequest())return;
-          if(isStaleAdminPage())return;
           var msg=error&&error.message?error.message:'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ';
+          if(isStaleAdminPage()){if(portalCacheable)portalDataInflightFinish_(portalCacheKey,{success:false,message:msg});return;}
           if(!silentError)alertError(msg);
           deliverApiResult({success:false,message:msg});
           finishPortalSkeleton();
