@@ -3767,8 +3767,9 @@ function getMarketplaceStorefront(storeId, customerToken, page, pageSize, sort, 
     if(!listResult||!listResult.success)throw new Error(listResult&&listResult.message||'โหลดสินค้าของร้านไม่สำเร็จ');
 
     var featured=getProductSet({featured:true});
+    if(!featured.length)featured=getProductSet({sort:'newest'});
     var promotion=getProductSet({promotions:['discount'],sort:'newest'});
-    var bestSeller=getProductSet({bestSeller:true,sort:'best_seller'});
+    var bestSeller=getProductSet({sort:'best_seller'});
     var categoryShelves=storeCategories.slice(0,2).map(function(category){
       return {id:category.id,name:category.name,products:getProductSet({categoryId:category.id,sort:'best_seller'})};
     });
