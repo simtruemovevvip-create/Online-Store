@@ -4189,7 +4189,130 @@ function getSellerChatUpdates(customerToken,threadId,afterMessageAt,afterReadAt)
   }catch(e){return fail_(safeError_(e));}
 }
 
-function sellerGetChatCustomerProfile(customerToken,customerId){try{var x=requireSeller_(customerToken),threads=readTable_('ChatThreads',false).filter(function(t){return t.sellerId===x.store.id&&t.customerId===customerId;});if(!threads.length)throw new Error('ไม่มีสิทธิ์ดูข้อมูลลูกค้ารายนี้');var c=readTable_('Customers',false).filter(function(v){return v.id===customerId;})[0];if(!c)throw new Error('ไม่พบข้อมูลลูกค้า');return ok_({customer:{id:c.id,username:c.username,firstname:c.firstname,lastname:c.lastname,phone:c.phone,email:c.email,profileImage:c.profileImage,createdAt:c.createdAt},threadCount:threads.length});}catch(e){return fail_(safeError_(e));}}
+function sellerGetChatCustomerProfile(customerToken,customerId){
+  try{
+    var x=requireSeller_(customerToken),sellerId=String(x.store.id),targetCustomerId=String(customerId||'');
+    var threads=readTable_('ChatThreads',false).filter(function(t){
+      return String(t.sellerId)===sellerId&&String(t.customerId)===targetCustomerId;
+    });
+    if(!threads.length)throw new Error('ไม่มีสิทธิ์ดูข้อมูลลูกค้ารายนี้');
+    var customer=readTable_('Customers',true).filter(function(v){return String(v.id)===targetCustomerId;})[0];
+    if(!customer)throw new Error('ไม่พบข้อมูลลูกค้า');
+
+    // Only show orders and items belonging to this seller and this chat customer.
+    var parentOrders=readTable_('Orders',true).filter(function(o){
+      return String(o.customerId)===targetCustomerId;
+    });
+    var parentById=Object.create(null);
+    parentOrders.forEach(function(o){parentById[String(o.id)]=o;});
+
+    var sellerOrders=readTable_('SellerOrders',false).filter(function(o){
+      return String(o.sellerId)===sellerId&&!!parentById[String(o.parentOrderId||'')];
+    });
+    sellerOrders.sort(function(a,b){
+      return (new Date(b.createdAt||0).getTime()||0)-(new Date(a.createdAt||0).getTime()||0);
+    });
+    sellerOrders=sellerOrders.slice(0,6);
+
+    var sellerOrderById=Object.create(null),sellerOrderByParent=Object.create(null);
+    sellerOrders.forEach(function(o){
+      sellerOrderById[String(o.id)]=o;
+      sellerOrderByParent[String(o.parentOrderId)]=o;
+      o.items=[];
+    });
+    var parentOrderIds=Object.create(null);
+    Object.keys(sellerOrderByParent).forEach(function(id){parentOrderIds[id]=true;});
+    readTable_('OrderItems',true).forEach(function(item){
+      if(String(item.sellerId)!==sellerId)return;
+      var owner=sellerOrderById[String(item.sellerOrderId||'')]||sellerOrderByParent[String(item.orderId||'')];
+      if(!owner||!parentOrderIds[String(owner.parentOrderId)])return;
+      owner.items.push({
+        productName:String(item.productName||'สินค้า'),
+        sku:String(item.sku||''),
+        image:String(item.image||''),
+        quantity:number_(item.quantity,0),
+        unitPrice:number_(item.unitPrice,0),
+        subtotal:number_(item.subtotal,0)
+      });
+    });
+    var orders=sellerOrders.map(function(o){
+      var parent=parentById[String(o.parentOrderId)]||{};
+      return {
+        id:String(o.id||''),
+        orderNumber:String(o.orderNumber||parent.orderNumber||o.id||''),
+        status:String(o.status||parent.orderStatus||''),
+        paymentStatus:String(parent.paymentStatus||''),
+        subtotal:number_(o.subtotal,number_(parent.subtotal,0)),
+        createdAt:o.createdAt||parent.createdAt||'',
+        items:safeArray_(o.items).slice(0,4)
+      };
+    });
+
+    // Current store catalog and active store coupons for sales support in the chat.
+    var products=readTable_('Products',true).filter(function(p){
+      return String(p.sellerId)===sellerId&&String(p.status||'Active')==='Active';
+    });
+    products.sort(function(a,b){
+      return (new Date(b.updatedAt||b.createdAt||0).getTime()||0)-(new Date(a.updatedAt||a.createdAt||0).getTime()||0);
+    });
+    products=products.slice(0,6).map(function(p){
+      return {
+        id:String(p.id||''),
+        name:String(p.name||'สินค้า'),
+        sku:String(p.sku||''),
+        coverImage:String(p.coverImage||''),
+        price:number_(p.price,0),
+        salePrice:number_(p.salePrice,0),
+        stock:number_(p.stock,0),
+        status:String(p.status||'')
+      };
+    });
+
+    var now=Date.now();
+    var coupons=readTable_('Coupons',false).filter(function(c){
+      if(String(c.sellerId)!==sellerId||String(c.status)!=='Active')return false;
+      var start=c.startDate?new Date(c.startDate).getTime():0;
+      var end=c.endDate?new Date(c.endDate).getTime():Infinity;
+      if(start&&!isNaN(start)&&start>now)return false;
+      if(end!==Infinity&&!isNaN(end)&&end<now)return false;
+      var limit=number_(c.usageLimit,0);
+      return !limit||number_(c.usedCount,0)<limit;
+    });
+    coupons.sort(function(a,b){
+      return (new Date(b.createdAt||0).getTime()||0)-(new Date(a.createdAt||0).getTime()||0);
+    });
+    coupons=coupons.slice(0,5).map(function(c){
+      return {
+        id:String(c.id||''),
+        code:String(c.code||''),
+        title:String(c.title||c.code||'คูปองร้านค้า'),
+        discountType:String(c.discountType||''),
+        discountValue:number_(c.discountValue,0),
+        minimumOrder:number_(c.minimumOrder,0),
+        maximumDiscount:number_(c.maximumDiscount,0),
+        endDate:c.endDate||'',
+        status:String(c.status||'')
+      };
+    });
+
+    return ok_({
+      customer:{
+        id:customer.id,
+        username:customer.username,
+        firstname:customer.firstname,
+        lastname:customer.lastname,
+        phone:customer.phone,
+        email:customer.email,
+        profileImage:customer.profileImage,
+        createdAt:customer.createdAt
+      },
+      threadCount:threads.length,
+      orders:orders,
+      products:products,
+      coupons:coupons
+    });
+  }catch(e){return fail_(safeError_(e));}
+}
 function sellerDeleteChatMessage(customerToken,threadId,messageId){try{ensureTableColumns_('ChatMessages',SCHEMA_.ChatMessages);var x=requireSeller_(customerToken),t=readTable_('ChatThreads',false).filter(function(v){return v.id===threadId&&v.sellerId===x.store.id;})[0];if(!t)throw new Error('ไม่มีสิทธิ์เข้าถึงห้องแชต');var m=readTable_('ChatMessages',false).filter(function(v){return v.id===messageId&&v.threadId===threadId;})[0];if(!m||m.senderType!=='seller'||m.senderId!==x.store.id)throw new Error('ลบได้เฉพาะข้อความที่ร้านค้าส่งเอง');if(m.deletedAt)throw new Error('ข้อความนี้ถูกลบไปแล้ว');if(parseBool_(m.isRead)||m.readAt)throw new Error('ไม่สามารถลบข้อความที่ลูกค้าอ่านแล้ว');var age=Date.now()-new Date(m.createdAt).getTime();if(!isFinite(age)||age<0||age>5*60*1000)throw new Error('ลบข้อความได้ภายใน 5 นาทีหลังส่งเท่านั้น');var stamp=now_();updateRecord_('ChatMessages',messageId,{message:'',attachmentUrl:'',deletedAt:stamp,deletedBy:'seller'});return ok_(true,'ลบข้อความแล้ว');}catch(e){return fail_(safeError_(e));}}
 function sellerSendChatBroadcast(customerToken,data){try{var x=requireSeller_(customerToken);data=data||{};var title=text_(data.title,140),message=text_(data.message,500);if(!title||!message)throw new Error('กรุณากรอกหัวข้อและข้อความประกาศ');var ids={},threads=readTable_('ChatThreads',false).filter(function(t){return t.sellerId===x.store.id;});threads.forEach(function(t){ids[t.customerId]=true;});readTable_('StoreFollows',true).filter(function(f){return f.storeId===x.store.id;}).forEach(function(f){ids[f.customerId]=true;});var itemOrderIds={};readTable_('OrderItems',true).filter(function(i){return i.sellerId===x.store.id;}).forEach(function(i){itemOrderIds[i.orderId]=true;});readTable_('Orders',true).filter(function(o){return itemOrderIds[o.id]&&o.customerId;}).forEach(function(o){ids[o.customerId]=true;});var allowed=Object.keys(ids),mode=data.mode==='selected'?'selected':'all',selected=safeArray_(data.customerIds).map(function(v){return text_(v,100);});if(mode==='selected'){if(!selected.length)throw new Error('กรุณาเลือกลูกค้า');allowed=allowed.filter(function(id){return selected.indexOf(id)>=0;});}if(!allowed.length)throw new Error('ไม่พบลูกค้าที่มีความสัมพันธ์กับร้าน');if(allowed.length>5000)throw new Error('จำนวนผู้รับเกินขีดจำกัด 5,000 ราย กรุณาแบ่งส่งเป็นชุด');var stamp=now_(),sh=ensureTableColumns_('Notifications',SCHEMA_.Notifications),headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(function(v){return String(v||'').trim();}),records=allowed.map(function(id){return {id:newId_('NTF'),recipientId:id,recipientType:'customer',title:title,message:message,type:'broadcast',link:x.store.id,isRead:false,createdAt:stamp};}),rows=records.map(function(record){return headers.map(function(header){return record[header]===undefined?'':record[header];});});var currentLast=sh.getLastRow();sh.getRange(currentLast+1,1,rows.length,headers.length).setValues(rows);return ok_({sent:rows.length,mode:mode,storeId:x.store.id},'ส่งบรอดแคสต์แล้ว');}catch(e){return fail_(safeError_(e));}}
 function getMyNotifications(customerToken) {try{var c=requireCustomer_(customerToken);return ok_(readTable_('Notifications',false).filter(function(n){return n.recipientType==='customer'&&n.recipientId===c.id;}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt);}).slice(0,100));}catch(e){return fail_(safeError_(e));}}
