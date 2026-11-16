@@ -829,6 +829,10 @@ function invalidateTable_(name) {
     try { cache.remove('product_public_metrics_v1'); } catch (oldMetricsError) {}
     try { cache.remove(productPublicMetricsCacheKey_()); } catch (metricsError) {}
   }
+
+  // Publish a lightweight change event so every open browser tab can refresh
+  // only the visible data that depends on this table. No row data is exposed.
+  publishDataChange_(name);
 }
 
 function upsertSetting_(key, value) {
@@ -4582,7 +4586,7 @@ function sellerGetChatCustomerProfile(customerToken,customerId){
   }catch(e){return fail_(safeError_(e));}
 }
 function sellerDeleteChatMessage(customerToken,threadId,messageId){try{ensureTableColumns_('ChatMessages',SCHEMA_.ChatMessages);var x=requireSeller_(customerToken),t=readTable_('ChatThreads',false).filter(function(v){return v.id===threadId&&v.sellerId===x.store.id;})[0];if(!t)throw new Error('ไม่มีสิทธิ์เข้าถึงห้องแชต');var m=readTable_('ChatMessages',false).filter(function(v){return v.id===messageId&&v.threadId===threadId;})[0];if(!m||m.senderType!=='seller'||m.senderId!==x.store.id)throw new Error('ลบได้เฉพาะข้อความที่ร้านค้าส่งเอง');if(m.deletedAt)throw new Error('ข้อความนี้ถูกลบไปแล้ว');if(parseBool_(m.isRead)||m.readAt)throw new Error('ไม่สามารถลบข้อความที่ลูกค้าอ่านแล้ว');var age=Date.now()-new Date(m.createdAt).getTime();if(!isFinite(age)||age<0||age>5*60*1000)throw new Error('ลบข้อความได้ภายใน 5 นาทีหลังส่งเท่านั้น');var stamp=now_();updateRecord_('ChatMessages',messageId,{message:'',attachmentUrl:'',deletedAt:stamp,deletedBy:'seller'});return ok_(true,'ลบข้อความแล้ว');}catch(e){return fail_(safeError_(e));}}
-function sellerSendChatBroadcast(customerToken,data){try{var x=requireSeller_(customerToken);data=data||{};var title=text_(data.title,140),message=text_(data.message,500);if(!title||!message)throw new Error('กรุณากรอกหัวข้อและข้อความประกาศ');var ids={},threads=readTable_('ChatThreads',false).filter(function(t){return t.sellerId===x.store.id;});threads.forEach(function(t){ids[t.customerId]=true;});readTable_('StoreFollows',true).filter(function(f){return f.storeId===x.store.id;}).forEach(function(f){ids[f.customerId]=true;});var itemOrderIds={};readTable_('OrderItems',true).filter(function(i){return i.sellerId===x.store.id;}).forEach(function(i){itemOrderIds[i.orderId]=true;});readTable_('Orders',true).filter(function(o){return itemOrderIds[o.id]&&o.customerId;}).forEach(function(o){ids[o.customerId]=true;});var allowed=Object.keys(ids),mode=data.mode==='selected'?'selected':'all',selected=safeArray_(data.customerIds).map(function(v){return text_(v,100);});if(mode==='selected'){if(!selected.length)throw new Error('กรุณาเลือกลูกค้า');allowed=allowed.filter(function(id){return selected.indexOf(id)>=0;});}if(!allowed.length)throw new Error('ไม่พบลูกค้าที่มีความสัมพันธ์กับร้าน');if(allowed.length>5000)throw new Error('จำนวนผู้รับเกินขีดจำกัด 5,000 ราย กรุณาแบ่งส่งเป็นชุด');var stamp=now_(),sh=ensureTableColumns_('Notifications',SCHEMA_.Notifications),headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(function(v){return String(v||'').trim();}),records=allowed.map(function(id){return {id:newId_('NTF'),recipientId:id,recipientType:'customer',title:title,message:message,type:'broadcast',link:x.store.id,isRead:false,createdAt:stamp};}),rows=records.map(function(record){return headers.map(function(header){return record[header]===undefined?'':record[header];});});var currentLast=sh.getLastRow();sh.getRange(currentLast+1,1,rows.length,headers.length).setValues(rows);return ok_({sent:rows.length,mode:mode,storeId:x.store.id},'ส่งบรอดแคสต์แล้ว');}catch(e){return fail_(safeError_(e));}}
+function sellerSendChatBroadcast(customerToken,data){try{var x=requireSeller_(customerToken);data=data||{};var title=text_(data.title,140),message=text_(data.message,500);if(!title||!message)throw new Error('กรุณากรอกหัวข้อและข้อความประกาศ');var ids={},threads=readTable_('ChatThreads',false).filter(function(t){return t.sellerId===x.store.id;});threads.forEach(function(t){ids[t.customerId]=true;});readTable_('StoreFollows',true).filter(function(f){return f.storeId===x.store.id;}).forEach(function(f){ids[f.customerId]=true;});var itemOrderIds={};readTable_('OrderItems',true).filter(function(i){return i.sellerId===x.store.id;}).forEach(function(i){itemOrderIds[i.orderId]=true;});readTable_('Orders',true).filter(function(o){return itemOrderIds[o.id]&&o.customerId;}).forEach(function(o){ids[o.customerId]=true;});var allowed=Object.keys(ids),mode=data.mode==='selected'?'selected':'all',selected=safeArray_(data.customerIds).map(function(v){return text_(v,100);});if(mode==='selected'){if(!selected.length)throw new Error('กรุณาเลือกลูกค้า');allowed=allowed.filter(function(id){return selected.indexOf(id)>=0;});}if(!allowed.length)throw new Error('ไม่พบลูกค้าที่มีความสัมพันธ์กับร้าน');if(allowed.length>5000)throw new Error('จำนวนผู้รับเกินขีดจำกัด 5,000 ราย กรุณาแบ่งส่งเป็นชุด');var stamp=now_(),sh=ensureTableColumns_('Notifications',SCHEMA_.Notifications),headers=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(function(v){return String(v||'').trim();}),records=allowed.map(function(id){return {id:newId_('NTF'),recipientId:id,recipientType:'customer',title:title,message:message,type:'broadcast',link:x.store.id,isRead:false,createdAt:stamp};}),rows=records.map(function(record){return headers.map(function(header){return record[header]===undefined?'':record[header];});});var currentLast=sh.getLastRow();sh.getRange(currentLast+1,1,rows.length,headers.length).setValues(rows);invalidateTable_('Notifications');return ok_({sent:rows.length,mode:mode,storeId:x.store.id},'ส่งบรอดแคสต์แล้ว');}catch(e){return fail_(safeError_(e));}}
 function getMyNotifications(customerToken) {try{var c=requireCustomer_(customerToken);return ok_(readTable_('Notifications',false).filter(function(n){return n.recipientType==='customer'&&n.recipientId===c.id;}).sort(function(a,b){return new Date(b.createdAt)-new Date(a.createdAt);}).slice(0,100));}catch(e){return fail_(safeError_(e));}}
 function markNotificationRead(customerToken,id) {try{var c=requireCustomer_(customerToken),n=readTable_('Notifications',false).filter(function(x){return x.id===id&&x.recipientId===c.id&&x.recipientType==='customer';})[0];if(!n)throw new Error('ไม่พบการแจ้งเตือน');updateRecord_('Notifications',id,{isRead:true});return ok_(true);}catch(e){return fail_(safeError_(e));}}
 function requestReturn(customerToken,data) {try{var c=requireCustomer_(customerToken);data=data||{};var o=readTable_('Orders',false).filter(function(x){return x.id===data.orderId&&x.customerId===c.id;})[0];if(!o||['Delivered','Completed'].indexOf(o.orderStatus)<0)throw new Error('คำสั่งซื้อนี้ยังไม่เข้าเงื่อนไขการคืนสินค้า');var age=(Date.now()-new Date(o.completedAt||o.updatedAt||o.createdAt).getTime())/86400000;if(age>number_(getSettingValue_('returnWindowDays'),7))throw new Error('เกินระยะเวลายื่นคำขอคืนสินค้า');var item=readTable_('OrderItems',false).filter(function(i){return i.id===data.orderItemId&&i.orderId===o.id;})[0];if(!item)throw new Error('ไม่พบรายการสินค้าในคำสั่งซื้อ');var qty=Math.floor(number_(data.quantity,1));if(qty<1||qty>number_(item.quantity,0))throw new Error('จำนวนสินค้าที่ขอคืนไม่ถูกต้อง');if(readTable_('ReturnRequests',false).some(function(r){return r.orderItemId===item.id&&['Pending Seller Review','Approved','Return Shipped','Received','Refund Pending'].indexOf(r.status)>=0;}))throw new Error('รายการนี้มีคำขอคืนสินค้าที่กำลังดำเนินการอยู่');var row={id:newId_('RET'),orderId:o.id,orderItemId:item.id,customerId:c.id,sellerId:item.sellerId||'PLATFORM',quantity:qty,reason:text_(data.reason,100),details:sanitizeHtml_(data.details||''),evidence:JSON.stringify(safeArray_(data.evidence)),status:'Pending Seller Review',sellerResponse:'',adminResponse:'',createdAt:now_(),updatedAt:now_(),resolvedAt:''};appendRecord_('ReturnRequests',row);var st=readTable_('Stores',false).filter(function(s){return s.id===row.sellerId;})[0];if(st)notify_('customer',st.ownerCustomerId,'มีคำขอคืนสินค้าใหม่','มีคำขอคืนสินค้าสำหรับ '+item.productName,'return',row.id);return ok_(row,'ส่งคำขอคืนสินค้าแล้ว');}catch(e){return fail_(safeError_(e));}}
@@ -5630,4 +5634,112 @@ function adminSendOfficialStoreChatMessage(token, threadId, message, clientMessa
     var saved = chatSend_(t.id, 'PLATFORM', 'seller', message, '', clientMessageId);
     return ok_({threadId:t.id,message:saved,adminId:user.id}, 'ส่งข้อความถึงลูกค้าแล้ว');
   } catch (e) { return fail_(safeError_(e)); }
+}
+
+
+/* ---------------------- GLOBAL DATA CHANGE REVISION ---------------------- */
+/* Apps Script web apps do not provide browser push/WebSocket delivery.
+ * A small ScriptCache event stream gives active clients near-real-time updates
+ * while avoiding repeated reads of Google Sheets. */
+var DATA_CHANGE_EVENT_KEY_ = 'online_store_data_events_v1';
+var DATA_CHANGE_REVISION_KEY_ = 'online_store_data_revision_v1';
+var DATA_CHANGE_EVENT_TTL_SECONDS_ = 600;
+var DATA_CHANGE_EVENT_LIMIT_ = 100;
+
+function publishDataChange_(tableName) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var events = safeJson_(cache.get(DATA_CHANGE_EVENT_KEY_), []);
+    if (!Array.isArray(events)) events = [];
+    var event = {
+      id: Utilities.getUuid(),
+      at: new Date().getTime(),
+      table: String(tableName || 'Unknown')
+    };
+    events.push(event);
+    if (events.length > DATA_CHANGE_EVENT_LIMIT_) events = events.slice(-DATA_CHANGE_EVENT_LIMIT_);
+    cache.put(DATA_CHANGE_EVENT_KEY_, JSON.stringify(events), DATA_CHANGE_EVENT_TTL_SECONDS_);
+    cache.put(DATA_CHANGE_REVISION_KEY_, event.id, DATA_CHANGE_EVENT_TTL_SECONDS_);
+    return event.id;
+  } catch (error) {
+    // Change publication is best-effort; it must never roll back a saved record.
+    console.warn('Data revision publish skipped: ' + String(error && error.message || error));
+    return '';
+  }
+}
+
+function dataRevisionTableVisible_(portal, tableName) {
+  var role = String(portal || 'guest').toLowerCase();
+  var table = String(tableName || '');
+  if (role === 'owner') return true;
+
+  var publicTables = [
+    'Products','ProductVariants','Categories','Banners','Promotions','Coupons',
+    'Stores','StoreFollows','FlashDeals','LiveRooms','Reviews'
+  ];
+  if (role === 'guest') return publicTables.indexOf(table) >= 0;
+
+  if (role === 'customer') {
+    return publicTables.concat([
+      'Orders','OrderItems','Payments','Shipping','ReturnRequests','Notifications',
+      'ChatThreads','ChatMessages','Addresses','CustomerBankAccounts',
+      'CustomerPreferences','CollectedVouchers','CoinTransactions','Carts'
+    ]).indexOf(table) >= 0;
+  }
+
+  if (role === 'seller') {
+    return publicTables.concat([
+      'Orders','OrderItems','SellerOrders','SellerPayouts','Inventory',
+      'InventoryMovements','ReturnRequests','Notifications','ChatThreads',
+      'ChatMessages','Coupons','CollectedVouchers','Customers'
+    ]).indexOf(table) >= 0;
+  }
+  return false;
+}
+
+/** Returns change IDs and table names only; it never returns row contents. */
+function getDataRevision(token, portal, sinceRevision) {
+  try {
+    var role = String(portal || 'guest').toLowerCase();
+    if (role === 'owner') requireAdmin_(token, '');
+    else if (role === 'seller') requireSeller_(token);
+    else if (role === 'customer') requireCustomer_(token);
+    else if (role !== 'guest') throw new Error('ประเภทบัญชีไม่ถูกต้อง');
+
+    var cache = CacheService.getScriptCache();
+    var events = safeJson_(cache.get(DATA_CHANGE_EVENT_KEY_), []);
+    if (!Array.isArray(events)) events = [];
+    var revision = String(cache.get(DATA_CHANGE_REVISION_KEY_) || (events.length ? events[events.length - 1].id : '') || '');
+    var cursor = String(sinceRevision || '');
+    var changes = [];
+    var resync = false;
+
+    if (cursor) {
+      var cursorIndex = -1;
+      for (var i = events.length - 1; i >= 0; i--) {
+        if (String(events[i].id) === cursor) { cursorIndex = i; break; }
+      }
+      if (cursorIndex >= 0) changes = events.slice(cursorIndex + 1);
+      else if (revision && revision !== cursor) {
+        // Cursor fell out of the short event window or cache was evicted.
+        changes = events.slice(-DATA_CHANGE_EVENT_LIMIT_);
+        resync = true;
+      }
+    }
+
+    changes = changes.filter(function(event) {
+      return dataRevisionTableVisible_(role, event.table);
+    }).map(function(event) {
+      return {id:String(event.id || ''),at:Number(event.at || 0),table:String(event.table || '')};
+    });
+
+    return ok_({
+      revision:revision,
+      changes:changes,
+      resync:resync,
+      serverTime:new Date().getTime()
+    });
+  } catch (error) {
+    return fail_(safeError_(error));
+  }
 }
