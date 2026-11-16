@@ -5719,9 +5719,11 @@ function getDataRevision(token, portal, sinceRevision) {
       for (var i = events.length - 1; i >= 0; i--) {
         if (String(events[i].id) === cursor) { cursorIndex = i; break; }
       }
-      if (cursorIndex >= 0) changes = events.slice(cursorIndex + 1);
-      else if (revision && revision !== cursor) {
-        // Cursor fell out of the short event window or cache was evicted.
+      if (cursorIndex >= 0) {
+        changes = events.slice(cursorIndex + 1);
+      } else {
+        // Cursor fell out of the event window, or either ScriptCache key was
+        // evicted. Request a targeted refresh rather than leaving stale data.
         changes = events.slice(-DATA_CHANGE_EVENT_LIMIT_);
         resync = true;
       }
