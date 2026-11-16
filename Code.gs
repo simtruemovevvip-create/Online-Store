@@ -5647,6 +5647,52 @@ function adminGetOfficialStoreChatMessages(token, threadId) {
     return ok_({threadId:t.id,messages:rows});
   } catch (e) { return fail_(safeError_(e)); }
 }
+
+function adminGetChatUpdates(token, kind, key, afterMessageAt) {
+  try {
+    requireAdmin_(token, 'sellers.manage');
+    var chatKind=text_(kind,20),target=text_(key,100),thread=null;
+    if(chatKind==='seller'){
+      var store=readTable_('Stores',false).filter(function(s){
+        return String(s.id)===target&&String(s.id)!=='PLATFORM'&&s.status==='Active';
+      })[0];
+      if(!store)throw new Error('ไม่พบร้านค้าที่เปิดใช้งาน');
+      var threads=readTable_('ChatThreads',false).filter(function(t){
+        return String(t.sellerId)===target&&String(t.customerId||'')==='__SYSTEM_OWNER__'&&t.status!=='Closed';
+      });
+      threads.sort(function(a,b){
+        return (new Date(b.lastMessageAt||b.createdAt||0).getTime()||0)-
+          (new Date(a.lastMessageAt||a.createdAt||0).getTime()||0);
+      });
+      thread=threads[0]||null;
+      if(!thread)return ok_({threadId:'',messages:[],lastMessageAt:'',cursorAt:now_()},'ไม่มีข้อความใหม่');
+    }else if(chatKind==='official'){
+      thread=readTable_('ChatThreads',false).filter(function(t){
+        return String(t.id)===target&&String(t.sellerId||'')==='PLATFORM'&&t.status!=='Closed';
+      })[0]||null;
+      if(!thread)throw new Error('ไม่พบห้องแชตร้านค้าทางการ');
+    }else throw new Error('ประเภทแชตไม่ถูกต้อง');
+
+    var cursor=new Date(afterMessageAt||0).getTime()||0;
+    var overlap=Math.max(0,cursor-1000);
+    var rows=readTable_('ChatMessages',false).filter(function(m){
+      if(String(m.threadId)!==String(thread.id))return false;
+      var stamp=new Date(m.createdAt||0).getTime()||0;
+      return stamp>=overlap;
+    });
+    rows.sort(function(a,b){
+      return (new Date(a.createdAt||0).getTime()||0)-
+        (new Date(b.createdAt||0).getTime()||0);
+    });
+    markChatMessagesRead_(rows,chatKind==='seller'?'admin':'seller');
+    return ok_({
+      threadId:thread.id,
+      messages:rows,
+      lastMessageAt:rows.length?rows[rows.length-1].createdAt:'',
+      cursorAt:now_()
+    },'อัปเดตข้อความแล้ว');
+  } catch(e) { return fail_(safeError_(e)); }
+}
 function adminSendOfficialStoreChatMessage(token, threadId, message, attachmentUrl, clientMessageId) {
   try {
     if(arguments.length<5){clientMessageId=attachmentUrl;attachmentUrl='';}
