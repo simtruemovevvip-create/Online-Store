@@ -3254,7 +3254,29 @@ function uploadFile(token,payload){
       if(guestOrder.orderStatus==='Cancelled'||guestOrder.orderStatus==='Refunded'||guestOrder.paymentStatus==='Verified'||['bank_transfer','qr_payment'].indexOf(guestOrder.paymentMethod)<0)throw new Error('คำสั่งซื้อนี้ไม่สามารถส่งหลักฐานได้');
       actor='Guest:'+guestOrder.orderNumber;account='guest';
     }else{
-      var u=requireAdmin_(token,'files.upload');actor=u.username;
+      var isAdminChatUpload=String(payload.folder||'')==='ChatMessages';
+      var u=requireAdmin_(token,isAdminChatUpload?'sellers.manage':'files.upload');actor=u.username;
+      if(isAdminChatUpload){
+        var chatKind=String(payload.chatKind||'');
+        if(chatKind==='seller'){
+          var sid=text_(payload.storeId,100);
+          var chatStore=readTable_('Stores',false).filter(function(s){return String(s.id)===sid&&sid!=='PLATFORM'&&s.status==='Active';})[0];
+          if(!chatStore)throw new Error('ไม่พบร้านค้าที่เปิดใช้งาน');
+          var sellerThreads=readTable_('ChatThreads',false).filter(function(t){return String(t.sellerId)===sid&&String(t.customerId||'')==='__SYSTEM_OWNER__'&&t.status!=='Closed';});
+          sellerThreads.sort(function(a,b){return (new Date(b.lastMessageAt||b.createdAt||0).getTime()||0)-(new Date(a.lastMessageAt||a.createdAt||0).getTime()||0);});
+          chatThread=sellerThreads[0]||null;
+          if(!chatThread){
+            var chatStamp=now_();
+            chatThread={id:newId_('CHT'),customerId:'__SYSTEM_OWNER__',sellerId:sid,productId:'',lastMessage:'',lastMessageAt:chatStamp,status:'Open',createdAt:chatStamp,updatedAt:chatStamp};
+            appendRecord_('ChatThreads',chatThread);
+          }
+        }else if(chatKind==='official'){
+          chatThread=readTable_('ChatThreads',false).filter(function(t){return String(t.id)===String(payload.threadId||'')&&String(t.sellerId||'')==='PLATFORM'&&t.status!=='Closed';})[0]||null;
+          if(!chatThread)throw new Error('ไม่มีสิทธิ์แนบรูปในห้องแชตร้านค้าทางการนี้');
+        }else{
+          throw new Error('ไม่พบประเภทห้องแชตที่ต้องการแนบรูป');
+        }
+      }
     }
     var data=String(payload.base64||payload.data||'');var base=data.indexOf(',')>=0?data.substring(data.indexOf(',')+1):data;
     var bytes=Utilities.base64Decode(base);
@@ -3402,8 +3424,8 @@ function getDriveImageDataBatch(token,assetTokens){
           }else if(asset.access==='chat'&&folderName==='ChatMessages'&&isFileInSystemFolder_(file,'ChatMessages')){
             var chatThreadId=String(asset.purpose||'').indexOf('chat:')===0?String(asset.purpose).substring(5):'';
             var chatThread=chatThreadId?readTable_('ChatThreads',true).filter(function(t){return t.id===chatThreadId;})[0]:null;
-            if(chatThread&&customer&&chatThread.customerId===customer.id&&((asset.ownerType==='customer'&&asset.ownerId===customer.id)||(asset.ownerType==='seller'&&asset.ownerId===chatThread.sellerId)))allowed=true;
-            if(chatThread&&sellerContext&&chatThread.sellerId===sellerContext.store.id&&((asset.ownerType==='seller'&&asset.ownerId===sellerContext.store.id)||(asset.ownerType==='customer'&&asset.ownerId===chatThread.customerId)))allowed=true;
+            if(chatThread&&customer&&chatThread.customerId===customer.id&&((asset.ownerType==='customer'&&asset.ownerId===customer.id)||(asset.ownerType==='seller'&&asset.ownerId===chatThread.sellerId)||(asset.ownerType==='admin'&&String(chatThread.sellerId)==='PLATFORM')))allowed=true;
+            if(chatThread&&sellerContext&&chatThread.sellerId===sellerContext.store.id&&((asset.ownerType==='seller'&&asset.ownerId===sellerContext.store.id)||(asset.ownerType==='customer'&&asset.ownerId===chatThread.customerId)||(asset.ownerType==='admin'&&String(chatThread.customerId)==='__SYSTEM_OWNER__')))allowed=true;
             if(chatThread&&adminCustomer)allowed=true;
           }
         }else{
@@ -5556,8 +5578,9 @@ function adminGetSellerChatMessages(token, storeId) {
     return ok_({threadId:t.id,messages:rows});
   } catch (e) { return fail_(safeError_(e)); }
 }
-function adminSendSellerChatMessage(token, storeId, message, clientMessageId) {
+function adminSendSellerChatMessage(token, storeId, message, attachmentUrl, clientMessageId) {
   try {
+    if(arguments.length<5){clientMessageId=attachmentUrl;attachmentUrl='';}
     var user = requireAdmin_(token, 'sellers.manage'), sid = text_(storeId, 100);
     var store = readTable_('Stores', false).filter(function(s) {
       return String(s.id) === sid && String(s.id) !== 'PLATFORM' && s.status === 'Active';
@@ -5573,7 +5596,7 @@ function adminSendSellerChatMessage(token, storeId, message, clientMessageId) {
       t = {id:newId_('CHT'),customerId:'__SYSTEM_OWNER__',sellerId:sid,productId:'',lastMessage:'',lastMessageAt:stamp,status:'Open',createdAt:stamp,updatedAt:stamp};
       appendRecord_('ChatThreads', t);
     }
-    var saved = chatSend_(t.id, String(user.id || 'SYSTEM_ADMIN'), 'admin', message, '', clientMessageId);
+    var saved = chatSend_(t.id, String(user.id || 'SYSTEM_ADMIN'), 'admin', message, attachmentUrl || '', clientMessageId);
     return ok_({threadId:t.id,message:saved}, 'ส่งข้อความถึงร้านค้าแล้ว');
   } catch (e) { return fail_(safeError_(e)); }
 }
@@ -5624,14 +5647,15 @@ function adminGetOfficialStoreChatMessages(token, threadId) {
     return ok_({threadId:t.id,messages:rows});
   } catch (e) { return fail_(safeError_(e)); }
 }
-function adminSendOfficialStoreChatMessage(token, threadId, message, clientMessageId) {
+function adminSendOfficialStoreChatMessage(token, threadId, message, attachmentUrl, clientMessageId) {
   try {
+    if(arguments.length<5){clientMessageId=attachmentUrl;attachmentUrl='';}
     var user = requireAdmin_(token, 'sellers.manage');
     var t = readTable_('ChatThreads', false).filter(function(x) {
       return String(x.id) === String(threadId) && String(x.sellerId || '') === 'PLATFORM';
     })[0];
     if (!t) throw new Error('ไม่พบห้องแชตร้านค้าทางการ');
-    var saved = chatSend_(t.id, 'PLATFORM', 'seller', message, '', clientMessageId);
+    var saved = chatSend_(t.id, 'PLATFORM', 'seller', message, attachmentUrl || '', clientMessageId);
     return ok_({threadId:t.id,message:saved,adminId:user.id}, 'ส่งข้อความถึงลูกค้าแล้ว');
   } catch (e) { return fail_(safeError_(e)); }
 }
