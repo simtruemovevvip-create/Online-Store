@@ -12479,7 +12479,10 @@ function startGlobalDataSync_(){
     Swal.update=function(options){
       var current=Swal.getPopup&&Swal.getPopup();
       var next=options&&typeof options==='object'?Object.assign({},options):options;
-      if(current&&current.classList.contains('app-slide-drawer-popup')&&next&&typeof next==='object'){
+      var updatingToForm=next&&typeof next==='object'&&isFormDialog(next);
+      if(updatingToForm){
+        next=normalizeOptions(next);
+      }else if(current&&current.classList.contains('app-slide-drawer-popup')&&next&&typeof next==='object'){
         next.customClass=Object.assign({},next.customClass||{});
         next.customClass.popup=mergeClass(next.customClass.popup,'app-slide-drawer-popup');
         next.customClass.container=mergeClass(next.customClass.container,'app-slide-drawer-container');
@@ -12487,7 +12490,9 @@ function startGlobalDataSync_(){
       var result=originalUpdate.call(Swal,next);
       if(window.requestAnimationFrame)requestAnimationFrame(function(){
         var popup=Swal.getPopup&&Swal.getPopup();
-        if(popup&&popup.classList.contains('app-slide-drawer-popup'))applyRequiredFields(popup);
+        if(popup&&popup.classList.contains('app-slide-drawer-popup')){
+          enhanceOpenPopup(popup,updatingToForm?next:(next||{showConfirmButton:false,showCancelButton:false}));
+        }
       });
       return result;
     };
