@@ -3323,24 +3323,12 @@ function uploadFile(token,payload){
     var isChatImage=folderName==='ChatMessages'&&!!chatThread&&isImage;
     var displayable=isPublicSiteImage||isProfileImage;
     if(displayable||isChatImage)ensureDriveAssetsTable_();
-    // Drive assets are private by default and served through the asset registry.
-    // The only exception is the explicitly configured public Website Favicon,
-    // because browser tabs fetch it directly from its URL outside this app.
+    // Keep every uploaded file PRIVATE in Google Drive, including the favicon.
+    // Website-visible means readable through this app's permission-checked
+    // Image Service (DriveAssets + getDriveImageDataBatch), not a public Drive link.
+    // The favicon is loaded by applyStoreFavicon_() as a data URI from that service.
     var root=DriveApp.getFolderById(FOLDER_ID);var folder=getOrCreateFolder_(root,folderName);
     var blob=Utilities.newBlob(bytes,mime,name);var file=folder.createFile(blob);
-    var faviconPublicLink=false;
-    if(isFaviconUpload){
-      // A browser tab requests its favicon directly and cannot call the private
-      // Apps Script image-data API. Make ONLY this branding icon public by link.
-      try{
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);
-        faviconPublicLink=file.getSharingAccess()===DriveApp.Access.ANYONE_WITH_LINK||file.getSharingAccess()===DriveApp.Access.ANYONE;
-        if(!faviconPublicLink)throw new Error('Google Drive ไม่ยืนยันสิทธิ์ Anyone with the link');
-      }catch(faviconShareError){
-        try{file.setTrashed(true);}catch(ignoreTrashFavicon){}
-        throw new Error('อัปโหลด Favicon ไม่สำเร็จ เพราะ Google Drive ไม่อนุญาตให้เปิดอ่านรูปไอคอนแบบ Anyone with the link กรุณาตรวจนโยบายการแชร์ของ Drive: '+String(faviconShareError.message||faviconShareError).substring(0,140));
-      }
-    }
     if(folderName==='Payments'&&(account==='customer'||account==='guest'))file.setDescription('EcommercePaymentProof|'+text_(payload.orderId,100)+'|'+account+'|'+actor);
     if(isProfileImage)file.setDescription('EcommerceCustomerProfile|'+actor);
     if(isPublicSiteImage)file.setDescription('EcommerceSiteImage|'+folderName+'|'+account+'|'+actor+(isFaviconUpload?'|favicon':''));
@@ -3362,9 +3350,9 @@ function uploadFile(token,payload){
     var auditWarning='';try{log_('Upload','Drive',folderName+'/'+name,actor);}catch(logError){auditWarning='บันทึกไฟล์สำเร็จ แต่บันทึก Audit Log ไม่สำเร็จ: '+String(logError.message||logError).substring(0,160);}
     var successMessage = displayable ? 'อัปโหลดไฟล์สำเร็จและเก็บต้นฉบับเป็นส่วนตัวใน Google Drive' : 'บันทึกไฟล์เป็นส่วนตัวใน Google Drive สำเร็จ';
     if (profileImageSaved) successMessage = 'อัปโหลดรูปโปรไฟล์และบันทึก URL ลง Customers.profileImage ใน Google Sheets แล้ว';
-    if (isFaviconUpload) successMessage = 'อัปโหลด Favicon สำเร็จ ไฟล์ไอคอนนี้เปิดอ่านแบบ Anyone with the link เพื่อให้ Browser Tab ของผู้เข้าชมโหลดได้ ส่วนไฟล์อื่นยังเป็นส่วนตัว';
+    if (isFaviconUpload) successMessage = 'อัปโหลด Favicon สำเร็จและเก็บไฟล์เป็น Private ใน Google Drive หน้าเว็บไซต์จะโหลดไอคอนผ่าน Image Service โดยไม่ต้องแชร์ Anyone with the link';
     if (isProductVideoUpload) successMessage = 'อัปโหลดวิดีโอสินค้าสำเร็จและเก็บไฟล์เป็นส่วนตัวใน Google Drive';
-    return ok_({fileId:file.getId(),assetToken:assetToken,name:file.getName(),filename:file.getName(),url:url,profileUrl:isProfileImage?driveProfileImageUrl_(file.getId()):'',profileImageSaved:profileImageSaved,profileImageColumn:profileImageSaved?'Customers.profileImage':'',mimeType:mime,size:bytes.length,public:isPublicSiteImage,displayable:displayable,driveVisibility:faviconPublicLink?'PUBLIC_LINK':'PRIVATE',sharingStatus:faviconPublicLink?'ANYONE_WITH_LINK':'PRIVATE',privateVideo:isProductVideoUpload,warning:auditWarning},successMessage);
+    return ok_({fileId:file.getId(),assetToken:assetToken,name:file.getName(),filename:file.getName(),url:url,profileUrl:isProfileImage?driveProfileImageUrl_(file.getId()):'',profileImageSaved:profileImageSaved,profileImageColumn:profileImageSaved?'Customers.profileImage':'',mimeType:mime,size:bytes.length,public:isPublicSiteImage,displayable:displayable,driveVisibility:'PRIVATE',sharingStatus:'PRIVATE',deliveryMode:displayable?'APPS_SCRIPT_IMAGE_SERVICE':'PRIVATE_DRIVE',privateVideo:isProductVideoUpload,warning:auditWarning},successMessage);
   }catch(e){return fail_(safeError_(e));}
 }
 
