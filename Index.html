@@ -2332,7 +2332,7 @@ function beginApiLoading(text){
 
     function apiCall(name,args,callback,showLoading,loadingText,silentError){
       args=safeArray(args);var done=typeof callback==='function'?callback:function(){};
-      var portalSkeletonRequest=APP.customerPortalSkeletonPending?Number(APP.customerPortalSkeletonRequestId||0):0;
+      var portalSkeletonRequest=APP.customerPortalSkeletonPending&&name!=='getDataRevision'?Number(APP.customerPortalSkeletonRequestId||0):0;
       var pendingNavigation=!!(APP.lastActionButton&&Date.now()-Number(APP.lastActionAt||0)<1400&&APP.lastActionIsNavigation&&document.documentElement.contains(APP.lastActionButton));
       var adminReadApis=['getAdminSidebarBadgeCounts','getAdminSellerChatThreads','getAdminOfficialStoreChatThreads','adminGetSellerChatMessages','adminGetOfficialStoreChatMessages','getBannerStoreOptions','getDashboardStats','getSalesReports','getAdminSettings','getEmailOtpServiceStatus','getProductsAdmin','getCategories','getInventory','getOrders','getPayments','getShippingMethods','getCustomers','getCoupons','getReviewsAdmin','getBannersAdmin','getPromotionsAdmin','getUsers','getLogs','getNewsletters','getBackups','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getAdminGridPage'];
       var guardAdminPage=APP.currentView==='admin'&&adminReadApis.indexOf(name)>=0&&!APP.dataPrefetchInProgress;
@@ -2376,7 +2376,7 @@ function beginApiLoading(text){
         return;
       }
       if(portalCacheable)PORTAL_DATA_INFLIGHT[portalCacheKey]={callbacks:[]};
-      var apiActivityHandle=beginApiActivity(name,loadingText||(showLoading?'กำลังประมวลผล...':'กำลังโหลดข้อมูล...'));
+      var apiActivityHandle=silentError?null:beginApiActivity(name,loadingText||(showLoading?'กำลังประมวลผล...':'กำลังโหลดข้อมูล...'));
       var loadHandle=(!guardAdminPage&&(showLoading||pendingNavigation))?beginApiLoading(loadingText||(pendingNavigation?'กำลังเปิดหน้า...':'กำลังประมวลผล...')):null;
       var requestFinished=false,requestTimer=null;
       function finishRequest(){if(requestFinished)return false;requestFinished=true;if(requestTimer)clearTimeout(requestTimer);endApiLoading(loadHandle);endApiActivity(apiActivityHandle);return true;}
