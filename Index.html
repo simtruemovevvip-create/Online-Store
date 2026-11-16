@@ -2307,11 +2307,11 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
   .swal2-popup.app-slide-drawer-popup {
     position:relative!important;inset:auto!important;align-self:stretch!important;
     display:flex!important;flex-direction:column!important;gap:0!important;
-    width:min(512px,100vw)!important;max-width:100vw!important;
+    width:min(560px,100vw)!important;max-width:100vw!important;
     height:100vh!important;height:100dvh!important;max-height:none!important;
     min-height:0!important;margin:0!important;padding:0!important;
-    overflow:hidden!important;border:0!important;border-left:1px solid #e2e8f0!important;
-    border-radius:0!important;background:#fff!important;color:#1f2937!important;
+    overflow:hidden!important;border:0!important;border-left:1px solid var(--border)!important;
+    border-radius:0!important;background:var(--surface)!important;color:var(--ink)!important;
     box-shadow:-18px 0 52px rgba(15,23,42,.2)!important;
     text-align:left!important;animation:appDrawerEnter .24s cubic-bezier(.2,.75,.25,1) both!important;
   }
@@ -2321,27 +2321,27 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
   .swal2-popup.app-slide-drawer-popup>.swal2-title {
     order:0;flex:0 0 auto;width:100%;box-sizing:border-box!important;
     margin:0!important;padding:23px 64px 18px 24px!important;
-    border-bottom:1px solid #e5e7eb!important;background:#fff!important;
-    color:#111827!important;text-align:left!important;font-size:20px!important;
+    border-bottom:1px solid var(--border)!important;background:var(--surface)!important;
+    color:var(--ink)!important;text-align:left!important;font-size:20px!important;
     line-height:1.35!important;font-weight:700!important;
   }
   .swal2-popup.app-slide-drawer-popup>.swal2-title:after {
     content:"กรอกข้อมูลในช่องที่มีเครื่องหมาย * ให้ครบก่อนบันทึก";
-    display:block;margin-top:6px;color:#6b7280;font-size:12px;
+    display:block;margin-top:6px;color:var(--muted);font-size:12px;
     line-height:1.5;font-weight:400;
   }
   .swal2-popup.app-slide-drawer-popup>.swal2-close {
     position:absolute!important;z-index:3;top:12px!important;right:14px!important;
     width:40px!important;height:40px!important;border-radius:11px!important;
-    color:#64748b!important;font-size:27px!important;line-height:1!important;
-    background:#f8fafc!important;
+    color:var(--muted)!important;font-size:27px!important;line-height:1!important;
+    background:var(--surface-2)!important;
   }
-  .swal2-popup.app-slide-drawer-popup>.swal2-close:hover { color:#111827!important;background:#eef2f7!important; }
+  .swal2-popup.app-slide-drawer-popup>.swal2-close:hover { color:var(--ink)!important;background:var(--surface-2)!important; }
   .swal2-popup.app-slide-drawer-popup>.swal2-html-container {
     order:1;flex:1 1 auto!important;min-height:0!important;max-height:none!important;
     width:100%!important;box-sizing:border-box!important;margin:0!important;
     padding:22px 24px 26px!important;overflow-x:hidden!important;
-    overflow-y:auto!important;overscroll-behavior:contain;color:#374151!important;text-align:left!important;
+    overflow-y:auto!important;overscroll-behavior:contain;color:var(--ink)!important;text-align:left!important;
   }
   .swal2-popup.app-slide-drawer-popup>.swal2-input,
   .swal2-popup.app-slide-drawer-popup>.swal2-file,
@@ -2360,7 +2360,7 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     flex-direction:row-reverse!important;gap:10px!important;
     width:100%!important;box-sizing:border-box!important;margin:0!important;
     padding:15px 24px calc(15px + env(safe-area-inset-bottom,0px))!important;
-    border-top:1px solid #e5e7eb!important;background:#fff!important;
+    border-top:1px solid var(--border)!important;background:var(--surface)!important;
   }
   .swal2-popup.app-slide-drawer-popup .swal2-styled,
   .swal2-popup.app-slide-drawer-popup .app-drawer-custom-footer button {
@@ -2377,10 +2377,10 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
   .swal2-popup.app-slide-drawer-popup .app-drawer-custom-footer button[type="submit"]:hover { background:#1d4ed8!important; }
   .swal2-popup.app-slide-drawer-popup .swal2-cancel,
   .swal2-popup.app-slide-drawer-popup .app-drawer-custom-footer button.app-drawer-cancel {
-    background:#fff!important;color:#475569!important;border:1px solid #cbd5e1!important;
+    background:var(--surface)!important;color:var(--muted)!important;border:1px solid var(--border)!important;
   }
   .swal2-popup.app-slide-drawer-popup .swal2-cancel:hover,
-  .swal2-popup.app-slide-drawer-popup .app-drawer-custom-footer button.app-drawer-cancel:hover { background:#f8fafc!important; }
+  .swal2-popup.app-slide-drawer-popup .app-drawer-custom-footer button.app-drawer-cancel:hover { background:var(--surface-2)!important; }
   .swal2-popup.app-slide-drawer-popup .app-drawer-custom-footer button.auth-submit { width:auto!important;min-width:150px!important; }
   .swal2-popup.app-slide-drawer-popup .modal-form-grid,
   .swal2-popup.app-slide-drawer-popup .form-grid {
@@ -12316,8 +12316,13 @@ function startGlobalDataSync_(){
   }
   function isFormDialog(options){
     if(!options||typeof options!=='object'||options.toast)return false;
-    var html=typeof options.html==='string'?options.html:'';
-    return !!options.input||/<(?:input|select|textarea|form)\b/i.test(html);
+    var html='';
+    if(typeof options.html==='string')html=options.html;
+    else if(options.html&&typeof options.html.outerHTML==='string')html=options.html.outerHTML;
+    var hasNativeControl=/<(?:input|select|textarea|form)\b/i.test(html);
+    var hasFormLayout=/(?:modal-form-grid|modal-field|form-grid|rich-editor-wrap|data-app-form-page)/i.test(html);
+    var hasEditableField=/contenteditable\s*=\s*["']?true/i.test(html);
+    return !!options.input||hasNativeControl||hasFormLayout||hasEditableField;
   }
   function formPage(popup){
     var node=popup&&popup.querySelector?popup.querySelector('[data-app-form-page]'):null;
@@ -12451,6 +12456,12 @@ function startGlobalDataSync_(){
   Swal.fire=function(){
     if(arguments.length===1&&arguments[0]&&typeof arguments[0]==='object')
       return originalFire.call(Swal,normalizeOptions(arguments[0]));
+    /* Also normalize the legacy fire(title, html, icon) signature when it contains form markup. */
+    if(arguments.length>=2&&arguments.length<=3&&typeof arguments[1]==='string'){
+      var legacy={title:arguments[0],html:arguments[1]};
+      if(typeof arguments[2]==='string')legacy.icon=arguments[2];
+      if(isFormDialog(legacy))return originalFire.call(Swal,normalizeOptions(legacy));
+    }
     return originalFire.apply(Swal,arguments);
   };
   if(typeof originalUpdate==='function'){
