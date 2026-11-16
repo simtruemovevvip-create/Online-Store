@@ -2334,7 +2334,7 @@ function beginApiLoading(text){
       args=safeArray(args);var done=typeof callback==='function'?callback:function(){};
       var portalSkeletonRequest=APP.customerPortalSkeletonPending?Number(APP.customerPortalSkeletonRequestId||0):0;
       var pendingNavigation=!!(APP.lastActionButton&&Date.now()-Number(APP.lastActionAt||0)<1400&&APP.lastActionIsNavigation&&document.documentElement.contains(APP.lastActionButton));
-      var adminReadApis=['getAdminSidebarBadgeCounts','getAdminSellerChatThreads','getAdminOfficialStoreChatThreads','adminGetSellerChatMessages','adminGetOfficialStoreChatMessages','getBannerStoreOptions','getDashboardStats','getSalesReports','getAdminSettings','getEmailOtpServiceStatus','getProductsAdmin','getCategories','getInventory','getOrders','getPayments','getShippingMethods','getCustomers','getCoupons','getReviewsAdmin','getBannersAdmin','getPromotionsAdmin','getUsers','getLogs','getNewsletters','getBackups','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getAdminGridPage'];
+      var adminReadApis=['getDataRevision','getAdminSidebarBadgeCounts','getAdminSellerChatThreads','getAdminOfficialStoreChatThreads','adminGetSellerChatMessages','adminGetOfficialStoreChatMessages','getBannerStoreOptions','getDashboardStats','getSalesReports','getAdminSettings','getEmailOtpServiceStatus','getProductsAdmin','getCategories','getInventory','getOrders','getPayments','getShippingMethods','getCustomers','getCoupons','getReviewsAdmin','getBannersAdmin','getPromotionsAdmin','getUsers','getLogs','getNewsletters','getBackups','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getAdminGridPage'];
       var guardAdminPage=APP.currentView==='admin'&&adminReadApis.indexOf(name)>=0&&!APP.dataPrefetchInProgress;
       var requestAdminPage=guardAdminPage?APP.adminPage:'';
       var requestAdminId=guardAdminPage?Number(APP.adminRequestId||0):0;
@@ -2407,6 +2407,7 @@ function beginApiLoading(text){
       var requestPromise=null;
       try{
       switch(name){
+        case 'getDataRevision': requestPromise=gsRun('getDataRevision',args[0],args[1],args[2]); break;
         case 'getAdminSidebarBadgeCounts': requestPromise=gsRun('getAdminSidebarBadgeCounts',args[0]); break;
         case 'getSellerSidebarBadgeCounts': requestPromise=gsRun('getSellerSidebarBadgeCounts',args[0]); break;
         case 'getCustomerSidebarBadgeCounts': requestPromise=gsRun('getCustomerSidebarBadgeCounts',args[0]); break;
@@ -2663,7 +2664,7 @@ function beginApiLoading(text){
       // Load settings and restore the signed-in portal in parallel. Session
       // validation no longer waits for the settings table read to finish.
       apiCall('getSettings',[],function(r){if(r.success){APP.settings=r.data||{};applySettings();refreshVisibleProductCardOffers();var homeRoot=document.getElementById('appRoot');if(homeRoot&&homeRoot.querySelector('.home-marketplace')&&(APP.accessMode==='guest'||APP.accessMode==='customer')&&APP.currentView==='home')renderHome();}},false);
-      APP.sharedProductId=['owner','seller'].indexOf(APP.entryPortal)>=0?'':getQueryParam('product');if(APP.sharedProductId&&APP.accessMode==='guest'){APP.accessMode='guest';applyAccessMode('guest');viewProduct(APP.sharedProductId);}else restoreAccessPortal();
+      APP.sharedProductId=['owner','seller'].indexOf(APP.entryPortal)>=0?'':getQueryParam('product');if(APP.sharedProductId&&APP.accessMode==='guest'){APP.accessMode='guest';applyAccessMode('guest');viewProduct(APP.sharedProductId);}else restoreAccessPortal();startGlobalDataSync_();
       if(APP.qrLoginChallenge)setTimeout(function(){if(!APP.customerToken)openCustomerAuth('login');else showQrMobileApproval();},500);
       var reset=getQueryParam('reset');if(reset)setTimeout(function(){showResetPassword(reset);},700);
       window.addEventListener('scroll',function(){var b=document.getElementById('backTop');if(b)b.style.display=window.scrollY>450?'grid':'none';});
@@ -5027,7 +5028,7 @@ function loadPublicData(onComplete){
       transitionToGuestHomeAfterLogout('ออกจากระบบเจ้าของระบบแล้ว');
       if(token)apiCall('logout',[token],function(r){if(!r||!r.success)console.warn('Owner logout session could not be revoked',r&&r.message||'');},false,'',true);
     }
-    function loadAdminDashboard(){
+    function loadAdminDashboard(silentRefresh){
       var host=document.getElementById('adminContent');
       if(!host)return;
       var requestId=Number(APP.adminRequestId||0);
@@ -5048,7 +5049,7 @@ function loadPublicData(onComplete){
       }
 
       // Render every dashboard section together before starting server requests.
-      host.innerHTML=
+      if(!silentRefresh||!document.getElementById('dashboardStatsGrid'))host.innerHTML=
         '<div class="stat-grid" id="dashboardStatsGrid">'+
           '<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-coins"></i></div><small>ยอดขายวันนี้</small><strong class="muted">กำลังโหลด...</strong></div>'+
           '<div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-chart-line"></i></div><small>ยอดขายเดือนนี้</small><strong class="muted">กำลังโหลด...</strong></div>'+
@@ -5067,8 +5068,7 @@ function loadPublicData(onComplete){
           '<div class="table-head"><h3>คำสั่งซื้อล่าสุด</h3><button class="btn btn-outline btn-small" type="button" onclick="loadAdminPage(\'orders\')">ดูคำสั่งซื้อทั้งหมด <i class="fa-solid fa-arrow-right"></i></button></div>'+
           '<div class="table-scroll"><table><thead><tr><th>หมายเลขคำสั่งซื้อ</th><th>ลูกค้า</th><th>ยอดรวม</th><th>การชำระเงิน</th><th>สถานะคำสั่งซื้อ</th><th>วันที่สั่งซื้อ</th></tr></thead><tbody id="dashboardRecentOrdersBody"><tr><td colspan="6" class="admin-empty">กำลังโหลดรายการคำสั่งซื้อ...</td></tr></tbody></table></div>'+
         '</div>';
-      host.setAttribute('aria-busy','true');
-      host.removeAttribute('data-refreshing');
+      if(silentRefresh)host.setAttribute('data-refreshing','true');else{host.setAttribute('aria-busy','true');host.removeAttribute('data-refreshing');}
 
       // KPI cards and stock summary.
       apiCall('getDashboardStats',[APP.adminToken],function(result){
@@ -7615,9 +7615,9 @@ function showChatImageModalFromButton(button){var url=button&&button.getAttribut
       APP.chatOutbox[localId]={localId:localId,mode:isSeller?'seller':'customer',storeId:storeId,threadId:threadId,message:message,file:file,attachmentUrl:'',localUrl:localUrl,optimistic:optimistic};
       appendChatMessage(optimistic,APP.chatMode);input.value='';autoResizeChatComposer(input);APP.chatPendingFile=null;clearChatAttachment();transmitChatOutbox(localId);
     }
-function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login');if(typeof onLoaded==='function')onLoaded(false,'กรุณาเข้าสู่ระบบ');return;}if(!customerPortalEnsureShell('coins'))return;APP.currentView='wallet';customerPortalSetContent(customerPortalPageHead('เหรียญของฉัน','ตรวจสอบยอดคงเหลือและประวัติการได้รับหรือใช้เหรียญ')+'<div id="customerWalletContent" class="muted">กำลังโหลดข้อมูล...</div>');apiCall('getCustomerWallet',[APP.customerToken],function(r){var host=document.getElementById('customerWalletContent');if(!host)return;if(!r||!r.success){host.innerHTML='<div class="empty-state">'+esc(r&&r.message||'โหลดเหรียญไม่สำเร็จ')+'</div>';if(typeof onLoaded==='function')onLoaded(false,r&&r.message||'');return;}var d=r.data||{};host.innerHTML='<div class="market-ribbon"><div><small>ยอดเหรียญคงเหลือ</small><h2>'+Number(d.balance||0).toLocaleString('th-TH')+' เหรียญ</h2></div><i class="fa-solid fa-coins" style="font-size:38px"></i></div><h3>ประวัติเหรียญ</h3><div class="customer-portal-table-wrap"><table class="market-table"><thead><tr><th>วันที่</th><th>รายการ</th><th>จำนวน</th></tr></thead><tbody>'+(safeArray(d.transactions).length?safeArray(d.transactions).map(function(x){return '<tr><td>'+esc(formatThaiChatTime(x.createdAt,true))+'</td><td>'+esc(x.description)+'</td><td>'+(x.type==='Spend'?'-':'+')+esc(x.amount)+'</td></tr>';}).join(''):'<tr><td colspan="3">ยังไม่มีประวัติเหรียญ</td></tr>')+'</tbody></table></div>';if(typeof onLoaded==='function')onLoaded(true,'');},false);}
-    function showMyVouchers(onLoaded){if(!APP.customerToken){openCustomerAuth('login');if(typeof onLoaded==='function')onLoaded(false,'กรุณาเข้าสู่ระบบ');return;}if(!customerPortalEnsureShell('vouchers'))return;APP.currentView='myVouchers';customerPortalSetContent(customerPortalPageHead('คูปองของฉัน','คูปองที่คุณเก็บไว้และสถานะการใช้งาน')+'<div id="customerVouchersContent" class="muted">กำลังโหลดคูปอง...</div>');apiCall('getMyVouchers',[APP.customerToken],function(r){var host=document.getElementById('customerVouchersContent');if(!host)return;var rows=r&&r.success?safeArray(r.data):[];host.innerHTML=rows.length?'<div class="store-grid">'+rows.map(function(v){return '<div class="customer-portal-section-card"><div><span class="market-tag">'+esc(v.code)+'</span><h3 style="margin-top:9px">'+esc(v.title||v.code)+'</h3><b class="deal-price">'+(v.discountType==='percent'?esc(v.discountValue)+'%':money(v.discountValue))+'</b><p class="customer-portal-help">ขั้นต่ำ '+money(v.minimumOrder)+' · หมดอายุ '+esc(v.endDate||'ไม่ระบุ')+'</p><small class="muted">'+(v.used?'ใช้แล้ว':'พร้อมใช้งาน')+'</small></div></div>';}).join('')+'</div>':'<div class="empty-state"><i class="fa-solid fa-ticket"></i><h3>ยังไม่มีคูปอง ที่เก็บไว้</h3><p>ไปที่ ศูนย์รวมคูปอง เพื่อเก็บโค้ดส่วนลด</p><button class="btn btn-primary" onclick="showMarketplaceVouchers()">ไปที่ ศูนย์รวมคูปอง</button></div>';if(typeof onLoaded==='function')onLoaded(!!(r&&r.success),r&&r.message||'');},false);}
-    function showMyReturns(onLoaded){if(!APP.customerToken){openCustomerAuth('login');if(typeof onLoaded==='function')onLoaded(false,'กรุณาเข้าสู่ระบบ');return;}if(!customerPortalEnsureShell('returns'))return;APP.currentView='myReturns';customerPortalSetContent(customerPortalPageHead('คืนสินค้า / คืนเงิน','ติดตามคำขอคืนสินค้าและสถานะการดำเนินการ')+'<div id="customerReturnsContent" class="muted">กำลังโหลดคำขอคืนสินค้า...</div>');apiCall('getCustomerReturns',[APP.customerToken],function(r){var host=document.getElementById('customerReturnsContent');if(!host)return;var rows=r&&r.success?safeArray(r.data):[];host.innerHTML='<div class="customer-portal-table-wrap"><table class="market-table"><thead><tr><th>คำขอ</th><th>เลขที่คำสั่งซื้อ</th><th>เหตุผล</th><th>สถานะ</th><th>วันที่</th></tr></thead><tbody>'+(rows.length?rows.map(function(x){return '<tr><td>'+esc(x.id)+'</td><td>'+esc(x.orderId)+'</td><td>'+esc(x.reason)+'</td><td>'+esc(x.status)+'</td><td>'+esc(formatThaiChatTime(x.createdAt,true))+'</td></tr>';}).join(''):'<tr><td colspan="5">ยังไม่มีคำขอคืนสินค้า</td></tr>')+'</tbody></table></div>';if(typeof onLoaded==='function')onLoaded(!!(r&&r.success),r&&r.message||'');},false);}
+function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustomerAuth('login');if(typeof onLoaded==='function')onLoaded(false,'กรุณาเข้าสู่ระบบ');return;}if(!customerPortalEnsureShell('coins'))return;APP.currentView='wallet';if(!silentRefresh)customerPortalSetContent(customerPortalPageHead('เหรียญของฉัน','ตรวจสอบยอดคงเหลือและประวัติการได้รับหรือใช้เหรียญ')+'<div id="customerWalletContent" class="muted">กำลังโหลดข้อมูล...</div>');apiCall('getCustomerWallet',[APP.customerToken],function(r){var host=document.getElementById('customerWalletContent');if(!host)return;if(!r||!r.success){host.innerHTML='<div class="empty-state">'+esc(r&&r.message||'โหลดเหรียญไม่สำเร็จ')+'</div>';if(typeof onLoaded==='function')onLoaded(false,r&&r.message||'');return;}var d=r.data||{};host.innerHTML='<div class="market-ribbon"><div><small>ยอดเหรียญคงเหลือ</small><h2>'+Number(d.balance||0).toLocaleString('th-TH')+' เหรียญ</h2></div><i class="fa-solid fa-coins" style="font-size:38px"></i></div><h3>ประวัติเหรียญ</h3><div class="customer-portal-table-wrap"><table class="market-table"><thead><tr><th>วันที่</th><th>รายการ</th><th>จำนวน</th></tr></thead><tbody>'+(safeArray(d.transactions).length?safeArray(d.transactions).map(function(x){return '<tr><td>'+esc(formatThaiChatTime(x.createdAt,true))+'</td><td>'+esc(x.description)+'</td><td>'+(x.type==='Spend'?'-':'+')+esc(x.amount)+'</td></tr>';}).join(''):'<tr><td colspan="3">ยังไม่มีประวัติเหรียญ</td></tr>')+'</tbody></table></div>';if(typeof onLoaded==='function')onLoaded(true,'');},false);}
+    function showMyVouchers(onLoaded,silentRefresh){if(!APP.customerToken){openCustomerAuth('login');if(typeof onLoaded==='function')onLoaded(false,'กรุณาเข้าสู่ระบบ');return;}if(!customerPortalEnsureShell('vouchers'))return;APP.currentView='myVouchers';if(!silentRefresh)customerPortalSetContent(customerPortalPageHead('คูปองของฉัน','คูปองที่คุณเก็บไว้และสถานะการใช้งาน')+'<div id="customerVouchersContent" class="muted">กำลังโหลดคูปอง...</div>');apiCall('getMyVouchers',[APP.customerToken],function(r){var host=document.getElementById('customerVouchersContent');if(!host)return;var rows=r&&r.success?safeArray(r.data):[];host.innerHTML=rows.length?'<div class="store-grid">'+rows.map(function(v){return '<div class="customer-portal-section-card"><div><span class="market-tag">'+esc(v.code)+'</span><h3 style="margin-top:9px">'+esc(v.title||v.code)+'</h3><b class="deal-price">'+(v.discountType==='percent'?esc(v.discountValue)+'%':money(v.discountValue))+'</b><p class="customer-portal-help">ขั้นต่ำ '+money(v.minimumOrder)+' · หมดอายุ '+esc(v.endDate||'ไม่ระบุ')+'</p><small class="muted">'+(v.used?'ใช้แล้ว':'พร้อมใช้งาน')+'</small></div></div>';}).join('')+'</div>':'<div class="empty-state"><i class="fa-solid fa-ticket"></i><h3>ยังไม่มีคูปอง ที่เก็บไว้</h3><p>ไปที่ ศูนย์รวมคูปอง เพื่อเก็บโค้ดส่วนลด</p><button class="btn btn-primary" onclick="showMarketplaceVouchers()">ไปที่ ศูนย์รวมคูปอง</button></div>';if(typeof onLoaded==='function')onLoaded(!!(r&&r.success),r&&r.message||'');},false);}
+    function showMyReturns(onLoaded,silentRefresh){if(!APP.customerToken){openCustomerAuth('login');if(typeof onLoaded==='function')onLoaded(false,'กรุณาเข้าสู่ระบบ');return;}if(!customerPortalEnsureShell('returns'))return;APP.currentView='myReturns';if(!silentRefresh)customerPortalSetContent(customerPortalPageHead('คืนสินค้า / คืนเงิน','ติดตามคำขอคืนสินค้าและสถานะการดำเนินการ')+'<div id="customerReturnsContent" class="muted">กำลังโหลดคำขอคืนสินค้า...</div>');apiCall('getCustomerReturns',[APP.customerToken],function(r){var host=document.getElementById('customerReturnsContent');if(!host)return;var rows=r&&r.success?safeArray(r.data):[];host.innerHTML='<div class="customer-portal-table-wrap"><table class="market-table"><thead><tr><th>คำขอ</th><th>เลขที่คำสั่งซื้อ</th><th>เหตุผล</th><th>สถานะ</th><th>วันที่</th></tr></thead><tbody>'+(rows.length?rows.map(function(x){return '<tr><td>'+esc(x.id)+'</td><td>'+esc(x.orderId)+'</td><td>'+esc(x.reason)+'</td><td>'+esc(x.status)+'</td><td>'+esc(formatThaiChatTime(x.createdAt,true))+'</td></tr>';}).join(''):'<tr><td colspan="5">ยังไม่มีคำขอคืนสินค้า</td></tr>')+'</tbody></table></div>';if(typeof onLoaded==='function')onLoaded(!!(r&&r.success),r&&r.message||'');},false);}
     function showMyNotifications(){showCustomerNotifications('all');}
     function readNotification(id){apiCall('markNotificationRead',[APP.customerToken,id],function(r){if(r&&r.success)showCustomerNotifications(APP.customerNotificationFilter||'all');else alertError(r&&r.message||'อัปเดตสถานะการแจ้งเตือนไม่สำเร็จ');},false);}
     function showFollowedStores(){if(!APP.customerToken){openCustomerAuth('login');return;}if(!customerPortalEnsureShell('following'))return;APP.currentView='followedStores';customerPortalSetContent(customerPortalPageHead('ร้านที่ติดตาม','ร้านค้าที่คุณกดติดตามไว้')+'<div id="followedStoresContent" class="muted">กำลังโหลดร้านค้าที่ติดตาม...</div>');apiCall('getFollowedStores',[APP.customerToken],function(r){var host=document.getElementById('followedStoresContent');if(!host)return;var rows=r&&r.success?safeArray(r.data):[];host.innerHTML='<div class="store-grid">'+(rows.length?rows.map(renderStoreCard).join(''):'<div class="empty-state">ยังไม่ได้ติดตามร้านค้า</div>')+'</div>';},false);}
@@ -8246,7 +8246,7 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
           try{
             var root=document.getElementById('appRoot');
             if(root){
-              root.innerHTML='<div role="alert" style="max-width:680px;margin:40px auto;padding:24px;border:1px solid #fecaca;border-radius:14px;background:#fff;color:#991b1b;text-align:center"><h2 style="margin:0 0 10px;font-size:18px">เปิดหน้าเว็บไม่สำเร็จ</h2><p style="margin:0 0 18px">ระบบเริ่มต้นทำงานไม่ครบ กรุณาลองโหลดหน้าเว็บอีกครั้ง</p><button type="button" onclick="window.location.reload()" style="border:0;border-radius:8px;padding:10px 18px;background:#dc2626;color:#fff;font-weight:700;cursor:pointer">ลองโหลดใหม่</button></div>';
+              root.innerHTML='<div role="alert" style="max-width:680px;margin:40px auto;padding:24px;border:1px solid #fecaca;border-radius:14px;background:#fff;color:#991b1b;text-align:center"><h2 style="margin:0 0 10px;font-size:18px">เปิดหน้าเว็บไม่สำเร็จ</h2><p style="margin:0 0 18px">ระบบเริ่มต้นทำงานไม่ครบ กรุณาลองโหลดหน้าเว็บอีกครั้ง</p><button type="button" onclick="window.__retryOnlineStoreStartup&&window.__retryOnlineStoreStartup()" style="border:0;border-radius:8px;padding:10px 18px;background:#dc2626;color:#fff;font-weight:700;cursor:pointer">ลองเริ่มระบบอีกครั้ง</button></div>';
             }
           }catch(fallbackError){}
         }
@@ -8255,6 +8255,7 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
         window.setTimeout(startTableEnhancerSafely,0);
       }
 
+      window.__retryOnlineStoreStartup=function(){try{appStartupStarted=false;startApplication();}catch(retryError){console.error('[Online Store] Retry startup failed',retryError);}};
       if(document.readyState==='loading'){
         document.addEventListener('DOMContentLoaded',startApplication,{once:true});
       }else{
@@ -11594,6 +11595,110 @@ function showMyWallet(onLoaded){if(!APP.customerToken){openCustomerAuth('login')
         input.value='';refreshAdminChatPage();
       },false);
     }
+
+
+var LIVE_DATA_SYNC_TIMER_=null,LIVE_DATA_SYNC_BUSY_=false,LIVE_DATA_SYNC_CURSOR_='',LIVE_DATA_SYNC_PORTAL_='',LIVE_DATA_SYNC_PENDING_=[];
+var LIVE_DATA_SYNC_ACTIVE_MS_=3200,LIVE_DATA_SYNC_HIDDEN_MS_=18000,LIVE_DATA_SYNC_LAST_={};
+var LIVE_OWNER_PAGES_={Settings:['settings','officialStore','dashboard'],Products:['products','officialProducts','inventory','dashboard'],ProductVariants:['products','officialProducts','inventory','dashboard'],Categories:['categories','products','officialProducts'],Inventory:['inventory','dashboard'],Orders:['orders','officialOrders','dashboard','reports'],OrderItems:['orders','officialOrders','dashboard'],Payments:['payments','orders','officialOrders','dashboard'],Shipping:['shipping','orders'],ShippingMethods:['shipping','settings'],Customers:['customers','dashboard','officialChat'],Stores:['sellers','officialStore','sellerChat'],ChatThreads:['sellerChat','officialChat'],ChatMessages:['sellerChat','officialChat'],ReturnRequests:['marketplaceReturns'],SellerPayouts:['marketplacePayouts'],Promotions:['promotions','dashboard'],Coupons:['coupons'],Reviews:['reviews','products'],Banners:['banners','officialStore'],Users:['users'],Logs:['logs'],Newsletters:['newsletters'],Backups:['backup'],FlashDeals:['flashDeals','dashboard'],LiveRooms:['dashboard'],Notifications:['sellerChat','officialChat']};
+var LIVE_SELLER_PAGES_={Products:['products','dashboard'],ProductVariants:['products','dashboard'],Inventory:['products','dashboard'],Orders:['orders','dashboard'],OrderItems:['orders','dashboard'],Payments:['orders','dashboard'],Shipping:['orders','dashboard'],SellerOrders:['orders','dashboard'],Customers:['customers','chat'],ChatThreads:['chat','customers'],ChatMessages:['chat'],ReturnRequests:['returns','orders'],SellerPayouts:['payouts','dashboard'],Coupons:['vouchers'],CollectedVouchers:['vouchers'],FlashDeals:['deals'],LiveRooms:['live'],Stores:['store','dashboard'],Notifications:['chat']};
+var LIVE_PUBLIC_TABLES_=['Products','ProductVariants','Categories','Banners','Promotions','Coupons','Stores','StoreFollows','FlashDeals','LiveRooms','Reviews'];
+function liveTables_(events){var a=[],seen={};safeArray(events).forEach(function(e){var n=String(e&&e.table||'');if(n&&!seen[n]){seen[n]=1;a.push(n);}});return a;}
+function liveAffected_(map,tables,page){return tables.some(function(t){return safeArray(map[t]).indexOf(page)>=0;});}
+function liveSkip_(table){var now=Date.now(),last=Number(LIVE_DATA_SYNC_LAST_[table]||0);if(now-last<1400)return true;LIVE_DATA_SYNC_LAST_[table]=now;return false;}
+function liveQueue_(tables){LIVE_DATA_SYNC_PENDING_=Array.from(new Set(LIVE_DATA_SYNC_PENDING_.concat(tables)));}
+function liveRefreshOwner_(tables,resync){
+ if(APP.currentView!=='admin'||!APP.adminToken)return;var page=String(APP.adminPage||'dashboard');
+ if(window.Swal&&Swal.isVisible()){liveQueue_(tables);return;}
+ if(resync||liveAffected_(LIVE_OWNER_PAGES_,tables,page)){
+  if(page==='sellerChat'||page==='officialChat'){if(resync||tables.some(function(t){return ['ChatThreads','ChatMessages','Stores'].indexOf(t)>=0;}))refreshAdminChatPage();}
+  else if(page==='dashboard'){if(!tables.every(liveSkip_))loadAdminDashboard(true);}
+  else if(page==='settings'){if(resync||tables.indexOf('Settings')>=0)loadAdminSettings();}
+  else if(page==='officialStore'){if(resync||tables.some(function(t){return ['Stores','Settings'].indexOf(t)>=0;}))loadOfficialStoreAdmin();}
+  else if(page==='reports'){if(!tables.every(liveSkip_))loadAdminReports();}
+  else if(page==='backup'){if(resync||tables.indexOf('Backups')>=0)loadBackupAdmin();}
+  else{var state=window.ADMIN_GRID_STATES&&ADMIN_GRID_STATES['admin_'+page];if(state){adminGridInvalidatePageCache_(page);adminGridLoad(page,null,null,true,true);}else if(['sellers','flashDeals','marketplaceReturns','marketplacePayouts'].indexOf(page)>=0)adminRefreshModuleAfterMutation(page,null,true);}
+ }
+ if(typeof loadAdminSidebarBadges==='function')loadAdminSidebarBadges();
+}
+function liveRefreshSeller_(tables,resync){
+ if(APP.currentView!=='seller'||!APP.customerToken)return;var page=String(APP.sellerPage||'dashboard');
+ if(!resync&&!liveAffected_(LIVE_SELLER_PAGES_,tables,page))return;
+ if(window.Swal&&Swal.isVisible()){liveQueue_(tables);return;}
+ if(page==='chat'){if(typeof refreshSellerChatUnreadRows==='function')refreshSellerChatUnreadRows();if(APP.sellerChatActiveThread&&typeof pollSellerChatUpdatesNow==='function')pollSellerChatUpdatesNow(APP.sellerChatActiveThread);}
+ else{sellerInvalidatePageCache_(page);loadSellerPage(page,null,true,true,true);}
+ if(typeof loadSellerSidebarBadges==='function')loadSellerSidebarBadges();
+}
+function liveCustomerNotifications_(rows){
+ var host=document.getElementById('customerNotificationsPage');if(!host)return;
+ var f=APP.customerNotificationFilter||'all',items=safeArray(rows);
+ if(f==='order')items=items.filter(function(n){return /order|payment|ship|delivery|return|คำสั่งซื้อ|จัดส่ง/i.test(String(n.type||'')+' '+String(n.title||''));});
+ if(f==='promotion')items=items.filter(function(n){return /promo|promotion|coupon|voucher|campaign|ส่วนลด|โปรโมชั่น/i.test(String(n.type||'')+' '+String(n.title||''));});
+ var title=f==='order'?'อัปเดตคำสั่งซื้อ':f==='promotion'?'เรื่องโปรโมชั่น':'การแจ้งเตือนทั้งหมด',y=host.scrollTop;
+ host.innerHTML=customerPortalPageHead(title,'ติดตามข่าวสารและสถานะจากระบบ')+(items.length?items.map(function(n){return '<div class="market-ribbon" style="align-items:flex-start"><div style="flex:1;min-width:0"><b>'+esc(n.title||'การแจ้งเตือน')+'</b><p>'+esc(n.message||'')+'</p><small class="muted">'+esc(formatThaiChatTime(n.createdAt,true))+'</small></div>'+(n.isRead?'<span class="market-tag">อ่านแล้ว</span>':'<button class="btn btn-outline btn-small" onclick="readNotification(\''+esc(n.id)+'\')">อ่านแล้ว</button>')+'</div>';}).join(''):'<div class="empty-state"><i class="fa-regular fa-bell-slash"></i><h3>ไม่มีการแจ้งเตือน</h3><p>ยังไม่มีรายการในหมวดนี้</p></div>');
+ host.scrollTop=y;
+}
+function liveCustomerOrders_(){
+ apiCall('getCustomerOrders',[APP.customerToken],function(r){if(!r||!r.success||APP.currentView!=='customerPurchases')return;APP.customerOrders=safeArray(r.data);
+  if((APP.customerPurchaseTab||'unpaid')==='returns')apiCall('getCustomerReturns',[APP.customerToken],function(rr){if(APP.currentView!=='customerPurchases')return;APP.customerPurchaseReturns=rr&&rr.success?safeArray(rr.data):[];APP.customerPurchaseReturnsLoaded=true;customerPurchasesRender('returns');},false,'',true);
+  else customerPurchasesRender(APP.customerPurchaseTab||'unpaid');
+ },false,'',true);
+}
+function liveCustomerReturns_(){
+ apiCall('getCustomerReturns',[APP.customerToken],function(r){if(!r||!r.success)return;var rows=safeArray(r.data);
+  if(APP.currentView==='myReturns'){var host=document.getElementById('customerReturnsContent');if(host)host.innerHTML='<div class="customer-portal-table-wrap"><table class="market-table"><thead><tr><th>คำขอ</th><th>เลขที่คำสั่งซื้อ</th><th>เหตุผล</th><th>สถานะ</th><th>วันที่</th></tr></thead><tbody>'+(rows.length?rows.map(function(x){return '<tr><td>'+esc(x.id)+'</td><td>'+esc(x.orderId)+'</td><td>'+esc(x.reason)+'</td><td>'+esc(x.status)+'</td><td>'+esc(formatThaiChatTime(x.createdAt,true))+'</td></tr>';}).join(''):'<tr><td colspan="5">ยังไม่มีคำขอคืนสินค้า</td></tr>')+'</tbody></table></div>';}
+  else if(APP.currentView==='customerPurchases'&&APP.customerPurchaseTab==='returns'){APP.customerPurchaseReturns=rows;APP.customerPurchaseReturnsLoaded=true;customerPurchasesRender('returns');}
+ },false,'',true);
+}
+function liveCustomerHistory_(){
+ apiCall('getCustomerOrders',[APP.customerToken],function(r){if(!r||!r.success||APP.currentView!=='account')return;APP.customerOrders=safeArray(r.data);var host=document.getElementById('customerOrdersContent');if(!host)return;
+  host.innerHTML=APP.customerOrders.length?'<div class="customer-portal-table-wrap"><table class="market-table"><thead><tr><th>หมายเลขคำสั่งซื้อ</th><th>วันที่สั่งซื้อ</th><th>ยอดรวม</th><th>การชำระเงิน</th><th>สถานะ</th><th>รายการ</th><th>ดำเนินการ</th></tr></thead><tbody>'+APP.customerOrders.map(function(o){var action=o.orderStatus==='Delivered'?'<button class="btn btn-primary btn-small" onclick="confirmReceived(\''+esc(o.id)+'\')">ยืนยันรับสินค้า</button>':(o.orderStatus==='Completed'?'<button class="btn btn-outline btn-small" onclick="requestReturnFlow(\''+esc(o.id)+'\')">ขอคืนสินค้า</button>':'—');var proof=(o.paymentMethod==='bank_transfer'||o.paymentMethod==='qr_payment')&&['Unpaid','Rejected','Pending Verification'].indexOf(o.paymentStatus)>=0&&['Cancelled','Refunded'].indexOf(o.orderStatus)<0?'<button class="btn btn-outline btn-small" onclick="uploadPaymentProof(\''+esc(o.id)+'\',APP.customerToken)">ส่งหลักฐาน</button>':'';return '<tr><td><b>'+esc(o.orderNumber)+'</b></td><td>'+esc(formatThaiChatTime(o.createdAt,true))+'</td><td>'+money(o.grandTotal)+'</td><td>'+esc(o.paymentStatus||'—')+'</td><td>'+esc(o.orderStatus||'—')+'</td><td><button class="btn btn-outline btn-small" onclick="showCustomerOrderDetails(\''+esc(o.id)+'\')">รายละเอียด</button></td><td>'+action+' '+proof+'</td></tr>';}).join('')+'</tbody></table></div>':'<div class="empty-state"><i class="fa-solid fa-box-open"></i><h3>ยังไม่มีประวัติคำสั่งซื้อ</h3></div>';
+ },false,'',true);
+}
+function liveRefreshCustomer_(tables,resync){
+ if(APP.currentView==='home'){if(resync||tables.some(function(t){return LIVE_PUBLIC_TABLES_.indexOf(t)>=0;}))loadPublicData();}
+ else if(APP.currentView==='products'){if(resync||tables.some(function(t){return ['Products','ProductVariants','Categories','Coupons','Promotions','FlashDeals'].indexOf(t)>=0;}))applyCatalogFilter(APP.productPage||1);}
+ else if(APP.currentView==='recommended'){if(resync||tables.some(function(t){return ['Products','ProductVariants','Categories'].indexOf(t)>=0;}))loadRecommendedProducts(APP.recommendedPage||1);}
+ else if(APP.currentView==='store'){if(resync||tables.some(function(t){return ['Products','ProductVariants','Promotions','Coupons','Reviews','Stores'].indexOf(t)>=0;}))shopStorefrontLoadProducts(APP.storefrontState&&APP.storefrontState.page&&APP.storefrontState.page.page||1);}
+ else if(APP.currentView==='detail'&&(resync||tables.indexOf('Products')>=0||tables.indexOf('ProductVariants')>=0)){var id=String(APP.currentProduct&&APP.currentProduct.id||'');if(id)apiCall('getProductById',[id,{}],function(r){if(r&&r.success&&APP.currentView==='detail'&&String(APP.currentProduct&&APP.currentProduct.id)===id){APP.currentProduct=r.data.product||APP.currentProduct;APP.currentVariants=normalizeCustomerProductVariants(r.data.variants||(r.data.product&&r.data.product.variants)||[]);renderProductDetail();}},false,'',true);}
+ else if(APP.currentView==='promotions'&&(resync||tables.indexOf('Promotions')>=0||tables.indexOf('Products')>=0))showPromotions();
+ else if(APP.currentView==='customerPurchases'&&(resync||tables.some(function(t){return ['Orders','OrderItems','Payments','Shipping','ReturnRequests'].indexOf(t)>=0;})))liveCustomerOrders_();
+ else if(APP.currentView==='account'&&(resync||tables.some(function(t){return ['Orders','OrderItems','Payments','Shipping'].indexOf(t)>=0;})))liveCustomerHistory_();
+ else if(APP.currentView==='myReturns'&&(resync||tables.indexOf('ReturnRequests')>=0))liveCustomerReturns_();
+ else if(APP.currentView==='myVouchers'&&(resync||tables.indexOf('CollectedVouchers')>=0||tables.indexOf('Coupons')>=0))showMyVouchers(null,true);
+ else if(APP.currentView==='wallet'&&(resync||tables.indexOf('CoinTransactions')>=0||tables.indexOf('Orders')>=0))showMyWallet(null,true);
+ else if(APP.currentView==='customerAddresses'&&(resync||tables.indexOf('Addresses')>=0))apiCall('getAddresses',[APP.customerToken],function(r){if(r&&r.success&&APP.currentView==='customerAddresses'){APP.addresses=safeArray(r.data);renderAddressList();}},false,'',true);
+ else if(APP.currentView==='customerNotifications'&&(resync||tables.some(function(t){return ['Notifications','Orders','Payments','Shipping'].indexOf(t)>=0;})))apiCall('getMyNotifications',[APP.customerToken],function(r){if(r&&r.success&&APP.currentView==='customerNotifications')liveCustomerNotifications_(safeArray(r.data));},false,'',true);
+ else if(APP.currentView==='chatInbox'&&(resync||tables.some(function(t){return ['ChatThreads','ChatMessages','Notifications'].indexOf(t)>=0;}))){if(typeof refreshCustomerChatUnreadRows==='function')refreshCustomerChatUnreadRows();if(APP.customerChatActiveStoreId&&typeof pollCustomerStoreChatUpdatesNow==='function')pollCustomerStoreChatUpdatesNow(APP.customerChatActiveStoreId);}
+ else if(APP.currentView==='cart'&&(resync||tables.some(function(t){return ['Products','ProductVariants','Coupons','Promotions','Carts'].indexOf(t)>=0;})))apiCall('getCart',[APP.sessionId,APP.customerToken,APP.accessMode||'guest'],function(r){if(r&&r.success&&APP.currentView==='cart'){APP.cart=r.data||{};renderCart();}},false,'',true);
+ else if(APP.currentView==='followedStores'&&(resync||tables.some(function(t){return ['StoreFollows','Stores'].indexOf(t)>=0;})))apiCall('getFollowedStores',[APP.customerToken],function(r){var host=document.getElementById('followedStoresContent');if(r&&r.success&&host&&APP.currentView==='followedStores')host.innerHTML='<div class="store-grid">'+(safeArray(r.data).length?safeArray(r.data).map(renderStoreCard).join(''):'<div class="empty-state">ยังไม่ได้ติดตามร้านค้า</div>')+'</div>';},false,'',true);
+ if(typeof loadCustomerSidebarBadges==='function')loadCustomerSidebarBadges();
+}
+function applyGlobalDataChanges_(events,resync){
+ var tables=liveTables_(events);if(resync&&!tables.length)tables=['Products','Orders','Stores','ChatThreads','ChatMessages','Notifications','Settings'];if(!tables.length)return;
+ portalDataCacheClear_();
+ if(APP.accessMode==='owner')liveRefreshOwner_(tables,resync);else if(APP.accessMode==='seller')liveRefreshSeller_(tables,resync);else liveRefreshCustomer_(tables,resync);
+ if(APP.currentView==='admin'&&typeof loadAdminSidebarBadges==='function')loadAdminSidebarBadges();
+ if(APP.currentView==='seller'&&typeof loadSellerSidebarBadges==='function')loadSellerSidebarBadges();
+ if(APP.customerToken&&typeof loadCustomerSidebarBadges==='function')loadCustomerSidebarBadges();
+}
+function flushPendingGlobalDataChanges_(){if(!LIVE_DATA_SYNC_PENDING_.length||(window.Swal&&Swal.isVisible()))return;var p=LIVE_DATA_SYNC_PENDING_.slice();LIVE_DATA_SYNC_PENDING_=[];applyGlobalDataChanges_(p.map(function(t){return {table:t};}),false);}
+function pollGlobalDataRevision_(){
+ if(LIVE_DATA_SYNC_BUSY_)return;var portal=String(APP.accessMode||'guest'),token=portal==='owner'?APP.adminToken:((portal==='seller'||portal==='customer')?APP.customerToken:'');
+ if((portal==='owner'||portal==='seller'||portal==='customer')&&!token){scheduleGlobalDataRevisionPoll_();return;}
+ LIVE_DATA_SYNC_BUSY_=true;
+ apiCall('getDataRevision',[token,portal,LIVE_DATA_SYNC_CURSOR_],function(r){
+  LIVE_DATA_SYNC_BUSY_=false;
+  if(r&&r.success&&r.data){if(portal!==LIVE_DATA_SYNC_PORTAL_){LIVE_DATA_SYNC_PORTAL_=portal;LIVE_DATA_SYNC_CURSOR_=r.data.revision||'';}else{LIVE_DATA_SYNC_CURSOR_=r.data.revision||LIVE_DATA_SYNC_CURSOR_;if(safeArray(r.data.changes).length||r.data.resync)applyGlobalDataChanges_(r.data.changes,r.data.resync);}}
+  flushPendingGlobalDataChanges_();scheduleGlobalDataRevisionPoll_();
+ },false,'',true);
+}
+function scheduleGlobalDataRevisionPoll_(){if(LIVE_DATA_SYNC_TIMER_)window.clearTimeout(LIVE_DATA_SYNC_TIMER_);LIVE_DATA_SYNC_TIMER_=window.setTimeout(pollGlobalDataRevision_,document.visibilityState==='hidden'?LIVE_DATA_SYNC_HIDDEN_MS_:LIVE_DATA_SYNC_ACTIVE_MS_);}
+function startGlobalDataSync_(){
+ if(LIVE_DATA_SYNC_TIMER_)window.clearTimeout(LIVE_DATA_SYNC_TIMER_);LIVE_DATA_SYNC_CURSOR_='';LIVE_DATA_SYNC_PORTAL_='';
+ if(!document.__onlineStoreDataSyncVisibilityBound){document.__onlineStoreDataSyncVisibilityBound=true;document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){flushPendingGlobalDataChanges_();pollGlobalDataRevision_();}});}
+ pollGlobalDataRevision_();
+}
+/* -------------------- END GLOBAL IN-PLACE DATA SYNC -------------------- */
 
   </script>
 
