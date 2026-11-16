@@ -11766,6 +11766,10 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
     var ADMIN_CHAT_PAGE_KIND_='';
     function loadAdminChatPage(kind){
       ADMIN_CHAT_PAGE_KIND_=kind;APP.adminChatKind=kind;APP.adminChatSelectedKey='';
+      if(APP.adminChatMessagePollTimer)clearInterval(APP.adminChatMessagePollTimer);
+      APP.adminChatMessagePollTimer=null;APP.adminChatPollKind='';APP.adminChatPollKey='';
+      APP.adminChatMessagePollBusy=false;APP.adminChatLastMessageAt='';
+      clearAdminChatAttachment();
       var host=document.getElementById('adminContent');if(!host)return;
       host.innerHTML='<div class="owner-chat-page"><h2 class="owner-chat-title">'+(kind==='seller'?'แชตกับร้านค้า':'แชตลูกค้าร้านค้าทางการ')+'</h2><div class="owner-chat-layout"><aside class="owner-chat-list"><div class="owner-chat-list-head"><span>'+(kind==='seller'?'ร้านค้า':'ลูกค้า')+'</span><small id="ownerChatCount">กำลังโหลด...</small></div><label class="owner-chat-search"><i class="fa-solid fa-magnifying-glass"></i><input id="ownerChatSearch" type="search" placeholder="ค้นหา..." oninput="filterAdminChatThreads()"></label><div class="owner-chat-thread-list" id="ownerChatThreadList"><div class="owner-chat-empty"><i class="fa-regular fa-comments"></i>กำลังโหลดรายการสนทนา...</div></div></aside><section class="owner-chat-conversation"><header class="owner-chat-conversation-head" id="ownerChatConversationHead"><div class="owner-chat-live-identity"><b>'+(kind==='seller'?'เลือกผู้ขาย':'HuiHui 789.TH')+'</b><small>'+(kind==='seller'?'เลือกร้านค้าเพื่อเริ่มสนทนา':'สนทนากับฝ่ายบริการลูกค้า')+'</small></div><span class="owner-chat-online"><i></i> ออนไลน์</span></header><div class="owner-chat-message-area" id="ownerChatMessageArea"><div class="owner-chat-empty"><i class="fa-regular fa-message"></i>เลือกบทสนทนาเพื่อดูข้อความ</div></div><div class=\"owner-chat-composer\"><div class=\"owner-chat-attachment-preview\" id=\"ownerChatAttachmentPreview\" hidden></div><div class=\"owner-chat-compose-row\"><button type=\"button\" class=\"owner-chat-attach-button\" aria-label=\"แนบรูปภาพ\" title=\"แนบรูปภาพ\" onclick=\"document.getElementById(\'ownerChatFileInput\').click()\"><i class=\"fa-regular fa-image\"></i></button><input type=\"file\" id=\"ownerChatFileInput\" accept=\"image/*\" hidden onchange=\"adminChatAttachmentChanged(this)\"><input type=\"text\" id=\"ownerChatMessageInput\" autocomplete=\"off\" placeholder=\"พิมพ์ข้อความ...\" onkeydown=\"if(event.keyCode===13&&!event.isComposing){event.preventDefault();sendAdminChatReply();}\"><button class=\"btn btn-primary\" type=\"button\" id=\"ownerChatSendButton\" onclick=\"sendAdminChatReply()\"><i class=\"fa-solid fa-paper-plane\"></i><span> ส่ง</span></button></div></div></div></section></div></div>';
       refreshAdminChatPage();
@@ -11802,7 +11806,17 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
       filterAdminChatThreads();
     }
     function filterAdminChatThreads(){var q=String((document.getElementById('ownerChatSearch')||{}).value||'').toLowerCase();document.querySelectorAll('#ownerChatThreadList .owner-chat-thread').forEach(function(n){n.hidden=!!q&&String(n.getAttribute('data-search')||'').indexOf(q)<0;});}
-    function selectAdminChatThread_(kind,key){APP.adminChatKind=kind;APP.adminChatSelectedKey=String(key);renderAdminChatThreadList_();loadAdminChatConversation_(kind,String(key));}
+    function selectAdminChatThread_(kind,key){
+      var nextKey=String(key);
+      if(APP.adminChatPollKind!==kind||String(APP.adminChatPollKey||'')!==nextKey){
+        if(APP.adminChatMessagePollTimer)clearInterval(APP.adminChatMessagePollTimer);
+        APP.adminChatMessagePollTimer=null;APP.adminChatPollKind='';APP.adminChatPollKey='';
+        APP.adminChatLastMessageAt='';APP.adminChatMessagePollBusy=false;
+        clearAdminChatAttachment();
+      }
+      APP.adminChatKind=kind;APP.adminChatSelectedKey=nextKey;
+      renderAdminChatThreadList_();loadAdminChatConversation_(kind,nextKey);
+    }
     function loadAdminChatConversation_(kind,key){
       apiCall(kind==='seller'?'adminGetSellerChatMessages':'adminGetOfficialStoreChatMessages',[APP.adminToken,key],function(r){
         if(!r||!r.success){var area=document.getElementById('ownerChatMessageArea');if(area)area.innerHTML='<div class="owner-chat-empty"><i class="fa-solid fa-triangle-exclamation"></i>'+esc(r&&r.message||'โหลดข้อความไม่สำเร็จ')+'</div>';return;}
@@ -11823,7 +11837,61 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
           area.innerHTML=displayRows.length?'<div class="chat-messages seller-chat-message-list">'+displayRows.map(function(m){return adminChatMessageMarkup_(m,kind);}).join('')+'</div>':'<div class="owner-chat-empty"><i class="fa-regular fa-message"></i>ยังไม่มีข้อความ เริ่มสนทนาได้เลย</div>';
           area.scrollTop=area.scrollHeight;
         }
+        rows.forEach(function(m){adminChatUpdateCursor_(m.createdAt);});
+        adminStartChatUpdates_(kind,key);
       },false);
+    }
+    function adminChatUpdateCursor_(value){
+      var ms=new Date(value||0).getTime();
+      if(!isFinite(ms)||ms<=0)return;
+      var old=new Date(APP.adminChatLastMessageAt||0).getTime()||0;
+      if(ms>old)APP.adminChatLastMessageAt=new Date(ms).toISOString();
+    }
+    function adminStartChatUpdates_(kind,key){
+      if(APP.adminChatMessagePollTimer&&APP.adminChatPollKind===kind&&String(APP.adminChatPollKey||'')===String(key))return;
+      if(APP.adminChatMessagePollTimer)clearInterval(APP.adminChatMessagePollTimer);
+      APP.adminChatPollKind=kind;APP.adminChatPollKey=String(key);
+      APP.adminChatMessagePollTimer=window.setInterval(function(){adminPollChatUpdatesNow_(kind,String(key));},2200);
+    }
+    function adminPollChatUpdatesNow_(kind,key){
+      if(!APP.adminToken||APP.currentView!=='admin'||APP.adminPage!==(kind==='seller'?'sellerChat':'officialChat')||
+         APP.adminChatKind!==kind||String(APP.adminChatSelectedKey||'')!==String(key)||
+         APP.adminChatMessagePollBusy||document.visibilityState==='hidden')return;
+      APP.adminChatMessagePollBusy=true;
+      apiCall('adminGetChatUpdates',[APP.adminToken,kind,key,APP.adminChatLastMessageAt||''],function(r){
+        APP.adminChatMessagePollBusy=false;
+        if(!r||!r.success||APP.currentView!=='admin'||APP.adminChatKind!==kind||
+           String(APP.adminChatSelectedKey||'')!==String(key))return;
+        var messages=safeArray(r.data&&r.data.messages),changed=false;
+        messages.forEach(function(m){
+          if(!m||!m.id)return;
+          var localId=String(m.clientMessageId||''),pending=localId&&ADMIN_CHAT_OUTBOX_[localId];
+          if(pending&&pending.kind===kind){
+            adminReplaceChatMessage_(localId,m,kind);
+            if(pending.localUrl&&window.URL&&URL.revokeObjectURL)URL.revokeObjectURL(pending.localUrl);
+            if(pending.button){pending.button.disabled=false;pending.button.innerHTML='<i class="fa-solid fa-paper-plane"></i><span> ส่ง</span>';}
+            delete ADMIN_CHAT_OUTBOX_[localId];
+          }else{
+            var safeId=String(m.id).replace(/[^A-Za-z0-9_-]/g,'');
+            if(!document.querySelector('[data-chat-message-id="'+safeId+'"]'))adminAppendChatMessage_(m,kind);
+          }
+          adminChatUpdateCursor_(m.createdAt);
+          var row=safeArray(APP.adminChatThreads).filter(function(x){
+            return String(kind==='seller'?x.storeId:x.threadId)===String(key);
+          })[0];
+          if(row){
+            row.lastMessage=m.message||(m.attachmentUrl?'ส่งรูปภาพ':'');
+            row.lastMessageAt=m.createdAt||row.lastMessageAt;
+          }
+          changed=true;
+        });
+        if(r.data&&r.data.lastMessageAt)adminChatUpdateCursor_(r.data.lastMessageAt);
+        if(changed){
+          var list=document.getElementById('ownerChatThreadList'),scroll=list?list.scrollTop:0;
+          renderAdminChatThreadList_();
+          list=document.getElementById('ownerChatThreadList');if(list)list.scrollTop=scroll;
+        }
+      },false,'',true);
     }
     function showAdminChatEmpty_(){var head=document.getElementById('ownerChatConversationHead'),area=document.getElementById('ownerChatMessageArea');if(head)head.innerHTML='<div><b>ยังไม่ได้เลือกบทสนทนา</b><small>เลือกจากรายการด้านซ้าย</small></div>';if(area)area.innerHTML='<div class="owner-chat-empty"><i class="fa-regular fa-message"></i>เลือกบทสนทนาเพื่อเริ่มสนทนา</div>';}
     var ADMIN_CHAT_OUTBOX_ = Object.create(null);
