@@ -5949,7 +5949,7 @@ function loadPublicData(onComplete){
             if(input)input.value=r.data.url;
             previewAdminImageField(inputId,previewId,localPreview);
             if(statusNode)statusNode.textContent='อัปโหลดสำเร็จแล้ว อย่าลืมกด “บันทึกการตั้งค่า” เพื่อใช้ Favicon นี้';
-            toast(isFaviconField?'อัปโหลด Favicon สำเร็จ':'อัปโหลดรูปภาพสำเร็จ','success',isFaviconField?'ไฟล์ Private และแสดงผลบนแท็บผ่าน Data URI':'ต้นฉบับเก็บเป็น Private ใน Google Drive และแสดงผลผ่าน Image Service');
+            toast(isFaviconField?'อัปโหลด Favicon สำเร็จ':'อัปโหลดรูปภาพสำเร็จ','success',isFaviconField?'ไฟล์ Private ใน Google Drive; บันทึกการตั้งค่าและรีเฟรชหน้า 1 ครั้งเพื่อเปลี่ยนไอคอนแท็บ':'ต้นฉบับเก็บเป็น Private ใน Google Drive และแสดงผลผ่าน Image Service');
           }else{
             if(input)input.value='';
             previewAdminImageField(inputId,previewId,localPreview,(r.data&&r.data.warning)||'ไฟล์ถูกบันทึกแล้วแต่ยังแสดงผลไม่ได้');
@@ -6880,9 +6880,10 @@ function adjustInventoryDialog(productId,variantId){
     function updateCurrencySymbolFromCurrency(){var currency=document.getElementById('setting_currency'),symbol=document.getElementById('setting_currencySymbol');if(!currency||!symbol)return;var map={THB:'฿',MMK:'K',USD:'$',SGD:'S$',MYR:'RM',JPY:'¥',EUR:'€',GBP:'£'};symbol.value=map[currency.value]||symbol.value;}
     function saveAdminSettings(button){
       var d={};safeArray(APP.editSettingsKeys).forEach(function(k){var e=document.getElementById('setting_'+k);if(k==='homeSections'){d[k]=JSON.stringify(safeArray(APP.homeSectionDraft).map(function(item){return {id:item.id,enabled:!!item.enabled};}));return;}if(k==='mallStoreIds'){d[k]=JSON.stringify(Array.prototype.map.call(document.querySelectorAll('#adminMallStoreOptions input[name="adminMallStoreIds"]:checked'),function(input){return input.value;}));return;}if(!e)return;if(k==='allowGuestCheckout')d[k]=e.checked?'true':'false';else if(k==='paymentMethods')d[k]=JSON.stringify(Array.prototype.slice.call(e.selectedOptions||[]).map(function(o){return o.value;}));else if(e.isContentEditable)d[k]=getRichEditorHtml('setting_'+k);else d[k]=e.value;});
+      var faviconChanged=Object.prototype.hasOwnProperty.call(d,'setFaviconUrl')&&String(d.setFaviconUrl||'')!==String((APP.settings||{}).setFaviconUrl||'');
       var busy=setInlineButtonBusy(button||document.getElementById('saveAdminSettingsButton'),'กำลังบันทึก...');
       apiCall('saveSettings',[APP.adminToken,d],function(r){if(!r.success){restoreInlineButton(busy);applySettings();alertError(r.message);return;}
-        APP.settings=Object.assign({},APP.settings,d);loadAdminSettings(function(ok,message){if(!ok){restoreInlineButton(busy);alertError('บันทึกแล้วแต่โหลดการตั้งค่าล่าสุดไม่สำเร็จ: '+message);return;}applySettings();toast(r.message,'success','การตั้งค่าร้านค้าถูกบันทึกและโหลดกลับมาแล้ว');});
+        APP.settings=Object.assign({},APP.settings,d);loadAdminSettings(function(ok,message){if(!ok){restoreInlineButton(busy);alertError('บันทึกแล้วแต่โหลดการตั้งค่าล่าสุดไม่สำเร็จ: '+message);return;}applySettings();toast(r.message,'success',faviconChanged?'บันทึก Favicon แล้ว กรุณารีเฟรชหน้าเว็บไซต์ 1 ครั้งเพื่อให้อัปเดตไอคอนบนแท็บเบราว์เซอร์':'การตั้งค่าร้านค้าถูกบันทึกและโหลดกลับมาแล้ว');});
       },false);
     }
     function refreshEmailOtpServiceStatus(){apiCall('getEmailOtpServiceStatus',[],function(r){var el=document.getElementById('emailOtpServiceStatus');if(!el)return;if(r&&r.success&&r.data&&r.data.configured){el.textContent='MailApp พร้อมใช้งานในขณะนี้ · โควตาผู้รับอีเมลคงเหลือ '+Number(r.data.remainingRecipients||0)+' ราย';el.style.color='var(--success)';}else{el.textContent='ยังไม่ได้อนุญาต MailApp หรือไม่สามารถตรวจสอบโควตาได้ กรุณา Run authorizeEmailOtpService() จาก Apps Script';el.style.color='var(--warning)';}});}
