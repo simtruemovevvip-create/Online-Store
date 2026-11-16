@@ -11820,7 +11820,7 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
             var alreadySaved=rows.some(function(m){return String(m.clientMessageId||'')===String(localId);});
             if(!alreadySaved)displayRows.push(pending.optimistic);
           });
-          area.innerHTML=displayRows.length?'<div class="chat-messages seller-chat-message-list">'+displayRows.map(function(m){return chatMessageMarkup(m,mode);}).join('')+'</div>':'<div class="owner-chat-empty"><i class="fa-regular fa-message"></i>ยังไม่มีข้อความ เริ่มสนทนาได้เลย</div>';
+          area.innerHTML=displayRows.length?'<div class="chat-messages seller-chat-message-list">'+displayRows.map(function(m){return adminChatMessageMarkup_(m,kind);}).join('')+'</div>':'<div class="owner-chat-empty"><i class="fa-regular fa-message"></i>ยังไม่มีข้อความ เริ่มสนทนาได้เลย</div>';
           area.scrollTop=area.scrollHeight;
         }
       },false);
@@ -11858,7 +11858,8 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
       if(input)input.value='';
     }
     function adminChatMessageMarkup_(message,kind){
-      return chatMessageMarkup(message,kind==='seller'?'admin':'adminOfficial');
+      var markup=chatMessageMarkup(message,kind==='seller'?'admin':'adminOfficial');
+      return markup.replace('onclick="retryChatMessage(','onclick="adminRetryChatMessage(');
     }
     function adminAppendChatMessage_(message,kind){
       var area=document.getElementById('ownerChatMessageArea');if(!area)return;
