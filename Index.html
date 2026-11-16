@@ -319,9 +319,18 @@
 
   <style id="marketplace-speed-role-loading-fixes">
     /* A page transition must conceal the previous page instead of showing it through a dim overlay. */
-    .loading{z-index:12000;background:var(--bg);opacity:1;backdrop-filter:blur(2px)}
     .swal2-container.swal2-backdrop-show{background:rgba(12,18,30,.94)!important;backdrop-filter:blur(4px)}
-    .loading-box{min-width:240px;justify-content:center;border:1px solid var(--border)}
+    .marketplace-page-transition-skeleton{display:flex;flex-direction:column;gap:18px;max-width:1280px;margin:0 auto;padding:20px 0 48px;min-height:55vh}
+    .mpts-heading{display:flex;align-items:center;justify-content:space-between;gap:18px}
+    .mpts-heading-copy{display:flex;flex:1;flex-direction:column;gap:10px;max-width:560px}
+    .mpts-heading-action{width:118px;height:36px;border-radius:10px}
+    .mpts-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+    .mpts-card{min-height:126px;padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--surface);display:flex;flex-direction:column;justify-content:space-between;gap:16px}
+    .mpts-panel{padding:18px;border:1px solid var(--border);border-radius:16px;background:var(--surface);display:flex;flex-direction:column;gap:15px}
+    .mpts-panel-title{height:16px;width:24%;margin-bottom:5px}
+    .mpts-row{display:grid;grid-template-columns:1.3fr 1fr .8fr 90px;gap:14px;align-items:center;min-height:42px;border-bottom:1px solid var(--border);padding:6px 0}
+    .mpts-row i{height:11px}
+    @media(max-width:760px){.mpts-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.mpts-heading-action{display:none}.marketplace-page-transition-skeleton{padding:14px 0 32px}.mpts-panel{padding:12px}.mpts-row{grid-template-columns:1.2fr 1fr 70px}.mpts-row i:nth-child(3){display:none}}
     .inline-spinner{display:inline-block;width:14px;height:14px;flex:0 0 14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .65s linear infinite;vertical-align:-2px;margin-right:7px}
     button.is-loading{cursor:wait;opacity:.88;display:inline-flex;align-items:center;justify-content:center;gap:4px}
     .swal2-container.swal2-bottom-end{z-index:13000!important;right:22px!important;bottom:22px!important;left:auto!important;top:auto!important;width:min(460px,calc(100vw - 28px))!important}
@@ -2475,7 +2484,6 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
   </footer>
   <button class="floating-cart" onclick="openCart()" title="ตะกร้าสินค้า"><i class="fa-solid fa-bag-shopping"></i><span id="floatingCartCount">0</span></button>
   <button class="back-top" id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="fa-solid fa-arrow-up"></i></button>
-  <div class="loading" id="loading"><div class="loading-box"><div class="global-loading-skeleton" aria-hidden="true"><i class="market-skeleton-block w-55"></i><i class="market-skeleton-block w-85 h-18"></i><i class="market-skeleton-block w-70"></i><i class="market-skeleton-block w-45"></i></div><span id="loadingText">กำลังโหลดข้อมูล...</span></div></div>
   <div id="browserRefreshSkeleton" class="browser-refresh-skeleton" role="status" aria-live="polite" aria-busy="true">
     <div class="brs-topbar"><div class="brs-topbar-inner"><i class="brs-block brs-logo"></i><i class="brs-block brs-search"></i><i class="brs-block brs-action"></i><i class="brs-block brs-action"></i></div></div>
     <div class="brs-nav"><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i><i class="brs-block"></i></div>
@@ -2521,7 +2529,7 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startDriveImageObserver);else startDriveImageObserver();
 
     function safeHref(value,fallback){var u=String(value||'').trim();return /^(https?:\/\/|mailto:|tel:|\/(?!\/)|#)/i.test(u)?esc(u):(fallback||'#');}
-    function loading(show,text){var node=document.getElementById('loading');if(!node)return;node.className=show?'loading show':'loading';document.getElementById('loadingText').textContent=text||'กำลังโหลดข้อมูล...';}
+    function loading(){ /* The blocking center-screen loader is intentionally disabled. */ }
     function finishBrowserRefreshSkeleton(){
       var root=document.getElementById('browserRefreshSkeleton');
       if(!root||!document.documentElement.hasAttribute('data-store-browser-reload'))return;
@@ -2535,6 +2543,8 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
       var target=event.target,button=target&&target.closest?target.closest('button,[role=button],[onclick],input[type=submit]'):null;
       if(!button)return;
       APP.lastActionButton=button;APP.lastActionAt=Date.now();
+      APP.lastActionRoot=document.getElementById('appRoot');
+      APP.lastActionRootNode=APP.lastActionRoot?APP.lastActionRoot.firstChild:null;
       var action=String(button.getAttribute('onclick')||button.getAttribute('formaction')||'');
       APP.lastActionIsNavigation=/(viewProduct|showAllProducts|showStores|showStorePage|showFlashDeals|showPromotions|showMarketplaceVouchers|showLiveRooms|loadBestSellers|loadNewArrivals|goHome|openAccount|openCart|openCheckout|openSellerCenter|openAdmin|loadAdminPage|loadAdminModule|loadSellerPage|openChatInbox|showMyWallet|showMyVouchers|showMyReturns|showMyNotifications|showFollowedStores|openCustomerAuth|openSellerAuth|openSystemOwnerLogin|checkout|startCheckout)/.test(action);
     }
@@ -2573,13 +2583,31 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
       if(labelNode)labelNode.textContent='กำลังทำงาน '+APP.apiActivityCount+' รายการ';
     }
 
-function beginApiLoading(text){
+function marketplacePageTransitionSkeletonMarkup(){
+      var cards=[1,2,3,4].map(function(){return '<div class="mpts-card"><i class="market-skeleton-block w-55"></i><i class="market-skeleton-block h-24" style="width:62%"></i><i class="market-skeleton-block w-85"></i></div>';}).join('');
+      var rows=[1,2,3,4,5].map(function(){return '<div class="mpts-row"><i class="market-skeleton-block w-70"></i><i class="market-skeleton-block w-55"></i><i class="market-skeleton-block w-45"></i><i class="market-skeleton-block"></i></div>';}).join('');
+      return '<section class="marketplace-page-transition-skeleton" role="status" aria-live="polite" aria-label="กำลังเปิดหน้า">'+
+        '<div class="mpts-heading"><div class="mpts-heading-copy"><i class="market-skeleton-block w-35 h-24"></i><i class="market-skeleton-block w-55"></i></div><i class="market-skeleton-block mpts-heading-action"></i></div>'+
+        '<div class="mpts-cards">'+cards+'</div><div class="mpts-panel"><i class="market-skeleton-block mpts-panel-title"></i>'+rows+'</div></section>';
+    }
+    function beginApiLoading(text){
       var button=APP.lastActionButton,age=Date.now()-Number(APP.lastActionAt||0),isFresh=button&&age<1400&&document.documentElement.contains(button);
-      var navigation=!!(isFresh&&APP.lastActionIsNavigation);APP.lastActionButton=null;APP.lastActionAt=0;APP.lastActionIsNavigation=false;
+      var navigation=!!(isFresh&&APP.lastActionIsNavigation);
+      var clickedRoot=APP.lastActionRoot,clickedFirstNode=APP.lastActionRootNode;
+      APP.lastActionButton=null;APP.lastActionAt=0;APP.lastActionIsNavigation=false;APP.lastActionRoot=null;APP.lastActionRootNode=null;
       if(isFresh&&!navigation){var handle={type:'button',button:button,html:button.innerHTML,disabled:button.disabled};button.disabled=true;button.setAttribute('aria-busy','true');button.innerHTML='<span class="inline-spinner" aria-hidden="true"></span><span>'+esc(text||'กำลังโหลด...')+'</span>';button.classList.add('is-loading');return handle;}
-      /* Super Admin page navigation is rendered with in-panel skeletons. Never cover the whole portal. */
-      if(APP.currentView==='admin'||APP.currentView==='seller')return {type:'none'};
-      APP.pageLoadingCount++;loading(true,text||'กำลังโหลดข้อมูล...');return {type:'page'};
+      if(navigation){
+        var root=document.getElementById('appRoot');
+        var pageAlreadyChanged=!!(root&&clickedRoot===root&&clickedFirstNode!==root.firstChild);
+        var hasCustomerPortal=!!(document.getElementById('customerPortalLayout')||document.getElementById('customerPortalContent'));
+        var modalOpen=!!document.querySelector('.swal2-container.swal2-shown');
+        /* Admin, seller and customer portals already render their own in-panel skeletons. */
+        if(root&&!pageAlreadyChanged&&!hasCustomerPortal&&!modalOpen&&APP.currentView!=='admin'&&APP.currentView!=='seller'){
+          root.innerHTML=marketplacePageTransitionSkeletonMarkup();
+        }
+      }
+      /* Never block the page with a center-screen loading dialog. */
+      return {type:'none'};
     }
     function endApiLoading(handle){
       if(!handle||handle.type==='none')return;
@@ -7094,7 +7122,7 @@ function adjustInventoryDialog(productId,variantId){
     function showStorePage(storeId){
       APP.storefrontPreviousView=APP.currentView;
       var root=document.getElementById('appRoot');
-      if(root)root.innerHTML='<div class="panel" style="max-width:1200px;margin:24px auto;padding:35px;text-align:center"><i class="fa-solid fa-circle-notch fa-spin"></i> กำลังโหลดหน้าร้านค้า...</div>';
+      if(root)root.innerHTML=marketplacePageTransitionSkeletonMarkup();
       apiCall('getMarketplaceStorefront',[storeId,APP.customerToken||'',1,20,'relevance',''],function(r){
         if(!r||!r.success){
           alertError(r&&r.message||'โหลดหน้าร้านค้าไม่สำเร็จ');
