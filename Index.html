@@ -2285,6 +2285,143 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     border:0; background:transparent; color:#dc2626; font-size:10px; cursor:pointer;
   }
 </style>
+<style id="system-wide-form-drawer-v1">
+  /* All data-entry dialogs use one right-side drawer. The HTML area scrolls;
+     the action row remains pinned so the Save button is never below the fold. */
+  .swal2-container.app-slide-drawer-container,
+  .swal2-container.app-slide-drawer-container.swal2-backdrop-show {
+    position:fixed!important;inset:0!important;display:flex!important;
+    align-items:stretch!important;justify-content:flex-end!important;
+    padding:0!important;margin:0!important;background:rgba(0,0,0,.5)!important;
+    z-index:20000!important;overflow:hidden!important;
+  }
+  .swal2-popup.app-slide-drawer-popup {
+    position:relative!important;inset:auto!important;align-self:stretch!important;
+    display:flex!important;flex-direction:column!important;gap:0!important;
+    width:min(512px,100vw)!important;max-width:100vw!important;
+    height:100vh!important;height:100dvh!important;max-height:none!important;
+    min-height:0!important;margin:0!important;padding:0!important;
+    overflow:hidden!important;border:0!important;border-left:1px solid #e2e8f0!important;
+    border-radius:0!important;background:#fff!important;color:#1f2937!important;
+    box-shadow:-18px 0 52px rgba(15,23,42,.2)!important;
+    text-align:left!important;animation:appDrawerEnter .24s cubic-bezier(.2,.75,.25,1) both!important;
+  }
+  .swal2-popup.app-slide-drawer-popup.swal2-hide {
+    animation:appDrawerExit .2s ease-in both!important;
+  }
+  @keyframes appDrawerEnter { from{transform:translateX(100%);opacity:.86} to{transform:translateX(0);opacity:1} }
+  @keyframes appDrawerExit { from{transform:translateX(0);opacity:1} to{transform:translateX(100%);opacity:.86} }
+
+  .swal2-popup.app-slide-drawer-popup>.swal2-title {
+    order:0;flex:0 0 auto;width:100%;box-sizing:border-box!important;
+    margin:0!important;padding:23px 64px 18px 24px!important;
+    border-bottom:1px solid #e5e7eb!important;background:#fff!important;
+    color:#111827!important;text-align:left!important;font-size:20px!important;
+    line-height:1.35!important;font-weight:700!important;
+  }
+  .swal2-popup.app-slide-drawer-popup>.swal2-title:after {
+    content:"กรอกข้อมูลในช่องที่มีเครื่องหมาย * ให้ครบก่อนบันทึก";
+    display:block;margin-top:6px;color:#6b7280;font-size:12px;
+    line-height:1.5;font-weight:400;
+  }
+  .swal2-popup.app-slide-drawer-popup>.swal2-close {
+    position:absolute!important;z-index:3;top:12px!important;right:14px!important;
+    width:40px!important;height:40px!important;border-radius:11px!important;
+    color:#64748b!important;font-size:27px!important;line-height:1!important;
+    background:#f8fafc!important;
+  }
+  .swal2-popup.app-slide-drawer-popup>.swal2-close:hover {
+    color:#111827!important;background:#eef2f7!important;
+  }
+  .swal2-popup.app-slide-drawer-popup>.swal2-html-container {
+    order:1;flex:1 1 auto!important;min-height:0!important;max-height:none!important;
+    width:100%!important;box-sizing:border-box!important;margin:0!important;
+    padding:22px 24px 26px!important;overflow-x:hidden!important;
+    overflow-y:auto!important;overscroll-behavior:contain;
+    color:#374151!important;text-align:left!important;
+  }
+  .swal2-popup.app-slide-drawer-popup>.swal2-input,
+  .swal2-popup.app-slide-drawer-popup>.swal2-file,
+  .swal2-popup.app-slide-drawer-popup>.swal2-textarea,
+  .swal2-popup.app-slide-drawer-popup>.swal2-select {
+    order:2;flex:0 0 auto;width:calc(100% - 48px)!important;
+    max-width:none!important;margin:14px 24px!important;box-sizing:border-box!important;
+  }
+  .swal2-popup.app-slide-drawer-popup>.swal2-validation-message {
+    order:3;flex:0 0 auto;margin:0 24px 12px!important;
+    text-align:left!important;
+  }
+  .swal2-popup.app-slide-drawer-popup>.swal2-actions {
+    order:4;flex:0 0 auto!important;display:flex!important;
+    align-items:center!important;justify-content:flex-end!important;
+    flex-direction:row-reverse!important;gap:10px!important;
+    width:100%!important;box-sizing:border-box!important;margin:0!important;
+    padding:15px 24px calc(15px + env(safe-area-inset-bottom,0px))!important;
+    border-top:1px solid #e5e7eb!important;background:#fff!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .swal2-styled {
+    min-width:112px!important;min-height:42px!important;margin:0!important;
+    padding:10px 18px!important;border-radius:10px!important;
+    font-family:'Prompt','Inter',sans-serif!important;font-size:13px!important;
+    font-weight:600!important;box-shadow:none!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .swal2-confirm {
+    background:#2563eb!important;color:#fff!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .swal2-confirm:hover { background:#1d4ed8!important; }
+  .swal2-popup.app-slide-drawer-popup .swal2-cancel {
+    background:#fff!important;color:#475569!important;
+    border:1px solid #cbd5e1!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .swal2-cancel:hover { background:#f8fafc!important; }
+  .swal2-popup.app-slide-drawer-popup .modal-form-grid,
+  .swal2-popup.app-slide-drawer-popup .form-grid {
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:15px 16px!important;width:100%!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .modal-field,
+  .swal2-popup.app-slide-drawer-popup .field { min-width:0!important;max-width:100%!important; }
+  .swal2-popup.app-slide-drawer-popup .modal-field.full,
+  .swal2-popup.app-slide-drawer-popup .field.full,
+  .swal2-popup.app-slide-drawer-popup .rich-editor-wrap { grid-column:1/-1!important; }
+  .swal2-popup.app-slide-drawer-popup .modal-field>input,
+  .swal2-popup.app-slide-drawer-popup .modal-field>select,
+  .swal2-popup.app-slide-drawer-popup .modal-field>textarea,
+  .swal2-popup.app-slide-drawer-popup .field>input,
+  .swal2-popup.app-slide-drawer-popup .field>select,
+  .swal2-popup.app-slide-drawer-popup .field>textarea {
+    width:100%!important;max-width:100%!important;min-width:0!important;
+  }
+  .app-required-star {
+    display:inline-block!important;margin-left:4px!important;color:#dc2626!important;
+    font-size:13px!important;font-weight:800!important;line-height:1!important;
+    vertical-align:baseline!important;
+  }
+  .app-drawer-required-error {
+    border-color:#dc2626!important;box-shadow:0 0 0 3px rgba(220,38,38,.1)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .swal2-validation-message {
+    color:#b91c1c!important;background:#fef2f2!important;border-radius:10px!important;
+    padding:9px 12px!important;font-size:12px!important;
+  }
+  @media(max-width:600px) {
+    .swal2-popup.app-slide-drawer-popup { width:100vw!important;max-width:100vw!important; }
+    .swal2-popup.app-slide-drawer-popup>.swal2-title { padding:19px 60px 15px 18px!important;font-size:18px!important; }
+    .swal2-popup.app-slide-drawer-popup>.swal2-html-container { padding:17px 18px 22px!important; }
+    .swal2-popup.app-slide-drawer-popup>.swal2-actions {
+      padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px))!important;
+    }
+    .swal2-popup.app-slide-drawer-popup .modal-form-grid,
+    .swal2-popup.app-slide-drawer-popup .form-grid { grid-template-columns:minmax(0,1fr)!important;gap:12px!important; }
+    .swal2-popup.app-slide-drawer-popup .modal-field.full,
+    .swal2-popup.app-slide-drawer-popup .field.full { grid-column:auto!important; }
+    .swal2-popup.app-slide-drawer-popup .swal2-styled { flex:1 1 0;min-width:0!important; }
+  }
+  @media(prefers-reduced-motion:reduce) {
+    .swal2-popup.app-slide-drawer-popup,
+    .swal2-popup.app-slide-drawer-popup.swal2-hide { animation:none!important; }
+  }
+</style>
 </head>
 <body data-qr-login="<?= qrLoginChallenge ?>" data-portal-entry="<?= portalEntry ?>" data-web-app-url="<?= webAppUrl ?>">
   <header class="top-header">
@@ -6066,7 +6203,7 @@ function loadPublicData(onComplete){
       var cfg=MODULE_CONFIG[page];if(!cfg)return;
       var isProductEditorPage=page==='products'||page==='officialProducts';
       var row=id?safeArray(APP.adminData).filter(function(x){return String(x.id)===String(id);})[0]||{}:{};
-      var html='<div class="admin-editor-intro"><span class="admin-editor-icon"><i class="fa-solid fa-pen-to-square"></i></span><span><b>'+(id?'แก้ไขข้อมูล':'กรอกข้อมูลใหม่')+'</b><small>ช่องที่มีความสัมพันธ์จะเลือกจากข้อมูลในระบบโดยอัตโนมัติ</small></span></div><div class="modal-form-grid">';
+      var html='<div class="admin-editor-intro" data-app-form-page="'+esc(page)+'"><span class="admin-editor-icon"><i class="fa-solid fa-pen-to-square"></i></span><span><b>'+(id?'แก้ไขข้อมูล':'กรอกข้อมูลใหม่')+'</b><small>ช่องที่มีเครื่องหมาย * จำเป็นต้องกรอก · ช่องที่ไม่มีเครื่องหมายสามารถเว้นว่างได้</small></span></div><div class="modal-form-grid">';
       cfg.fields.forEach(function(f){html+=renderAdminEditorField(page,f,row);});html+='</div>';
       var formOptions={title:id?cfg.edit:cfg.add,html:html,width:900,showCancelButton:true,showLoaderOnConfirm:true,confirmButtonText:'บันทึกข้อมูล',cancelButtonText:'ยกเลิก',focusConfirm:false,buttonsStyling:true,customClass:{popup:'enterprise-admin-modal'},allowOutsideClick:function(){return !Swal.isLoading();},preConfirm:function(){
         if(isProductEditorPage&&APP.productCampaignImageUploadPending){Swal.showValidationMessage('กรุณารอให้อัปโหลดภาพแถบแคมเปญเสร็จก่อนบันทึกสินค้า');return false;}
@@ -12176,5 +12313,212 @@ function startGlobalDataSync_(){
 
   </script>
 
+<script id="system-wide-form-drawer-v1-js">
+(function installSystemWideFormDrawer(){
+  if(!window.Swal||Swal.__systemWideFormDrawerV1)return;
+
+  var originalFire=Swal.fire;
+  var originalUpdate=Swal.update;
+  var editorRequiredFields={
+    products:['name','price'],
+    officialProducts:['name','price'],
+    categories:['name'],
+    promotions:['name','type','value','startDate','endDate'],
+    coupons:['code','discountValue'],
+    banners:['title','image','position'],
+    customers:['email'],
+    users:['username'],
+    shipping:['name']
+  };
+  var requiredIds={
+    spName:'ชื่อสินค้า',spPrice:'ราคาปกติ',
+    sellerName:'ชื่อร้านค้า',sellerPhone:'เบอร์โทรศัพท์',sellerEmail:'อีเมลร้านค้า',
+    adr_recipient:'ชื่อผู้รับ',adr_phone:'เบอร์โทร',adr_address:'ที่อยู่',
+    shipCarrier:'บริษัทขนส่ง',shipTracking:'เลขติดตามพัสดุ',
+    invNewProduct:'สินค้า',invNewQuantity:'จำนวนเริ่มต้น',invNewMinimum:'สต็อกขั้นต่ำ',
+    invEditQuantity:'จำนวนคงเหลือ',invEditMinimum:'สต็อกขั้นต่ำ',
+    stockProduct:'สินค้า',stockQty:'จำนวนที่ปรับ',
+    coRecipient:'ชื่อผู้รับ',coPhone:'เบอร์โทร',coAddress:'ที่อยู่จัดส่ง'
+  };
+  var emailIds={edit_email:1,sellerEmail:1,coEmail:1};
+  var wrappedMarker='__systemWideDrawerWrapped';
+
+  function mergeClass(existing,extra){
+    var items=[];
+    if(Array.isArray(existing))items=existing.slice();
+    else if(typeof existing==='string')items=existing.split(/\s+/);
+    items.push(extra);
+    var unique=[];
+    items.forEach(function(item){String(item||'').split(/\s+/).forEach(function(token){if(token&&unique.indexOf(token)<0)unique.push(token);});});
+    return unique.join(' ');
+  }
+  function isFormDialog(options){
+    if(!options||typeof options!=='object'||options.toast)return false;
+    var html=typeof options.html==='string'?options.html:'';
+    var hasField=!!options.input||/<(?:input|select|textarea|form)\b/i.test(html);
+    if(!hasField)return false;
+    if(options.showConfirmButton===false&&options.showCancelButton===false&&!options.input)return false;
+    return true;
+  }
+  function formPage(popup){
+    var node=popup&&popup.querySelector?popup.querySelector('[data-app-form-page]'):null;
+    return node?String(node.getAttribute('data-app-form-page')||''):'';
+  }
+  function requiredLabelFor(popup,el){
+    if(!popup||!el||!el.id)return null;
+    try{return popup.querySelector('label[for="'+String(el.id).replace(/["\\]/g,'\\$&')+'"]');}
+    catch(e){return null;}
+  }
+  function requiredName(popup,el){
+    var id=String(el&&el.id||'');
+    var page=formPage(popup);
+    if(id.indexOf('edit_')===0){
+      var key=id.substring(5),rules=editorRequiredFields[page]||[];
+      if(rules.indexOf(key)>=0)return requiredIds[id]||key;
+      if(page==='users'&&key==='password'){
+        var title=String((popup.querySelector('.swal2-title')||{}).textContent||'');
+        return title.indexOf('เพิ่ม')>=0?'รหัสผ่านเริ่มต้น':'';
+      }
+      return '';
+    }
+    return requiredIds[id]||'';
+  }
+  function addRequiredMark(popup,el,name){
+    if(!el||el.disabled||el.type==='hidden'||el.readOnly)return;
+    el.required=true;
+    el.setAttribute('aria-required','true');
+    el.classList.remove('app-drawer-required-error');
+    var label=requiredLabelFor(popup,el);
+    if(!label){
+      var field=el.closest&&el.closest('.modal-field,.field,.form-group');
+      label=field&&field.querySelector('label');
+    }
+    if(label&&!label.querySelector('.app-required-star')){
+      var star=document.createElement('span');
+      star.className='app-required-star';
+      star.setAttribute('aria-hidden','true');
+      star.textContent='*';
+      label.appendChild(star);
+    }
+  }
+  function applyRequiredFields(popup){
+    if(!popup||!popup.querySelectorAll)return;
+    var controls=popup.querySelectorAll('input,select,textarea');
+    for(var i=0;i<controls.length;i++){
+      var el=controls[i],name=requiredName(popup,el);
+      if(name||el.required||el.getAttribute('aria-required')==='true')addRequiredMark(popup,el,name);
+    }
+  }
+  function validateRequiredFields(popup){
+    if(!popup)return true;
+    applyRequiredFields(popup);
+    var controls=popup.querySelectorAll('input[required],select[required],textarea[required]');
+    for(var i=0;i<controls.length;i++){
+      var el=controls[i];
+      if(el.disabled||el.type==='hidden'||el.readOnly||el.closest('[hidden]'))continue;
+      if(el.offsetParent===null&&getComputedStyle(el).position!=='fixed')continue;
+      var value=String(el.value===undefined?'':el.value).trim();
+      var empty=el.type==='checkbox'?!el.checked:(el.type==='radio'?false:!value);
+      var invalid=empty;
+      if(!invalid&&el.type==='email'&&el.value&&!el.validity.valid)invalid=true;
+      if(!invalid&&el.type!=='checkbox'&&el.type!=='radio'&&el.value!==''&&el.validity&&!el.validity.valid)invalid=true;
+      if(invalid){
+        el.classList.add('app-drawer-required-error');
+        if(typeof el.focus==='function')el.focus();
+        if(typeof el.scrollIntoView==='function')el.scrollIntoView({block:'center',behavior:'smooth'});
+        var label=requiredLabelFor(popup,el);
+        var labelText=label?String(label.textContent||'').replace(/\*/g,'').trim():(el.getAttribute('aria-label')||el.name||'ข้อมูลนี้');
+        var message=empty?'กรุณากรอก'+labelText:'กรุณาตรวจสอบ'+labelText+'ให้ถูกต้อง';
+        Swal.showValidationMessage(message);
+        return false;
+      }
+      el.classList.remove('app-drawer-required-error');
+    }
+    return true;
+  }
+  function normalizeOptions(input){
+    if(!input||typeof input!=='object'||!isFormDialog(input))return input;
+    var options=Object.assign({},input);
+    options.customClass=Object.assign({},input.customClass||{});
+    options.customClass.popup=mergeClass(options.customClass.popup,'app-slide-drawer-popup');
+    options.customClass.container=mergeClass(options.customClass.container,'app-slide-drawer-container');
+    options.showCloseButton=options.showCloseButton!==false?true:options.showCloseButton;
+    options.heightAuto=false;
+    if(typeof options.didOpen==='function'&&!options[wrappedMarker]){
+      var priorDidOpen=options.didOpen;
+      options.didOpen=function(popup){
+        try{priorDidOpen.call(this,popup);}finally{applyRequiredFields(popup);};
+      };
+    }else if(typeof options.didOpen!=='function'){
+      options.didOpen=function(popup){applyRequiredFields(popup);};
+    }
+    if(typeof options.preConfirm==='function'&&!options[wrappedMarker]){
+      var priorPreConfirm=options.preConfirm;
+      options.preConfirm=function(){
+        var popup=Swal.getPopup?Swal.getPopup():null;
+        if(!validateRequiredFields(popup))return false;
+        return priorPreConfirm.apply(this,arguments);
+      };
+    }else if(typeof options.preConfirm!=='function'){
+      options.preConfirm=function(){
+        var popup=Swal.getPopup?Swal.getPopup():null;
+        return validateRequiredFields(popup)?undefined:false;
+      };
+    }
+    options[wrappedMarker]=true;
+    return options;
+  }
+
+  Swal.fire=function(){
+    if(arguments.length===1&&arguments[0]&&typeof arguments[0]==='object'){
+      return originalFire.call(Swal,normalizeOptions(arguments[0]));
+    }
+    return originalFire.apply(Swal,arguments);
+  };
+  if(typeof originalUpdate==='function'){
+    Swal.update=function(options){
+      var result=originalUpdate.call(Swal,normalizeOptions(options));
+      if(window.requestAnimationFrame)requestAnimationFrame(function(){applyRequiredFields(Swal.getPopup&&Swal.getPopup());});
+      return result;
+    };
+  }
+
+  // Apply required markers to standalone forms and forms rendered later by page navigation.
+  function scanStandaloneRequiredFields(root){
+    if(!root||!root.querySelectorAll)return;
+    var list=root.querySelectorAll('input,select,textarea');
+    for(var i=0;i<list.length;i++){
+      var el=list[i],name=requiredIds[String(el.id||'')];
+      if(name||el.required){
+        var label=null;
+        if(el.id)try{label=root.querySelector('label[for="'+String(el.id).replace(/["\\]/g,'\\$&')+'"]');}catch(e){}
+        if(!label&&el.closest){var field=el.closest('.field,.form-field,.modal-field');label=field&&field.querySelector('label');}
+        if(name&&!el.disabled&&el.type!=='hidden'&&!el.readOnly){
+          el.required=true;el.setAttribute('aria-required','true');
+          if(label&&!label.querySelector('.app-required-star')){
+            var star=document.createElement('span');star.className='app-required-star';star.setAttribute('aria-hidden','true');star.textContent='*';label.appendChild(star);
+          }
+        }else if(el.required&&label&&!label.querySelector('.app-required-star')){
+          var nativeStar=document.createElement('span');nativeStar.className='app-required-star';nativeStar.setAttribute('aria-hidden','true');nativeStar.textContent='*';label.appendChild(nativeStar);
+        }
+      }
+    }
+  }
+  scanStandaloneRequiredFields(document);
+  if(window.MutationObserver&&document.body){
+    var observer=new MutationObserver(function(mutations){
+      mutations.forEach(function(m){
+        for(var i=0;i<m.addedNodes.length;i++){
+          var node=m.addedNodes[i];
+          if(node.nodeType===1)scanStandaloneRequiredFields(node);
+        }
+      });
+    });
+    observer.observe(document.body,{childList:true,subtree:true});
+  }
+
+  Swal.__systemWideFormDrawerV1=true;
+})();
+</script>
 </body>
 </html>
