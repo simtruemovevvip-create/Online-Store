@@ -5938,16 +5938,56 @@ function loadPublicData(onComplete){
       if(isFaviconField&&['image/png','image/jpeg','image/gif','image/bmp'].indexOf(file.type.toLowerCase())<0){alertError('ไอคอนเว็บไซต์รองรับ PNG, JPG, GIF หรือ BMP กรุณาเลือกไฟล์ชนิดที่รองรับ');if(statusNode)statusNode.textContent='ชนิดไฟล์ไม่รองรับ กรุณาเลือก PNG, JPG, GIF หรือ BMP';fileInput.value='';return;}
       if(file.size>5*1024*1024){alertError('รูปภาพต้องมีขนาดไม่เกิน 5 MB');if(statusNode)statusNode.textContent='ไฟล์มีขนาดเกิน 5 MB';fileInput.value='';return;}
       if(inputId==='edit_campaignImage')APP.productCampaignImageUploadPending=true;
-      if(statusNode)statusNode.textContent='กำลังอัปโหลด '+file.name+' ...';
-      var reader=new FileReader();reader.onload=function(){var localPreview=String(reader.result||'');
-        apiCall('uploadFile',[APP.adminToken,{folder:folder||'Products',purpose:isFaviconField?'favicon':(folder==='Customers'?'profile':''),name:file.name,mimeType:file.type,data:localPreview,visibility:'public'}],function(r){
+      if(statusNode)statusNode.textContent=isFaviconField?'กำลังย่อไอคอนเป็น PNG ขนาด 64×64...':'กำลังอัปโหลด '+file.name+' ...';
+
+      function sendUpload(dataUrl,mimeType,uploadName,localPreview){
+        apiCall('uploadFile',[APP.adminToken,{folder:folder||'Products',purpose:isFaviconField?'favicon':(folder==='Customers'?'profile':''),name:uploadName,mimeType:mimeType,data:dataUrl,visibility:'public'}],function(r){
           if(inputId==='edit_campaignImage')APP.productCampaignImageUploadPending=false;
           if(!r.success){if(statusNode)statusNode.textContent='อัปโหลดไม่สำเร็จ: '+(r.message||'กรุณาลองอีกครั้ง');alertError(r.message);return;}
           var input=document.getElementById(inputId);
-          if(r.data&&(r.data.public||r.data.displayable)){if(input)input.value=r.data.url;previewAdminImageField(inputId,previewId);if(statusNode)statusNode.textContent='อัปโหลดสำเร็จแล้ว อย่าลืมกด “บันทึกการตั้งค่า” เพื่อใช้ Favicon นี้';toast(isFaviconField?'อัปโหลด Favicon สำเร็จ':'อัปโหลดรูปภาพสำเร็จ','success','ต้นฉบับเก็บเป็น Private ใน Google Drive และแสดงผลผ่าน Image Service');}
-          else{if(input)input.value='';previewAdminImageField(inputId,previewId,localPreview,(r.data&&r.data.warning)||'ไฟล์อยู่ใน Drive แต่ยังไม่เปิดสิทธิ์ให้หน้าเว็บแสดง');if(statusNode)statusNode.textContent='อัปโหลดแล้ว แต่ยังแสดงผลไม่ได้: '+((r.data&&r.data.warning)||'ตรวจสอบ Asset Reference');toast('ไฟล์ถูกบันทึกแล้ว แต่ยังแสดงบนหน้าเว็บไซต์ไม่ได้','warning',((r.data&&r.data.warning)||'กรุณาตรวจนโยบายการแชร์ Google Drive')+((r.data&&r.data.sharingError)?' รายละเอียด: '+r.data.sharingError:''));}
+          if(r.data&&(r.data.public||r.data.displayable)){
+            if(input)input.value=r.data.url;
+            previewAdminImageField(inputId,previewId,localPreview);
+            if(statusNode)statusNode.textContent='อัปโหลดสำเร็จแล้ว อย่าลืมกด “บันทึกการตั้งค่า” เพื่อใช้ Favicon นี้';
+            toast(isFaviconField?'อัปโหลด Favicon สำเร็จ':'อัปโหลดรูปภาพสำเร็จ','success',isFaviconField?'ไฟล์ Private และแสดงผลบนแท็บผ่าน Data URI':'ต้นฉบับเก็บเป็น Private ใน Google Drive และแสดงผลผ่าน Image Service');
+          }else{
+            if(input)input.value='';
+            previewAdminImageField(inputId,previewId,localPreview,(r.data&&r.data.warning)||'ไฟล์ถูกบันทึกแล้วแต่ยังแสดงผลไม่ได้');
+            if(statusNode)statusNode.textContent='อัปโหลดแล้ว แต่ยังแสดงผลไม่ได้: '+((r.data&&r.data.warning)||'ตรวจสอบ Asset Reference');
+            toast('ไฟล์ถูกบันทึกแล้ว แต่ยังแสดงบนหน้าเว็บไซต์ไม่ได้','warning',(r.data&&r.data.warning)||'ตรวจสอบ DriveAssets และ Image Service');
+          }
         },true,isFaviconField?'กำลังอัปโหลด Favicon...':'กำลังอัปโหลดรูปภาพ...');
-      };reader.onerror=function(){if(inputId==='edit_campaignImage')APP.productCampaignImageUploadPending=false;if(statusNode)statusNode.textContent='อ่านไฟล์ไม่สำเร็จ';alertError('ไม่สามารถอ่านไฟล์รูปภาพได้');};reader.readAsDataURL(file);fileInput.value='';
+      }
+
+      var reader=new FileReader();
+      reader.onload=function(){
+        var localPreview=String(reader.result||'');
+        if(!isFaviconField){sendUpload(localPreview,file.type,file.name,localPreview);return;}
+        var sourceImage=new Image();
+        sourceImage.onload=function(){
+          try{
+            var canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;
+            var context=canvas.getContext('2d');
+            if(!context)throw new Error('เบราว์เซอร์ไม่รองรับ Canvas');
+            var naturalWidth=Math.max(1,sourceImage.naturalWidth||sourceImage.width||1);
+            var naturalHeight=Math.max(1,sourceImage.naturalHeight||sourceImage.height||1);
+            var scale=Math.min(64/naturalWidth,64/naturalHeight);
+            var width=Math.max(1,Math.round(naturalWidth*scale));
+            var height=Math.max(1,Math.round(naturalHeight*scale));
+            context.clearRect(0,0,64,64);
+            context.drawImage(sourceImage,Math.round((64-width)/2),Math.round((64-height)/2),width,height);
+            var compactPng=canvas.toDataURL('image/png');
+            sendUpload(compactPng,'image/png','favicon.png',compactPng);
+          }catch(error){
+            if(statusNode)statusNode.textContent='ย่อไอคอนไม่สำเร็จ: '+String(error.message||error);
+            alertError('ไม่สามารถเตรียม Favicon ได้ กรุณาใช้รูป PNG/JPG/GIF/BMP ที่เปิดได้');
+          }
+        };
+        sourceImage.onerror=function(){if(statusNode)statusNode.textContent='เปิดรูปเพื่อย่อขนาดไม่สำเร็จ';alertError('ไม่สามารถอ่านภาพ Favicon ได้');};
+        sourceImage.src=localPreview;
+      };
+      reader.onerror=function(){if(inputId==='edit_campaignImage')APP.productCampaignImageUploadPending=false;if(statusNode)statusNode.textContent='อ่านไฟล์ไม่สำเร็จ';alertError('ไม่สามารถอ่านไฟล์รูปภาพได้');};
+      reader.readAsDataURL(file);fileInput.value='';
     }
 
     function uploadProductVideoFile(fileInput,inputId,statusId,accountType){
