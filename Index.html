@@ -2050,6 +2050,51 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
 .owner-chat-empty i{font-size:28px;color:var(--primary)}
 @media(max-width:850px){.owner-chat-layout{grid-template-columns:1fr}.owner-chat-thread-list{max-height:220px}.owner-chat-conversation{min-height:430px}.owner-chat-message-area{min-height:270px}}
 </style>
+
+  <style id="owner-chat-fullscreen-v2">
+    /* Owner chat pages: remove the duplicate page heading and use the full workspace height. */
+    .portal-mode-owner .admin-main:has(.owner-chat-page) {
+      display:flex; flex-direction:column; min-height:0; height:100%; overflow:hidden; padding-bottom:0;
+    }
+    .portal-mode-owner .admin-main:has(.owner-chat-page) > .admin-top { display:none!important; }
+    .portal-mode-owner .admin-main:has(.owner-chat-page) > #adminContent {
+      display:flex; flex:1 1 auto; min-width:0; min-height:0; height:100%; overflow:hidden;
+    }
+    .portal-mode-owner .owner-chat-page {
+      display:flex; flex:1 1 auto; flex-direction:column; width:100%;
+      min-width:0; min-height:0; height:100%; gap:0;
+    }
+    .portal-mode-owner .owner-chat-layout {
+      display:grid; flex:1 1 auto; grid-template-rows:minmax(0,1fr);
+      min-width:0; min-height:0; height:100%; overflow:hidden;
+    }
+    .portal-mode-owner .owner-chat-list,
+    .portal-mode-owner .owner-chat-conversation {
+      display:flex; flex-direction:column; height:100%; min-height:0;
+    }
+    .portal-mode-owner .owner-chat-thread-list {
+      flex:1 1 auto; min-height:0; max-height:none; overflow-y:auto;
+    }
+    .portal-mode-owner .owner-chat-message-area {
+      flex:1 1 auto; min-height:0; max-height:none; overflow-y:auto;
+      overscroll-behavior:contain;
+    }
+    @media(max-width:850px) {
+      .portal-mode-owner .owner-chat-layout {
+        grid-template-columns:minmax(0,1fr);
+        grid-template-rows:minmax(145px,30%) minmax(0,1fr);
+      }
+      .portal-mode-owner .owner-chat-list,
+      .portal-mode-owner .owner-chat-conversation { min-height:0; }
+      .portal-mode-owner .owner-chat-thread-list,
+      .portal-mode-owner .owner-chat-message-area { min-height:0; max-height:none; }
+    }
+    @media(max-width:480px) {
+      .portal-mode-owner .owner-chat-layout { gap:8px; }
+      .portal-mode-owner .owner-chat-conversation-head { min-height:52px; padding:9px 12px; }
+      .portal-mode-owner .owner-chat-composer { padding:9px; }
+    }
+  </style>
 </head>
 <body data-qr-login="<?= qrLoginChallenge ?>" data-portal-entry="<?= portalEntry ?>" data-web-app-url="<?= webAppUrl ?>">
   <header class="top-header">
@@ -11532,7 +11577,7 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
     function loadAdminChatPage(kind){
       ADMIN_CHAT_PAGE_KIND_=kind;APP.adminChatKind=kind;APP.adminChatSelectedKey='';
       var host=document.getElementById('adminContent');if(!host)return;
-      host.innerHTML='<div class="owner-chat-page"><div class="owner-chat-heading"><div><h2>'+(kind==='seller'?'แชตกับร้านค้า':'แชตลูกค้าร้านค้าทางการ')+'</h2><p>'+(kind==='seller'?'ติดต่อผู้ขายแต่ละร้านโดยตรง':'ตอบคำถามลูกค้าที่ติดต่อร้านค้าทางการ')+'</p></div><button class="btn btn-outline btn-small" type="button" onclick="refreshAdminChatPage()"><i class="fa-solid fa-rotate"></i> รีเฟรช</button></div><div class="owner-chat-layout"><aside class="owner-chat-list"><div class="owner-chat-list-head"><span>'+(kind==='seller'?'ร้านค้า':'ลูกค้า')+'</span><small id="ownerChatCount">กำลังโหลด...</small></div><label class="owner-chat-search"><i class="fa-solid fa-magnifying-glass"></i><input id="ownerChatSearch" type="search" placeholder="ค้นหา..." oninput="filterAdminChatThreads()"></label><div class="owner-chat-thread-list" id="ownerChatThreadList"><div class="owner-chat-empty"><i class="fa-regular fa-comments"></i>กำลังโหลดรายการสนทนา...</div></div></aside><section class="owner-chat-conversation"><header class="owner-chat-conversation-head" id="ownerChatConversationHead"><div><b>'+(kind==='seller'?'เลือกผู้ขาย':'เลือกลูกค้า')+'</b><small>เลือกบทสนทนาจากรายการด้านซ้าย</small></div></header><div class="owner-chat-message-area" id="ownerChatMessageArea"><div class="owner-chat-empty"><i class="fa-regular fa-message"></i>เลือกบทสนทนาเพื่อดูข้อความ</div></div><div class="owner-chat-composer"><textarea id="ownerChatMessageInput" rows="1" placeholder="พิมพ์ข้อความ..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendAdminChatReply();}"></textarea><button class="btn btn-primary" type="button" id="ownerChatSendButton" onclick="sendAdminChatReply()"><i class="fa-solid fa-paper-plane"></i> ส่ง</button></div></section></div></div>';
+      host.innerHTML='<div class="owner-chat-page"><div class="owner-chat-layout"><aside class="owner-chat-list"><div class="owner-chat-list-head"><span>'+(kind==='seller'?'ร้านค้า':'ลูกค้า')+'</span><small id="ownerChatCount">กำลังโหลด...</small></div><label class="owner-chat-search"><i class="fa-solid fa-magnifying-glass"></i><input id="ownerChatSearch" type="search" placeholder="ค้นหา..." oninput="filterAdminChatThreads()"></label><div class="owner-chat-thread-list" id="ownerChatThreadList"><div class="owner-chat-empty"><i class="fa-regular fa-comments"></i>กำลังโหลดรายการสนทนา...</div></div></aside><section class="owner-chat-conversation"><header class="owner-chat-conversation-head" id="ownerChatConversationHead"><div><b>'+(kind==='seller'?'เลือกผู้ขาย':'เลือกลูกค้า')+'</b><small>เลือกบทสนทนาจากรายการด้านซ้าย</small></div></header><div class="owner-chat-message-area" id="ownerChatMessageArea"><div class="owner-chat-empty"><i class="fa-regular fa-message"></i>เลือกบทสนทนาเพื่อดูข้อความ</div></div><div class="owner-chat-composer"><textarea id="ownerChatMessageInput" rows="1" placeholder="พิมพ์ข้อความ..." onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();sendAdminChatReply();}"></textarea><button class="btn btn-primary" type="button" id="ownerChatSendButton" onclick="sendAdminChatReply()"><i class="fa-solid fa-paper-plane"></i> ส่ง</button></div></section></div></div>';
       refreshAdminChatPage();
       APP.adminChatPollTimer=window.setInterval(function(){
         if(APP.currentView!=='admin'||APP.adminPage!==(kind==='seller'?'sellerChat':'officialChat')){clearInterval(APP.adminChatPollTimer);APP.adminChatPollTimer=null;return;}
