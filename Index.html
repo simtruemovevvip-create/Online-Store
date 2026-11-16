@@ -2116,8 +2116,14 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
   </style>
 <style id="owner-chat-screen-conversation-v4">
   .portal-mode-owner .owner-chat-page {
-    width:100%; max-width:56rem; height:100%; min-height:0;
-    margin:0 auto; display:flex; flex-direction:column; gap:10px;
+    display:flex; flex:1 1 auto; flex-direction:column;
+    width:100%; max-width:none; min-width:0; min-height:0; height:100%;
+    margin:0; gap:10px;
+  }
+  .portal-mode-owner .admin-main:has(.owner-chat-page),
+  .portal-mode-owner .admin-main:has(.owner-chat-page) > #adminContent,
+  .portal-mode-owner .owner-chat-layout {
+    width:100%; max-width:none; min-width:0;
   }
   .portal-mode-owner .owner-chat-title { flex:0 0 auto; margin:0; padding:0 2px; }
   .portal-mode-owner .owner-chat-layout {
