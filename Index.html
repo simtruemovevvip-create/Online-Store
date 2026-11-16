@@ -2429,6 +2429,158 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     .swal2-popup.app-slide-drawer-popup.swal2-hide { animation:none!important; }
   }
 </style>
+
+<style id="dark-drawer-and-blue-sidebar-active-v1">
+  /* Form drawers inherit the active Light/Dark palette instead of hard-coded white surfaces. */
+  .swal2-popup.app-slide-drawer-popup,
+  .swal2-popup.app-slide-drawer-popup > .swal2-title,
+  .swal2-popup.app-slide-drawer-popup > .swal2-html-container,
+  .swal2-popup.app-slide-drawer-popup > .swal2-actions,
+  .swal2-popup.app-slide-drawer-popup > .app-drawer-custom-footer {
+    background:var(--surface)!important;
+    color:var(--ink)!important;
+    border-color:var(--border)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .modal-field,
+  .swal2-popup.app-slide-drawer-popup .field,
+  .swal2-popup.app-slide-drawer-popup .form-group,
+  .swal2-popup.app-slide-drawer-popup .form-section,
+  .swal2-popup.app-slide-drawer-popup .modal-section,
+  .swal2-popup.app-slide-drawer-popup fieldset {
+    color:var(--ink)!important;
+    border-color:var(--border)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup label,
+  .swal2-popup.app-slide-drawer-popup .modal-field label,
+  .swal2-popup.app-slide-drawer-popup .field label,
+  .swal2-popup.app-slide-drawer-popup .form-group label,
+  .swal2-popup.app-slide-drawer-popup h2,
+  .swal2-popup.app-slide-drawer-popup h3,
+  .swal2-popup.app-slide-drawer-popup h4,
+  .swal2-popup.app-slide-drawer-popup b,
+  .swal2-popup.app-slide-drawer-popup strong {
+    color:var(--ink)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup p,
+  .swal2-popup.app-slide-drawer-popup small,
+  .swal2-popup.app-slide-drawer-popup .modal-help,
+  .swal2-popup.app-slide-drawer-popup .form-help,
+  .swal2-popup.app-slide-drawer-popup .help-text {
+    color:var(--muted)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .swal2-popup.app-slide-drawer-popup textarea,
+  .swal2-popup.app-slide-drawer-popup select,
+  .swal2-popup.app-slide-drawer-popup .swal2-input,
+  .swal2-popup.app-slide-drawer-popup .swal2-textarea,
+  .swal2-popup.app-slide-drawer-popup .swal2-select,
+  .swal2-popup.app-slide-drawer-popup [contenteditable="true"] {
+    background:var(--bg)!important;
+    color:var(--ink)!important;
+    border-color:var(--border)!important;
+    caret-color:var(--ink);
+  }
+  .swal2-popup.app-slide-drawer-popup input::placeholder,
+  .swal2-popup.app-slide-drawer-popup textarea::placeholder,
+  .swal2-popup.app-slide-drawer-popup [contenteditable="true"]:empty::before {
+    color:var(--muted)!important;
+    opacity:1;
+  }
+  .swal2-popup.app-slide-drawer-popup select option {
+    background:var(--surface)!important;
+    color:var(--ink)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup input[type="checkbox"],
+  .swal2-popup.app-slide-drawer-popup input[type="radio"] {
+    accent-color:#1D63EB;
+  }
+  .swal2-popup.app-slide-drawer-popup .rich-editor-wrap {
+    background:var(--surface)!important;
+    color:var(--ink)!important;
+    border-color:var(--border)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .rich-editor-toolbar {
+    background:var(--surface-2)!important;
+    border-color:var(--border)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .rich-editor-toolbar button {
+    color:var(--ink)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .rich-editor-toolbar button:hover,
+  .swal2-popup.app-slide-drawer-popup .rich-editor-toolbar button:focus-visible {
+    background:var(--surface)!important;
+    border-color:var(--border)!important;
+    color:#1D63EB!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .rich-editor-content {
+    background:var(--bg)!important;
+    color:var(--ink)!important;
+    border-color:var(--border)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .rich-editor-content h2,
+  .swal2-popup.app-slide-drawer-popup .rich-editor-content h3,
+  .swal2-popup.app-slide-drawer-popup .rich-editor-content h4 {
+    color:var(--ink)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .rich-editor-content blockquote,
+  .swal2-popup.app-slide-drawer-popup .rich-editor-foot {
+    background:var(--surface-2)!important;
+    color:var(--muted)!important;
+    border-color:var(--border)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .swal2-validation-message {
+    background:color-mix(in srgb,#dc2626 13%,var(--surface))!important;
+    color:#f87171!important;
+    border:1px solid color-mix(in srgb,#dc2626 35%,var(--border))!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup input,
+  body.dark .swal2-popup.app-slide-drawer-popup textarea,
+  body.dark .swal2-popup.app-slide-drawer-popup select {
+    color-scheme:dark;
+  }
+
+  /* One consistent full-width, centered blue active item across all portal sidebars. */
+  .admin-sidebar .admin-menu > button.active,
+  .admin-sidebar .admin-menu > button.active:hover,
+  .portal-mode-owner .admin-menu > button.active,
+  .portal-mode-owner .admin-menu > button.active:hover,
+  .seller-sidebar-v2 .seller-nav-item.active,
+  .seller-sidebar-v2 .seller-nav-item.active:hover,
+  .customer-portal-sidebar .customer-portal-nav-link.active,
+  .customer-portal-sidebar .customer-portal-nav-link.active:hover {
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:100%!important;
+    max-width:none!important;
+    min-height:40px;
+    padding:10px 12px!important;
+    border:1px solid #1D63EB!important;
+    border-radius:10px!important;
+    background:#1D63EB!important;
+    color:#fff!important;
+    font-weight:700!important;
+    text-align:center!important;
+    box-shadow:0 5px 14px rgba(29,99,235,.18);
+  }
+  .admin-sidebar .admin-menu > button.active i,
+  .portal-mode-owner .admin-menu > button.active i,
+  .seller-sidebar-v2 .seller-nav-item.active > i,
+  .customer-portal-sidebar .customer-portal-nav-link.active i {
+    color:#fff!important;
+  }
+  .seller-sidebar-v2 .seller-nav-item.active em {
+    margin-left:4px!important;
+    background:rgba(255,255,255,.78)!important;
+  }
+  .admin-sidebar .admin-menu > button.active:focus-visible,
+  .seller-sidebar-v2 .seller-nav-item.active:focus-visible,
+  .customer-portal-sidebar .customer-portal-nav-link.active:focus-visible {
+    outline:3px solid rgba(29,99,235,.3)!important;
+    outline-offset:2px!important;
+  }
+</style>
+
 </head>
 <body data-qr-login="<?= qrLoginChallenge ?>" data-portal-entry="<?= portalEntry ?>" data-web-app-url="<?= webAppUrl ?>">
   <header class="top-header">
