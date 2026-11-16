@@ -2225,6 +2225,66 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     .portal-mode-owner .owner-chat-composer button { min-width:48px; padding:0 11px; }
   }
 </style>
+<style id="owner-admin-chat-behavior-v5">
+  .portal-mode-owner .owner-chat-conversation { display:flex; flex-direction:column; min-height:0; }
+  .portal-mode-owner .owner-chat-message-area {
+    display:block; flex:1 1 auto; min-height:0; max-height:none;
+    height:auto; overflow-y:auto; overflow-x:hidden;
+  }
+  .portal-mode-owner .owner-chat-message-area > .chat-messages {
+    display:flex!important; flex:1 1 auto; flex-direction:column!important;
+    min-height:100%; height:auto!important; overflow:visible!important;
+    justify-content:flex-start; padding:14px; gap:10px;
+  }
+  .portal-mode-owner .owner-chat-message-area .chat-bubble.mine {
+    align-self:flex-start!important; border-color:#e5e7eb!important;
+    border-radius:16px 16px 16px 2px!important;
+    background:#fff!important; color:#111827!important;
+  }
+  .portal-mode-owner .owner-chat-message-area .chat-bubble:not(.mine) {
+    align-self:flex-end!important; border-color:#2563eb!important;
+    border-radius:16px 16px 2px 16px!important;
+    background:#2563eb!important; color:#fff!important;
+  }
+  .portal-mode-owner .owner-chat-message-area .chat-bubble:not(.mine) .chat-message-text,
+  .portal-mode-owner .owner-chat-message-area .chat-bubble.mine .chat-message-text { color:inherit!important; }
+  .portal-mode-owner .owner-chat-message-area .chat-bubble:not(.mine) .chat-message-meta { color:#dbeafe!important; }
+  .portal-mode-owner .owner-chat-message-area .chat-bubble.mine .chat-message-meta { color:#6b7280!important; }
+  .portal-mode-owner .owner-chat-compose-row {
+    display:flex; flex:1 1 auto; align-items:center; gap:8px; min-width:0;
+  }
+  .portal-mode-owner .owner-chat-attach-button {
+    display:grid; flex:0 0 42px; place-items:center; width:42px; height:42px;
+    border:1px solid #d1d5db; border-radius:11px; background:#fff;
+    color:#64748b; cursor:pointer;
+  }
+  .portal-mode-owner .owner-chat-attachment-preview {
+    display:flex; align-items:center; gap:9px; padding:7px 9px;
+    margin-bottom:8px; border:1px solid #dbe2ea; border-radius:10px;
+    background:#f8fafc; color:#334155; font-size:11px;
+  }
+  .portal-mode-owner .owner-chat-attachment-preview[hidden] { display:none!important; }
+  .portal-mode-owner .owner-chat-attachment-preview img {
+    width:42px; height:42px; object-fit:cover; border-radius:7px;
+  }
+  .portal-mode-owner .owner-chat-attachment-preview span {
+    flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .portal-mode-owner .owner-chat-attachment-preview button {
+    display:grid; place-items:center; width:30px; height:30px;
+    border:0; border-radius:8px; background:#e2e8f0; color:#334155; cursor:pointer;
+  }
+  .portal-mode-owner .owner-chat-composer {
+    display:flex; flex-direction:column; align-items:stretch;
+  }
+  .portal-mode-owner .owner-chat-compose-row input[type="text"] {
+    flex:1 1 auto; min-width:0; width:100%;
+  }
+  .portal-mode-owner .owner-chat-message-area .chat-send-state { font-size:9px; }
+  .portal-mode-owner .owner-chat-message-area .chat-retry-send {
+    border:0; background:transparent; color:#dc2626; font-size:10px; cursor:pointer;
+  }
+</style>
 </head>
 <body data-qr-login="<?= qrLoginChallenge ?>" data-portal-entry="<?= portalEntry ?>" data-web-app-url="<?= webAppUrl ?>">
   <header class="top-header">
@@ -7743,8 +7803,8 @@ function openChatThreadPage(threadId){apiCall('getCustomerChatThreads',[APP.cust
     function thaiLocalDateTimeToIso(value){var m=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);if(!m)return '';var ms=Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4])-7,Number(m[5]),Number(m[6]||0));return new Date(ms).toISOString();}
     function chatImageSource(url){var value=String(url||'');return /^(blob:|data:image\/)/i.test(value)?value:imageUrl(value);}
     function chatMessageMarkup(m,mode){
-      m=m||{};var mine=mode==='seller'?m.senderType==='seller':(mode==='admin'?m.senderType==='admin':m.senderType==='customer'),deleted=!!m.deletedAt,stamp=formatThaiChatTime(m.createdAt,false),status=m.clientStatus||'',canDelete=mode==='seller'&&mine&&!deleted&&!status&&!parseChatBool(m.isRead)&&Date.now()-new Date(m.createdAt).getTime()<=5*60*1000,attachment=m.attachmentUrl?chatImageSource(m.attachmentUrl):'';
-      var statusMarkup=status==='sending'?'<span class="chat-send-state">กำลังส่ง…</span>':status==='failed'?'<span class="chat-send-state is-failed">ส่งไม่สำเร็จ</span><button type="button" class="chat-retry-send" onclick="retryChatMessage(\''+esc(m.localId||'')+'\')">ลองอีกครั้ง</button>':(mine&&mode==='seller'&&!deleted?'<span class="chat-read-status '+(parseChatBool(m.isRead)?'is-read':'')+'">'+(parseChatBool(m.isRead)?'อ่านแล้ว':'ส่งแล้ว')+'</span>':'');
+      m=m||{};var mine=mode==='seller'?m.senderType==='seller':(mode==='admin'?m.senderType==='admin':(mode==='adminOfficial'?m.senderType==='seller':m.senderType==='customer')),deleted=!!m.deletedAt,stamp=formatThaiChatTime(m.createdAt,false),status=m.clientStatus||'',canDelete=mode==='seller'&&mine&&!deleted&&!status&&!parseChatBool(m.isRead)&&Date.now()-new Date(m.createdAt).getTime()<=5*60*1000,attachment=m.attachmentUrl?chatImageSource(m.attachmentUrl):'';
+      var retryFn=(mode==='admin'||mode==='adminOfficial')?'adminRetryChatMessage':'retryChatMessage';var statusMarkup=status==='sending'?'<span class="chat-send-state">กำลังส่ง…</span>':status==='failed'?'<span class="chat-send-state is-failed">ส่งไม่สำเร็จ</span><button type="button" class="chat-retry-send" onclick="'+retryFn+'(\\''+esc(m.localId||'')+'\\')">ลองอีกครั้ง</button>':(mine&&mode==='seller'&&!deleted?'<span class="chat-read-status '+(parseChatBool(m.isRead)?'is-read':'')+'">'+(parseChatBool(m.isRead)?'อ่านแล้ว':'ส่งแล้ว')+'</span>':'');
       var body=deleted?'<em>ข้อความนี้ถูกลบแล้ว</em>':(m.message?'<div class="chat-message-text">'+esc(m.message)+'</div>':'')+(attachment?'<button type="button" class="chat-image-link" data-image-url="'+esc(attachment)+'" onclick="showChatImageModalFromButton(this)" aria-label="กดเพื่อขยายรูปภาพ"><img src="'+esc(attachment)+'" onerror="imageFallback(this)" alt="รูปภาพที่ส่งในแชต กดเพื่อขยาย"><span class="chat-image-zoom-hint"><i class="fa-solid fa-magnifying-glass-plus"></i> กดเพื่อขยาย</span></button>':'');
       return '<div class="chat-bubble '+(mine?'mine ':'')+(deleted?'is-deleted ':'')+(status?'is-'+status+' ':'')+'" data-chat-message-id="'+esc(m.id||'')+'" '+(m.localId?'data-chat-local-id="'+esc(m.localId)+'"':'')+'>'+body+'<small class="chat-message-meta"><span>'+esc(stamp)+'</span>'+statusMarkup+(canDelete?'<button type="button" class="chat-delete-message" onclick="sellerDeleteChatMessage(\''+esc(m.id)+'\')" title="ลบข้อความภายใน 5 นาที">ลบ</button>':'')+'</small></div>';
     }
@@ -11707,7 +11767,7 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
     function loadAdminChatPage(kind){
       ADMIN_CHAT_PAGE_KIND_=kind;APP.adminChatKind=kind;APP.adminChatSelectedKey='';
       var host=document.getElementById('adminContent');if(!host)return;
-      host.innerHTML='<div class="owner-chat-page"><h2 class="owner-chat-title">'+(kind==='seller'?'แชตกับร้านค้า':'แชตลูกค้าร้านค้าทางการ')+'</h2><div class="owner-chat-layout"><aside class="owner-chat-list"><div class="owner-chat-list-head"><span>'+(kind==='seller'?'ร้านค้า':'ลูกค้า')+'</span><small id="ownerChatCount">กำลังโหลด...</small></div><label class="owner-chat-search"><i class="fa-solid fa-magnifying-glass"></i><input id="ownerChatSearch" type="search" placeholder="ค้นหา..." oninput="filterAdminChatThreads()"></label><div class="owner-chat-thread-list" id="ownerChatThreadList"><div class="owner-chat-empty"><i class="fa-regular fa-comments"></i>กำลังโหลดรายการสนทนา...</div></div></aside><section class="owner-chat-conversation"><header class="owner-chat-conversation-head" id="ownerChatConversationHead"><div class="owner-chat-live-identity"><b>'+(kind==='seller'?'เลือกผู้ขาย':'HuiHui 789.TH')+'</b><small>'+(kind==='seller'?'เลือกร้านค้าเพื่อเริ่มสนทนา':'สนทนากับฝ่ายบริการลูกค้า')+'</small></div><span class="owner-chat-online"><i></i> ออนไลน์</span></header><div class="owner-chat-message-area" id="ownerChatMessageArea"><div class="owner-chat-empty"><i class="fa-regular fa-message"></i>เลือกบทสนทนาเพื่อดูข้อความ</div></div><div class="owner-chat-composer"><input type=\"text\" id=\"ownerChatMessageInput\" autocomplete=\"off\" placeholder=\"พิมพ์ข้อความ...\" onkeydown=\"if(event.keyCode===13&&!event.isComposing){event.preventDefault();sendAdminChatReply();}\"><button class="btn btn-primary" type="button" id="ownerChatSendButton" onclick="sendAdminChatReply()"><i class="fa-solid fa-paper-plane"></i> ส่ง</button></div></section></div></div>';
+      host.innerHTML='<div class="owner-chat-page"><h2 class="owner-chat-title">'+(kind==='seller'?'แชตกับร้านค้า':'แชตลูกค้าร้านค้าทางการ')+'</h2><div class="owner-chat-layout"><aside class="owner-chat-list"><div class="owner-chat-list-head"><span>'+(kind==='seller'?'ร้านค้า':'ลูกค้า')+'</span><small id="ownerChatCount">กำลังโหลด...</small></div><label class="owner-chat-search"><i class="fa-solid fa-magnifying-glass"></i><input id="ownerChatSearch" type="search" placeholder="ค้นหา..." oninput="filterAdminChatThreads()"></label><div class="owner-chat-thread-list" id="ownerChatThreadList"><div class="owner-chat-empty"><i class="fa-regular fa-comments"></i>กำลังโหลดรายการสนทนา...</div></div></aside><section class="owner-chat-conversation"><header class="owner-chat-conversation-head" id="ownerChatConversationHead"><div class="owner-chat-live-identity"><b>'+(kind==='seller'?'เลือกผู้ขาย':'HuiHui 789.TH')+'</b><small>'+(kind==='seller'?'เลือกร้านค้าเพื่อเริ่มสนทนา':'สนทนากับฝ่ายบริการลูกค้า')+'</small></div><span class="owner-chat-online"><i></i> ออนไลน์</span></header><div class="owner-chat-message-area" id="ownerChatMessageArea"><div class="owner-chat-empty"><i class="fa-regular fa-message"></i>เลือกบทสนทนาเพื่อดูข้อความ</div></div><div class="owner-chat-composer"><button class=\"owner-chat-attach-button\" type=\"button\" aria-label=\"แนบรูปภาพ\" title=\"แนบรูปภาพ\" onclick=\"document.getElementById('ownerChatFileInput').click()\"><i class=\"fa-regular fa-image\"></i></button><input type=\"file\" id=\"ownerChatFileInput\" accept=\"image/*\" hidden onchange=\"adminChatAttachmentChanged(this)\"><input type=\"text\" id=\"ownerChatMessageInput\" autocomplete=\"off\" placeholder=\"พิมพ์ข้อความ...\" onkeydown=\"if(event.keyCode===13&&!event.isComposing){event.preventDefault();sendAdminChatReply();}\"><button class="btn btn-primary" type="button" id="ownerChatSendButton" onclick="sendAdminChatReply()"><i class="fa-solid fa-paper-plane"></i> ส่ง</button></div></section></div></div>';
       refreshAdminChatPage();
       APP.adminChatPollTimer=window.setInterval(function(){
         if(APP.currentView!=='admin'||APP.adminPage!==(kind==='seller'?'sellerChat':'officialChat')){clearInterval(APP.adminChatPollTimer);APP.adminChatPollTimer=null;return;}
@@ -11752,21 +11812,140 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
         var title=kind==='seller'?(row.shopName||'ร้านค้า'):'HuiHui 789.TH',sub=kind==='seller'?'สนทนากับร้านค้าโดยตรง':'สนทนากับฝ่ายบริการลูกค้า';
         var head=document.getElementById('ownerChatConversationHead');if(head)head.innerHTML='<div class="owner-chat-live-identity"><b>'+esc(title)+'</b><small>'+esc(sub)+'</small></div><span class="owner-chat-online"><i></i> ออนไลน์</span>';
         var area=document.getElementById('ownerChatMessageArea');
-        if(area){var mode=kind==='seller'?'seller':'customer';area.innerHTML=rows.length?'<div class="chat-messages seller-chat-message-list">'+rows.map(function(m){return chatMessageMarkup(m,mode);}).join('')+'</div>':'<div class="owner-chat-empty"><i class="fa-regular fa-message"></i>ยังไม่มีข้อความ เริ่มสนทนาได้เลย</div>';area.scrollTop=area.scrollHeight;}
+        if(area){var mode=kind==='seller'?'admin':'adminOfficial';area.innerHTML=rows.length?'<div class="chat-messages seller-chat-message-list">'+rows.map(function(m){return chatMessageMarkup(m,mode);}).join('')+'</div>':'<div class="owner-chat-empty"><i class="fa-regular fa-message"></i>ยังไม่มีข้อความ เริ่มสนทนาได้เลย</div>';area.scrollTop=area.scrollHeight;}
       },false);
     }
     function showAdminChatEmpty_(){var head=document.getElementById('ownerChatConversationHead'),area=document.getElementById('ownerChatMessageArea');if(head)head.innerHTML='<div><b>ยังไม่ได้เลือกบทสนทนา</b><small>เลือกจากรายการด้านซ้าย</small></div>';if(area)area.innerHTML='<div class="owner-chat-empty"><i class="fa-regular fa-message"></i>เลือกบทสนทนาเพื่อเริ่มสนทนา</div>';}
+    var ADMIN_CHAT_OUTBOX_ = Object.create(null);
+    var ADMIN_CHAT_PENDING_FILE_ = null;
+    function handleAdminChatComposerKeydown(event){
+      if(!event||event.key!=='Enter'||event.isComposing||event.keyCode===229)return;
+      event.preventDefault();sendAdminChatReply();
+    }
+    function adminChatAttachmentChanged(input){
+      var file=input&&input.files&&input.files[0];if(!file)return;
+      if(!file.type||file.type.indexOf('image/')!==0){alertError('กรุณาเลือกไฟล์รูปภาพ');input.value='';return;}
+      if(file.size>5*1024*1024){alertError('รูปภาพต้องมีขนาดไม่เกิน 5 MB');input.value='';return;}
+      ADMIN_CHAT_PENDING_FILE_=file;
+      var box=document.getElementById('ownerChatAttachmentPreview');
+      if(box){
+        var previewUrl=window.URL&&URL.createObjectURL?URL.createObjectURL(file):'';
+        box.hidden=false;
+        box.innerHTML=(previewUrl?'<img src="'+esc(previewUrl)+'" alt="ตัวอย่างรูปภาพ">':'<i class="fa-regular fa-image"></i>')+
+          '<span>'+esc(file.name)+'</span><button type="button" onclick="clearAdminChatAttachment()" title="ยกเลิกรูปภาพ"><i class="fa-solid fa-xmark"></i></button>';
+        box.setAttribute('data-preview-url',previewUrl);
+      }
+    }
+    function clearAdminChatAttachment(){
+      ADMIN_CHAT_PENDING_FILE_=null;
+      var box=document.getElementById('ownerChatAttachmentPreview'),input=document.getElementById('ownerChatFileInput');
+      if(box){
+        var url=box.getAttribute('data-preview-url')||'';
+        if(url&&window.URL&&URL.revokeObjectURL)URL.revokeObjectURL(url);
+        box.hidden=true;box.innerHTML='';box.removeAttribute('data-preview-url');
+      }
+      if(input)input.value='';
+    }
+    function adminChatMessageMarkup_(message,kind){
+      return chatMessageMarkup(message,kind==='seller'?'admin':'adminOfficial');
+    }
+    function adminAppendChatMessage_(message,kind){
+      var area=document.getElementById('ownerChatMessageArea');if(!area)return;
+      var list=area.querySelector('.chat-messages');
+      if(!list){
+        area.innerHTML='<div class="chat-messages seller-chat-message-list"></div>';
+        list=area.querySelector('.chat-messages');
+      }
+      if(list)list.insertAdjacentHTML('beforeend',adminChatMessageMarkup_(message,kind));
+      area.scrollTop=area.scrollHeight;
+    }
+    function adminReplaceChatMessage_(localId,message,kind){
+      var safeId=String(localId||'').replace(/[^A-Za-z0-9_-]/g,'');
+      var node=document.querySelector('[data-chat-local-id="'+safeId+'"]');
+      if(node)node.outerHTML=adminChatMessageMarkup_(message,kind);
+      var area=document.getElementById('ownerChatMessageArea');
+      if(area)area.scrollTop=area.scrollHeight;
+    }
+    function adminMarkChatSendFailed_(localId,error){
+      var entry=ADMIN_CHAT_OUTBOX_[localId];if(!entry)return;
+      entry.error=String(error||'ส่งข้อความไม่สำเร็จ');
+      entry.optimistic.clientStatus='failed';
+      adminReplaceChatMessage_(localId,entry.optimistic,entry.kind);
+      if(entry.button){entry.button.disabled=false;entry.button.innerHTML='<i class="fa-solid fa-paper-plane"></i><span> ส่ง</span>';}
+    }
+    function adminRetryChatMessage(localId){
+      if(!ADMIN_CHAT_OUTBOX_[localId])return;
+      adminTransmitChatMessage_(localId);
+    }
+    function adminTransmitChatMessage_(localId){
+      var entry=ADMIN_CHAT_OUTBOX_[localId];if(!entry||entry.sending)return;
+      entry.sending=true;entry.optimistic.clientStatus='sending';
+      if(entry.button){entry.button.disabled=true;entry.button.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i><span> กำลังส่ง</span>';}
+      adminReplaceChatMessage_(localId,entry.optimistic,entry.kind);
+      function fail(message){entry.sending=false;adminMarkChatSendFailed_(localId,message);}
+      function sendMessage(attachmentUrl){
+        var api=entry.kind==='seller'?'adminSendSellerChatMessage':'adminSendOfficialStoreChatMessage';
+        apiCall(api,[APP.adminToken,entry.key,entry.message,attachmentUrl||'',localId],function(r){
+          if(!r||!r.success||!r.data||!r.data.message){fail(r&&r.message||'ส่งข้อความไม่สำเร็จ');return;}
+          var saved=r.data.message;entry.optimistic=saved;entry.sending=false;
+          adminReplaceChatMessage_(localId,saved,entry.kind);
+          var row=safeArray(APP.adminChatThreads).filter(function(x){
+            return String(entry.kind==='seller'?x.storeId:x.threadId)===String(entry.key);
+          })[0];
+          if(row){
+            row.lastMessage=entry.message||(attachmentUrl?'ส่งรูปภาพ':'');
+            row.lastMessageAt=saved.createdAt||new Date().toISOString();
+          }
+          renderAdminChatThreadList_();
+          if(entry.button){entry.button.disabled=false;entry.button.innerHTML='<i class="fa-solid fa-paper-plane"></i><span> ส่ง</span>';}
+          if(entry.localUrl&&window.URL&&URL.revokeObjectURL)URL.revokeObjectURL(entry.localUrl);
+          delete ADMIN_CHAT_OUTBOX_[localId];
+        },false);
+      }
+      if(entry.file&&!entry.attachmentUrl){
+        var reader=new FileReader();
+        reader.onload=function(){
+          apiCall('uploadFile',[APP.adminToken,{
+            accountType:'admin',folder:'ChatMessages',chatKind:entry.kind,
+            threadId:entry.kind==='official'?entry.key:'',
+            storeId:entry.kind==='seller'?entry.key:'',
+            name:entry.file.name,mimeType:entry.file.type,data:reader.result
+          }],function(r){
+            if(!r||!r.success||!r.data||!r.data.url){fail(r&&r.message||'อัปโหลดรูปภาพไม่สำเร็จ');return;}
+            entry.attachmentUrl=r.data.url;entry.optimistic.attachmentUrl=r.data.url;
+            adminReplaceChatMessage_(localId,entry.optimistic,entry.kind);
+            sendMessage(entry.attachmentUrl);
+          },false);
+        };
+        reader.onerror=function(){fail('อ่านไฟล์รูปภาพไม่สำเร็จ');};
+        reader.readAsDataURL(entry.file);
+      }else sendMessage(entry.attachmentUrl||'');
+    }
     function sendAdminChatReply(){
       var input=document.getElementById('ownerChatMessageInput'),button=document.getElementById('ownerChatSendButton');
-      if(!input||!button||!String(input.value||'').trim()||button.disabled||!APP.adminChatSelectedKey)return;
-      var kind=APP.adminChatKind,key=String(APP.adminChatSelectedKey),message=String(input.value||'').trim();
-      button.disabled=true;button.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i>';
-      apiCall(kind==='seller'?'adminSendSellerChatMessage':'adminSendOfficialStoreChatMessage',[APP.adminToken,key,message,''],function(r){
-        button.disabled=false;button.innerHTML='<i class="fa-solid fa-paper-plane"></i> ส่ง';
-        if(!r||!r.success){alertError(r&&r.message||'ส่งข้อความไม่สำเร็จ');return;}
-        input.value='';refreshAdminChatPage();
-      },false);
+      if(!input||!button||button.disabled||!APP.adminChatSelectedKey)return;
+      var kind=APP.adminChatKind||'seller',key=String(APP.adminChatSelectedKey);
+      var message=String(input.value||'').trim(),file=ADMIN_CHAT_PENDING_FILE_;
+      if(!message&&!file)return;
+      var localId='ownerchat_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+      var localUrl=file&&window.URL&&URL.createObjectURL?URL.createObjectURL(file):'';
+      var optimistic={
+        localId:localId,clientStatus:'sending',
+        senderType:kind==='seller'?'admin':'seller',
+        senderId:kind==='seller'?'SYSTEM_ADMIN':'PLATFORM',
+        message:message,attachmentUrl:localUrl,createdAt:new Date().toISOString(),isRead:false
+      };
+      ADMIN_CHAT_OUTBOX_[localId]={
+        localId:localId,kind:kind,key:key,message:message,file:file||null,
+        attachmentUrl:'',localUrl:localUrl,optimistic:optimistic,button:button,sending:false
+      };
+      adminAppendChatMessage_(optimistic,kind);
+      input.value='';
+      clearAdminChatAttachment();
+      adminTransmitChatMessage_(localId);
     }
+
+
 
 
 var LIVE_DATA_SYNC_TIMER_=null,LIVE_DATA_SYNC_BUSY_=false,LIVE_DATA_SYNC_CURSOR_='',LIVE_DATA_SYNC_PORTAL_='',LIVE_DATA_SYNC_PENDING_=[];
