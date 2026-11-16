@@ -5894,7 +5894,7 @@ function loadPublicData(onComplete){
       var cacheKey = adminGridPageCacheKey_(page, requestOptions);
       var cached = ADMIN_GRID_PAGE_CACHE[cacheKey] || null;
       var cacheAge = cached ? Math.max(0, Date.now() - Number(cached.at || 0)) : Infinity;
-      var hasCache = !!(cached && cached.data && cacheAge <= ADMIN_GRID_CACHE_STALE_MS);
+      var hasCache = !!(cached && cached.data); // keep prior rows visible while a silent refresh runs
       var isFreshCache = hasCache && cacheAge <= ADMIN_GRID_CACHE_FRESH_MS;
       if (!hasCache && cached) delete ADMIN_GRID_PAGE_CACHE[cacheKey];
 
@@ -7588,7 +7588,7 @@ function adjustInventoryDialog(productId,variantId){
       var cacheKey=page==='chat'?'':sellerPageCacheKey_(page,pageOptions);
       var cached=cacheKey?SELLER_PAGE_CACHE[cacheKey]:null;
       var cacheAge=cached?Math.max(0,Date.now()-Number(cached.at||0)):Infinity;
-      var hasCache=!!(cached&&cacheAge<=SELLER_PAGE_CACHE_STALE_MS);
+      var hasCache=!!(cached&&Object.prototype.hasOwnProperty.call(cached,'data')); // stale-while-revalidate
       var isFreshCache=hasCache&&cacheAge<=SELLER_PAGE_CACHE_FRESH_MS;
       if(!hasCache&&cached)delete SELLER_PAGE_CACHE[cacheKey];
 
@@ -11000,11 +11000,11 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
         if(!token||APP.accessMode!=='owner'||adminWarmToken===token)return;
         adminWarmToken=token;
         var tasks=[];
+        adminGridPages.forEach(function(page){if(page!==APP.adminPage)tasks.push(adminTask(page));});
         if(APP.adminPage!=='settings')tasks.push(function(done){warmRead('getAdminSettings',[token],done);});
         if(APP.adminPage!=='dashboard')tasks.push(function(done){warmRead('getDashboardStats',[token],done);});
         if(APP.adminPage!=='dashboard')tasks.push(function(done){warmRead('getSalesReports',[token,{}],done);});
-        adminGridPages.forEach(function(page){if(page!==APP.adminPage)tasks.push(adminTask(page));});
-        runQueue(tasks,function(){return APP.accessMode==='owner'&&String(APP.adminToken||'')===token;},2);
+        runQueue(tasks,function(){return APP.accessMode==='owner'&&String(APP.adminToken||'')===token;},4);
       }
       function sellerTask(page,token,storeId){
         return function(done){
@@ -11021,14 +11021,14 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
         if(sellerWarmToken===key)return;
         sellerWarmToken=key;
         var tasks=sellerPages.filter(function(page){return page!==APP.sellerPage;}).map(function(page){return sellerTask(page,token,storeId);});
-        runQueue(tasks,function(){return APP.accessMode==='seller'&&String(APP.customerToken||'')===token&&String(APP.sellerStore&&APP.sellerStore.id||'')===storeId;},2);
+        runQueue(tasks,function(){return APP.accessMode==='seller'&&String(APP.customerToken||'')===token&&String(APP.sellerStore&&APP.sellerStore.id||'')===storeId;},4);
       }
       function startCustomerWarm(){
         var token=String(APP.customerToken||'');
         if(!token||APP.accessMode!=='customer'||customerWarmToken===token)return;
         customerWarmToken=token;
         var tasks=customerReads.map(function(name){return function(done){warmRead(name,[token],done);};});
-        runQueue(tasks,function(){return APP.accessMode==='customer'&&String(APP.customerToken||'')===token;},2);
+        runQueue(tasks,function(){return APP.accessMode==='customer'&&String(APP.customerToken||'')===token;},3);
       }
 
       function wrapAfter(name,after){
@@ -12912,8 +12912,8 @@ function startGlobalDataSync_(){
     while((node=walker.nextNode())){
       if(!loadingText.test(String(node.nodeValue||'')))continue;
       parent=node.parentElement;
-      if(parent&&parent.closest&&parent.closest('button,input,textarea,select,.swal2-container,script,style'))continue;
-      node.nodeValue='—';
+      if(parent&&parent.closest&&parent.closest('button,input,textarea,select,.swal2-container,script,style,.seller-chat-page,.buyer-chat-page,.seller-chat-center,.buyer-chat-center,.chat-messages,.customer-chat-messages,[data-preserve-user-text]'))continue;
+      node.nodeValue='';
     }
   }
   cleanLoadingText(document.getElementById('appRoot'));
@@ -12930,7 +12930,7 @@ function startGlobalDataSync_(){
             else cleanLoadingText(node);
           }else if(node.nodeType===3&&loadingText.test(String(node.nodeValue||''))){
             var parent=node.parentElement;
-            if(!(parent&&parent.closest&&parent.closest('button,input,textarea,select,.swal2-container,script,style')))node.nodeValue='—';
+            if(!(parent&&parent.closest&&parent.closest('button,input,textarea,select,.swal2-container,script,style,.seller-chat-page,.buyer-chat-page,.seller-chat-center,.buyer-chat-center,.chat-messages,.customer-chat-messages,[data-preserve-user-text]')))node.nodeValue='';
           }
         }
       });
@@ -12940,6 +12940,29 @@ function startGlobalDataSync_(){
 
   /* The old atomic navigation wrappers wait for a skeleton before finalizing the new page.
      No skeletons are rendered now; real page data callbacks own the final render instead. */
+  /* Keep real cached page content on screen while its data is refreshed in the background. */
+  if(typeof window.loadAdminDashboard==='function'&&!window.loadAdminDashboard.__instantCachedDashboardV3){
+    var originalLoadAdminDashboardV3=window.loadAdminDashboard;
+    var instantLoadAdminDashboardV3=function(silentRefresh){
+      var host=document.getElementById('adminContent');
+      var hasDashboard=!!(host&&host.querySelector('#dashboardStatsGrid,#dashboardRecentOrdersBody,#salesChart'));
+      return originalLoadAdminDashboardV3.call(this,!!silentRefresh||hasDashboard);
+    };
+    instantLoadAdminDashboardV3.__instantCachedDashboardV3=true;
+    window.loadAdminDashboard=instantLoadAdminDashboardV3;
+  }
+  if(typeof window.adminGridLoad==='function'&&!window.adminGridLoad.__instantCachedGridV3){
+    var originalAdminGridLoadV3=window.adminGridLoad;
+    var instantAdminGridLoadV3=function(page,options,callback,silent,forceRefresh){
+      var host=document.getElementById('adminContent');
+      var html=host?String(host.innerHTML||''):'';
+      var hasRenderedPage=html.length>80&&!/(?:admin-skeleton|eg-grid-skeleton|eg-skeleton-grid|eg-skeleton-)/i.test(html);
+      return originalAdminGridLoadV3.call(this,page,options,callback,!!silent||hasRenderedPage,forceRefresh);
+    };
+    instantAdminGridLoadV3.__instantCachedGridV3=true;
+    window.adminGridLoad=instantAdminGridLoadV3;
+  }
+
   var atomic=window.__STORE_ATOMIC_PAGE_TRANSITIONS__;
   if(atomic){
     atomic.admin=null;
@@ -12948,5 +12971,83 @@ function startGlobalDataSync_(){
 })();
 </script>
 
+
+
+<style id="instant-dark-form-drawer-and-no-blocking-v3">
+  /* All form drawers remain dark regardless of the marketplace's page theme. */
+  .swal2-container.app-slide-drawer-container { background:rgba(0,0,0,.66)!important; }
+  .swal2-popup.app-slide-drawer-popup {
+    --bg:#0d1117!important;
+    --surface:#161b22!important;
+    --surface-2:#202833!important;
+    --ink:#e7ebf2!important;
+    --muted:#9aa5b5!important;
+    --border:#303a48!important;
+    color-scheme:dark!important;
+    background:#161b22!important;
+    color:#e7ebf2!important;
+    border-left-color:#303a48!important;
+  }
+  .swal2-popup.app-slide-drawer-popup > .swal2-title,
+  .swal2-popup.app-slide-drawer-popup > .swal2-html-container,
+  .swal2-popup.app-slide-drawer-popup > .swal2-actions,
+  .swal2-popup.app-slide-drawer-popup > .app-drawer-custom-footer,
+  .swal2-popup.app-slide-drawer-popup .modal-field,
+  .swal2-popup.app-slide-drawer-popup .field,
+  .swal2-popup.app-slide-drawer-popup .form-group,
+  .swal2-popup.app-slide-drawer-popup .form-section,
+  .swal2-popup.app-slide-drawer-popup .modal-section,
+  .swal2-popup.app-slide-drawer-popup .customer-portal-section-card {
+    background:#161b22!important;color:#e7ebf2!important;border-color:#303a48!important;
+  }
+  .swal2-popup.app-slide-drawer-popup label,
+  .swal2-popup.app-slide-drawer-popup h1,
+  .swal2-popup.app-slide-drawer-popup h2,
+  .swal2-popup.app-slide-drawer-popup h3,
+  .swal2-popup.app-slide-drawer-popup h4,
+  .swal2-popup.app-slide-drawer-popup b,
+  .swal2-popup.app-slide-drawer-popup strong,
+  .swal2-popup.app-slide-drawer-popup .swal2-title { color:#e7ebf2!important; }
+  .swal2-popup.app-slide-drawer-popup p,
+  .swal2-popup.app-slide-drawer-popup small,
+  .swal2-popup.app-slide-drawer-popup .modal-help,
+  .swal2-popup.app-slide-drawer-popup .form-help,
+  .swal2-popup.app-slide-drawer-popup .help-text { color:#9aa5b5!important; }
+  .swal2-popup.app-slide-drawer-popup input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .swal2-popup.app-slide-drawer-popup textarea,
+  .swal2-popup.app-slide-drawer-popup select,
+  .swal2-popup.app-slide-drawer-popup [contenteditable="true"],
+  .swal2-popup.app-slide-drawer-popup .rich-editor-content {
+    background:#0d1117!important;color:#e7ebf2!important;border-color:#303a48!important;color-scheme:dark!important;
+  }
+  .swal2-popup.app-slide-drawer-popup input::placeholder,
+  .swal2-popup.app-slide-drawer-popup textarea::placeholder,
+  .swal2-popup.app-slide-drawer-popup [contenteditable="true"]:empty::before { color:#8793a3!important; }
+  .swal2-popup.app-slide-drawer-popup select option { background:#161b22!important;color:#e7ebf2!important; }
+  .swal2-popup.app-slide-drawer-popup table,
+  .swal2-popup.app-slide-drawer-popup thead,
+  .swal2-popup.app-slide-drawer-popup tbody,
+  .swal2-popup.app-slide-drawer-popup tr,
+  .swal2-popup.app-slide-drawer-popup th,
+  .swal2-popup.app-slide-drawer-popup td { background:#161b22!important;color:#e7ebf2!important;border-color:#303a48!important; }
+  .swal2-popup.app-slide-drawer-popup .rich-editor-toolbar,
+  .swal2-popup.app-slide-drawer-popup .rich-editor-foot { background:#202833!important;color:#9aa5b5!important;border-color:#303a48!important; }
+  .swal2-popup.app-slide-drawer-popup.swal2-hide,
+  .swal2-popup.app-slide-drawer-popup.app-slide-drawer-exit {
+    animation:appDrawerExit .22s cubic-bezier(.4,0,.2,1) both!important;
+    transform-origin:right center!important;
+  }
+  .portal-mode-owner #adminContent[aria-busy="true"],
+  #sellerContent[aria-busy="true"],
+  #customerPortalContent[aria-busy="true"] {
+    pointer-events:auto!important;user-select:auto!important;
+  }
+  #appRoot [class*="skeleton"],
+  #adminContent [class*="skeleton"],
+  #sellerContent [class*="skeleton"],
+  #customerPortalContent [class*="skeleton"] {
+    display:none!important;animation:none!important;
+  }
+</style>
 </body>
 </html>
