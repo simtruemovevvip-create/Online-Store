@@ -113,25 +113,56 @@ function getInitialFaviconUrl_() {
     var configured = String(settings.setFaviconUrl || settings.favicon || '').trim();
     if (!configured) return '';
 
-    var driveId = extractDriveIdFromAssetValue_(configured);
+    // Resolve an opaque DriveAssets token for new uploads. Older settings that
+    // contain a Drive file URL/ID remain supported during the migration.
+    var tokenMatch = configured.match(/^drive-asset:\/\/([A-Za-z0-9_-]{20,80})$/i);
+    var driveId = '';
+    if (tokenMatch) {
+      var assetToken = tokenMatch[1];
+      var asset = readTable_('DriveAssets', false).filter(function(row) {
+        return row && String(row.id) === assetToken && row.status === 'Active' &&
+          row.folder === 'Website' && row.access === 'public' && row.purpose === 'favicon';
+      })[0];
+      if (!asset) return '';
+      driveId = String(asset.fileId || '');
+    } else {
+      driveId = extractDriveIdFromAssetValue_(configured);
+    }
+
     if (driveId) {
       if (!/^[A-Za-z0-9_-]{10,100}$/.test(driveId)) return '';
       var file = DriveApp.getFileById(driveId);
       if (!file || file.isTrashed() || !isFileInSystemFolder_(file, 'Website')) return '';
       var mime = String(file.getMimeType() || '').toLowerCase();
-      // New uploads are normalized to PNG before they are saved.
       if (mime !== 'image/png') return '';
-      var access = file.getSharingAccess();
-      if (access !== DriveApp.Access.ANYONE_WITH_LINK && access !== DriveApp.Access.ANYONE) {
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        access = file.getSharingAccess();
+
+      // Revoke legacy link sharing from older Favicon uploads. The icon is
+      // delivered inline as a small data URI, so the Drive file can stay private.
+      var sharingAccess = file.getSharingAccess();
+      if (sharingAccess === DriveApp.Access.ANYONE_WITH_LINK || sharingAccess === DriveApp.Access.ANYONE) {
+        try {
+          file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+        } catch (sharingError) {
+          console.warn('Could not revoke legacy Favicon link sharing: ' + String(sharingError && sharingError.message || sharingError));
+          return '';
+        }
       }
-      if (access !== DriveApp.Access.ANYONE_WITH_LINK && access !== DriveApp.Access.ANYONE) return '';
+
+      var size = file.getSize();
+      // Keep the HtmlOutput response compact and avoid embedding oversized assets.
+      if (size > 48 * 1024) return '';
       var version = file.getLastUpdated ? file.getLastUpdated().getTime() : Date.now();
-      // `format=png` is intentionally the final URL suffix. HtmlOutput checks
-      // the URL's image extension before accepting setFaviconUrl().
-      return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(driveId) +
-        '&v=' + encodeURIComponent(String(version)) + '&format=png';
+      var cache = CacheService.getScriptCache();
+      var cacheKey = 'favicon_data_uri_' + driveId + '_' + String(version);
+      var cached = cache.get(cacheKey);
+      if (cached) return cached;
+
+      var bytes = file.getBlob().getBytes();
+      var dataUri = 'data:image/png;base64,' + Utilities.base64Encode(bytes) + '#favicon.png';
+      if (dataUri.length < 90000) {
+        try { cache.put(cacheKey, dataUri, 21600); } catch (cacheError) {}
+      }
+      return dataUri;
     }
 
     // External Favicon URLs must identify an image format. Preserve signed
@@ -1594,7 +1625,14 @@ function saveSettings(token, data) {
     var user = requireAdmin_(token, 'settings.manage');
     data = data || {};
     ['primaryColor','secondaryColor','accentColor'].forEach(function(k) { if (Object.prototype.hasOwnProperty.call(data,k) && data[k] && !/^#[0-9a-fA-F]{6}$/.test(String(data[k]))) throw new Error('รูปแบบสี '+k+' ไม่ถูกต้อง กรุณาใช้ Hex Color เช่น #EE4D2D'); });
-    if (Object.prototype.hasOwnProperty.call(data, 'setFaviconUrl') && data.setFaviconUrl && !/^https:\/\//i.test(String(data.setFaviconUrl).trim())) throw new Error('URL ไอคอนเว็บไซต์ต้องขึ้นต้นด้วย https://');
+    if (Object.prototype.hasOwnProperty.call(data, 'setFaviconUrl') && data.setFaviconUrl) {
+      var faviconSettingValue = String(data.setFaviconUrl).trim();
+      var isDriveFaviconToken = /^drive-asset:\/\/[A-Za-z0-9_-]{20,80}$/i.test(faviconSettingValue);
+      var isHttpsFaviconUrl = /^https:\/\//i.test(faviconSettingValue);
+      if (!isDriveFaviconToken && !isHttpsFaviconUrl) {
+        throw new Error('Favicon ต้องเป็น URL HTTPS หรือ Asset Reference จากระบบ (drive-asset://...)');
+      }
+    }
     if (Object.prototype.hasOwnProperty.call(data,'mallStoreIds')) {
       var selectedMallStores=data.mallStoreIds;
       if(typeof selectedMallStores==='string')selectedMallStores=safeJson_(selectedMallStores,[]);
@@ -3323,24 +3361,11 @@ function uploadFile(token,payload){
     var isChatImage=folderName==='ChatMessages'&&!!chatThread&&isImage;
     var displayable=isPublicSiteImage||isProfileImage;
     if(displayable||isChatImage)ensureDriveAssetsTable_();
-    // Drive assets are private by default and served through the asset registry.
-    // The only exception is the explicitly configured public Website Favicon,
-    // because browser tabs fetch it directly from its URL outside this app.
+    // Keep every uploaded file PRIVATE in Google Drive, including the favicon.
+    // The browser-tab favicon is embedded as a compact data URI by doGet() using
+    // HtmlOutput.setFaviconUrl(), so no public Drive permission is required.
     var root=DriveApp.getFolderById(FOLDER_ID);var folder=getOrCreateFolder_(root,folderName);
     var blob=Utilities.newBlob(bytes,mime,name);var file=folder.createFile(blob);
-    var faviconPublicLink=false;
-    if(isFaviconUpload){
-      // A browser tab requests its favicon directly and cannot call the private
-      // Apps Script image-data API. Make ONLY this branding icon public by link.
-      try{
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);
-        faviconPublicLink=file.getSharingAccess()===DriveApp.Access.ANYONE_WITH_LINK||file.getSharingAccess()===DriveApp.Access.ANYONE;
-        if(!faviconPublicLink)throw new Error('Google Drive ไม่ยืนยันสิทธิ์ Anyone with the link');
-      }catch(faviconShareError){
-        try{file.setTrashed(true);}catch(ignoreTrashFavicon){}
-        throw new Error('อัปโหลด Favicon ไม่สำเร็จ เพราะ Google Drive ไม่อนุญาตให้เปิดอ่านรูปไอคอนแบบ Anyone with the link กรุณาตรวจนโยบายการแชร์ของ Drive: '+String(faviconShareError.message||faviconShareError).substring(0,140));
-      }
-    }
     if(folderName==='Payments'&&(account==='customer'||account==='guest'))file.setDescription('EcommercePaymentProof|'+text_(payload.orderId,100)+'|'+account+'|'+actor);
     if(isProfileImage)file.setDescription('EcommerceCustomerProfile|'+actor);
     if(isPublicSiteImage)file.setDescription('EcommerceSiteImage|'+folderName+'|'+account+'|'+actor+(isFaviconUpload?'|favicon':''));
@@ -3351,7 +3376,9 @@ function uploadFile(token,payload){
       assetToken=Utilities.getUuid().replace(/-/g,'')+Utilities.getUuid().replace(/-/g,'').substring(0,8);
       appendRecord_('DriveAssets',{id:assetToken,fileId:file.getId(),mimeType:mime,folder:folderName,access:isPublicSiteImage?'public':(isChatImage?'chat':'owner'),ownerType:account,ownerId:actor,purpose:isChatImage?'chat:'+chatThread.id:(isProfileImage?'profile':text_(payload.purpose||'site-image',60)),status:'Active',createdAt:now_()});
     }
-    var url=isProductVideoUpload?'drive-private://'+file.getId():(isChatImage?'drive-asset://'+assetToken:((isProfileImage||isPublicSiteImage)?driveProfileImageUrl_(file.getId()):'https://drive.google.com/file/d/'+file.getId()+'/view'));
+    // Store only the opaque registry token for Favicon settings; do not expose
+    // the underlying Drive file ID in the public Settings payload.
+    var url=isProductVideoUpload?'drive-private://'+file.getId():(isChatImage||isFaviconUpload?'drive-asset://'+assetToken:((isProfileImage||isPublicSiteImage)?driveProfileImageUrl_(file.getId()):'https://drive.google.com/file/d/'+file.getId()+'/view'));
     var profileImageSaved = false;
     // Persist customer profile URL immediately after Drive upload. This avoids
     // relying on a separate modal Save click to write Customers.profileImage.
@@ -3362,9 +3389,9 @@ function uploadFile(token,payload){
     var auditWarning='';try{log_('Upload','Drive',folderName+'/'+name,actor);}catch(logError){auditWarning='บันทึกไฟล์สำเร็จ แต่บันทึก Audit Log ไม่สำเร็จ: '+String(logError.message||logError).substring(0,160);}
     var successMessage = displayable ? 'อัปโหลดไฟล์สำเร็จและเก็บต้นฉบับเป็นส่วนตัวใน Google Drive' : 'บันทึกไฟล์เป็นส่วนตัวใน Google Drive สำเร็จ';
     if (profileImageSaved) successMessage = 'อัปโหลดรูปโปรไฟล์และบันทึก URL ลง Customers.profileImage ใน Google Sheets แล้ว';
-    if (isFaviconUpload) successMessage = 'อัปโหลด Favicon สำเร็จ ไฟล์ไอคอนนี้เปิดอ่านแบบ Anyone with the link เพื่อให้ Browser Tab ของผู้เข้าชมโหลดได้ ส่วนไฟล์อื่นยังเป็นส่วนตัว';
+    if (isFaviconUpload) successMessage = 'อัปโหลด Favicon สำเร็จ ไฟล์ต้นฉบับเก็บเป็น Private ใน Google Drive และแสดงบนแท็บเบราว์เซอร์ผ่าน Data URI โดยไม่ต้องแชร์ Anyone with the link';
     if (isProductVideoUpload) successMessage = 'อัปโหลดวิดีโอสินค้าสำเร็จและเก็บไฟล์เป็นส่วนตัวใน Google Drive';
-    return ok_({fileId:file.getId(),assetToken:assetToken,name:file.getName(),filename:file.getName(),url:url,profileUrl:isProfileImage?driveProfileImageUrl_(file.getId()):'',profileImageSaved:profileImageSaved,profileImageColumn:profileImageSaved?'Customers.profileImage':'',mimeType:mime,size:bytes.length,public:isPublicSiteImage,displayable:displayable,driveVisibility:faviconPublicLink?'PUBLIC_LINK':'PRIVATE',sharingStatus:faviconPublicLink?'ANYONE_WITH_LINK':'PRIVATE',privateVideo:isProductVideoUpload,warning:auditWarning},successMessage);
+    return ok_({fileId:file.getId(),assetToken:assetToken,name:file.getName(),filename:file.getName(),url:url,profileUrl:isProfileImage?driveProfileImageUrl_(file.getId()):'',profileImageSaved:profileImageSaved,profileImageColumn:profileImageSaved?'Customers.profileImage':'',mimeType:mime,size:bytes.length,public:isPublicSiteImage,displayable:displayable,driveVisibility:'PRIVATE',sharingStatus:'PRIVATE',deliveryMode:displayable?'APPS_SCRIPT_IMAGE_SERVICE':'PRIVATE_DRIVE',privateVideo:isProductVideoUpload,warning:auditWarning},successMessage);
   }catch(e){return fail_(safeError_(e));}
 }
 
