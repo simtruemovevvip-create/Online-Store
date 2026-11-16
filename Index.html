@@ -12338,7 +12338,11 @@ function startGlobalDataSync_(){
     invNewProduct:'สินค้า',invNewQuantity:'จำนวนเริ่มต้น',invNewMinimum:'สต็อกขั้นต่ำ',
     invEditQuantity:'จำนวนคงเหลือ',invEditMinimum:'สต็อกขั้นต่ำ',
     stockProduct:'สินค้า',stockQty:'จำนวนที่ปรับ',
-    coRecipient:'ชื่อผู้รับ',coPhone:'เบอร์โทร',coAddress:'ที่อยู่จัดส่ง'
+    coRecipient:'ชื่อผู้รับ',coPhone:'เบอร์โทร',coAddress:'ที่อยู่จัดส่ง',
+    svCode:'รหัสคูปอง',svValue:'มูลค่าส่วนลด',
+    fdProduct:'สินค้า',fdPrice:'ราคา Flash Deal',fdQuota:'โควตา',fdStart:'เวลาเริ่มต้น',fdEnd:'เวลาสิ้นสุด',
+    liveTitle:'ชื่อไลฟ์',liveUrl:'URL ถ่ายทอดสด',
+    customerEmailChangeOtp:'รหัส OTP'
   };
   var emailIds={edit_email:1,sellerEmail:1,coEmail:1};
   var wrappedMarker='__systemWideDrawerWrapped';
@@ -12357,7 +12361,9 @@ function startGlobalDataSync_(){
     var html=typeof options.html==='string'?options.html:'';
     var hasField=!!options.input||/<(?:input|select|textarea|form)\b/i.test(html);
     if(!hasField)return false;
-    if(options.showConfirmButton===false&&options.showCancelButton===false&&!options.input)return false;
+    // Some custom forms (for example, customer login) submit from buttons inside
+    // their HTML and intentionally hide SweetAlert's built-in confirm button.
+    // They are still forms and must use the same drawer layout.
     return true;
   }
   function formPage(popup){
