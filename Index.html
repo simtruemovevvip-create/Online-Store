@@ -5920,13 +5920,15 @@ function loadPublicData(onComplete){
       var input=document.getElementById(inputId),box=document.getElementById(previewId);if(!box)return;
       box.innerHTML='';
       var url=String(input&&input.value||'').trim();
-      if(localPreview){
-        var localImg=document.createElement('img');localImg.alt='ตัวอย่างรูปจากเครื่อง';localImg.src=localPreview;localImg.style.maxWidth='100%';localImg.style.maxHeight='180px';localImg.style.objectFit='contain';box.appendChild(localImg);
-        var note=document.createElement('small');note.className='upload-local-warning';note.textContent=warning||'ตัวอย่างชั่วคราวจากเครื่อง ยังไม่ได้ยืนยันการแสดงผลสาธารณะ';box.appendChild(note);return;
+      // Preview only the image referenced by the server-confirmed saved value.
+      // Never present the browser's local FileReader data as a successful upload.
+      if(warning){
+        var warningIcon=document.createElement('i');warningIcon.className='fa-regular fa-image';box.appendChild(warningIcon);
+        var warningText=document.createElement('small');warningText.className='upload-local-warning';warningText.textContent=String(warning);box.appendChild(warningText);return;
       }
       if(!url){var icon=document.createElement('i');icon.className='fa-regular fa-image';var empty=document.createElement('small');empty.textContent='ยังไม่มีรูปภาพ';box.appendChild(icon);box.appendChild(empty);return;}
-      var img=document.createElement('img');img.alt='ตัวอย่างรูป';img.src=imageUrl(url);img.style.maxWidth='100%';img.style.maxHeight='180px';img.style.objectFit='contain';
-      img.onerror=function(){box.innerHTML='';var icon=document.createElement('i');icon.className='fa-regular fa-image';var msg=document.createElement('small');msg.textContent='ไม่สามารถโหลดรูปจาก Google Drive ได้ ตรวจสอบสิทธิ์การแชร์และ URL';box.appendChild(icon);box.appendChild(msg);};box.appendChild(img);
+      var img=document.createElement('img');img.alt='รูปภาพที่บันทึกในระบบ';img.src=imageUrl(url);img.style.maxWidth='100%';img.style.maxHeight='180px';img.style.objectFit='contain';
+      img.onerror=function(){box.innerHTML='';var icon=document.createElement('i');icon.className='fa-regular fa-image';var msg=document.createElement('small');msg.textContent='ไม่สามารถโหลดรูปที่บันทึกในระบบได้ กรุณาตรวจสอบ Asset และสิทธิ์การเข้าถึง';box.appendChild(icon);box.appendChild(msg);};box.appendChild(img);
     }
     function clearAdminImageField(inputId,previewId){var input=document.getElementById(inputId);if(input)input.value='';previewAdminImageField(inputId,previewId);}
     function uploadAdminImageToField(fileInput,inputId,previewId,folder){
@@ -5947,12 +5949,12 @@ function loadPublicData(onComplete){
           var input=document.getElementById(inputId);
           if(r.data&&(r.data.public||r.data.displayable)){
             if(input)input.value=r.data.url;
-            previewAdminImageField(inputId,previewId,localPreview);
+            previewAdminImageField(inputId,previewId);
             if(statusNode)statusNode.textContent='อัปโหลดสำเร็จแล้ว อย่าลืมกด “บันทึกการตั้งค่า” เพื่อใช้ Favicon นี้';
             toast(isFaviconField?'อัปโหลด Favicon สำเร็จ':'อัปโหลดรูปภาพสำเร็จ','success',isFaviconField?'ไฟล์ Private ใน Google Drive; บันทึกการตั้งค่าและรีเฟรชหน้า 1 ครั้งเพื่อเปลี่ยนไอคอนแท็บ':'ต้นฉบับเก็บเป็น Private ใน Google Drive และแสดงผลผ่าน Image Service');
           }else{
             if(input)input.value='';
-            previewAdminImageField(inputId,previewId,localPreview,(r.data&&r.data.warning)||'ไฟล์ถูกบันทึกแล้วแต่ยังแสดงผลไม่ได้');
+            previewAdminImageField(inputId,previewId,'',(r.data&&r.data.warning)||'ไฟล์ถูกบันทึกแล้วแต่ยังแสดงผลไม่ได้');
             if(statusNode)statusNode.textContent='อัปโหลดแล้ว แต่ยังแสดงผลไม่ได้: '+((r.data&&r.data.warning)||'ตรวจสอบ Asset Reference');
             toast('ไฟล์ถูกบันทึกแล้ว แต่ยังแสดงบนหน้าเว็บไซต์ไม่ได้','warning',(r.data&&r.data.warning)||'ตรวจสอบ DriveAssets และ Image Service');
           }
