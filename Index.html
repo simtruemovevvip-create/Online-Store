@@ -6467,11 +6467,11 @@ function adjustInventoryDialog(productId,variantId){
         var availability='<small class="vm-stock-note">พร้อมขาย '+Math.max(0,stock-reserved)+' ชิ้น'+(reserved?' · จอง '+reserved+' ชิ้น':'')+'</small>';
         return '<tr data-vm-index="'+index+'">'+
           '<td class="vm-combination"><b>'+attrs+'</b>'+availability+'</td>'+
-          '<td><input type="text" data-vm-field="sku" maxlength="80" value="'+esc(row.sku||'')+'" aria-label="รหัส SKU"><small class="vm-cell-hint">แก้ไขได้</small></td>'+
+          '<td><input type="text" data-vm-field="sku" required aria-required="true" maxlength="80" value="'+esc(row.sku||'')+'" aria-label="รหัส SKU"><small class="vm-cell-hint">แก้ไขได้</small></td>'+
           '<td><input type="url" data-vm-field="imageUrl" value="'+esc(row.imageUrl||row.attributes&&row.attributes.imageUrl||'')+'" placeholder="วาง URL รูปภาพ" aria-label="รูปภาพตัวเลือก"><small class="vm-cell-hint">ไม่บังคับ</small></td>'+
-          '<td><input type="number" data-vm-field="price" min="0.01" step="0.01" value="'+esc(row.price||'')+'" aria-label="ราคาปกติ"></td>'+
+          '<td><input type="number" data-vm-field="price" required aria-required="true" min="0.01" step="0.01" value="'+esc(row.price||'')+'" aria-label="ราคาปกติ"></td>'+
           '<td><input type="number" data-vm-field="salePrice" min="0" step="0.01" value="'+esc(row.salePrice||0)+'" aria-label="ราคาขาย"></td>'+
-          '<td><input type="number" data-vm-field="stock" min="0" step="1" value="'+esc(row.stock===undefined?0:row.stock)+'" aria-label="สต็อก"></td>'+
+          '<td><input type="number" data-vm-field="stock" required aria-required="true" min="0" step="1" value="'+esc(row.stock===undefined?0:row.stock)+'" aria-label="สต็อก"></td>'+
           '<td><select data-vm-field="status" aria-label="สถานะ"><option value="Active" '+(String(row.status||'Active')==='Active'?'selected':'')+'>เปิดขาย</option><option value="Inactive" '+(String(row.status)==='Inactive'?'selected':'')+'>ปิดขาย</option></select></td>'+
           '<td><button type="button" class="vm-row-remove table-action-icon is-delete" title="ลบ SKU ตัวเลือก" aria-label="ลบ SKU ตัวเลือก" onclick="variantMatrixRemoveRow('+index+')"><i class="fa-solid fa-trash-can"></i></button></td>'+
         '</tr>';
@@ -6699,7 +6699,7 @@ function adjustInventoryDialog(productId,variantId){
               '</div><p class="vm-bulk-note">ติ๊กเฉพาะช่องที่ต้องการเปลี่ยน ช่องที่ไม่ติ๊กจะคงค่าราย SKU เดิมไว้</p>'+
             '</section>'+
             '<section class="vm-workflow-step vm-variants-step"><div class="vm-step-heading"><span class="vm-step-number">4</span><div><b>ตรวจสอบและแก้ไขตัวเลือกสินค้า</b><small>ทุกแถวคือ 1 SKU ที่ลูกค้าสามารถเลือกซื้อได้</small></div><strong class="vm-sku-summary" id="vmSkuSummary">'+rows.length+' SKU</strong></div>'+
-              '<div class="vm-matrix-wrap"><table class="vm-matrix-table"><thead><tr><th>ตัวเลือก</th><th>SKU</th><th>รูปภาพ (ไม่บังคับ)</th><th>ราคาปกติ</th><th>ราคาขาย</th><th>สต็อก</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="vmMatrixBody"></tbody></table></div>'+
+              '<div class="vm-matrix-wrap"><table class="vm-matrix-table"><thead><tr><th>ตัวเลือก</th><th>SKU <b class="app-required-star">*</b></th><th>รูปภาพ (ไม่บังคับ)</th><th>ราคาปกติ <b class="app-required-star">*</b></th><th>ราคาขาย</th><th>สต็อก <b class="app-required-star">*</b></th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="vmMatrixBody"></tbody></table></div>'+
               '<div id="vmMatrixHint" class="vm-footer-note">ตรวจสอบ SKU ราคา และสต็อกทุกแถวก่อนบันทึก · SKU ใหม่เริ่มสต็อก 0</div>'+
             '</section>'+
             '<div class="vm-safety-note"><i class="fa-solid fa-circle-info"></i><span>หากนำ SKU ออกแล้วกดบันทึก ระบบจะเก็บ SKU ที่มีประวัติคำสั่งซื้อหรือประวัติสต็อกไว้ในคลัง และลบเฉพาะรายการที่ยังไม่เคยใช้งาน</span></div>'+
