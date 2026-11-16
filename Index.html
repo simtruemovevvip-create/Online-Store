@@ -574,7 +574,7 @@
   .eg-grid-table .eg-col-no{position:sticky;left:0;z-index:7;width:58px;min-width:58px;max-width:58px;text-align:center;background:var(--eg-soft)!important;color:var(--eg-muted);font-variant-numeric:tabular-nums}
   .eg-grid-table thead .eg-col-no{z-index:9}.eg-grid-table .eg-col-actions{position:sticky;right:0;z-index:7;background:var(--eg-panel);min-width:125px}.eg-grid-table thead .eg-col-actions{z-index:9;background:var(--eg-soft)}
   .eg-grid-table tfoot td{position:sticky;bottom:0;z-index:6;background:var(--eg-soft);border-top:2px solid var(--eg-line);border-bottom:0;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}.eg-grid-table tfoot .eg-col-no{z-index:8;background:var(--eg-soft)!important}.eg-grid-table tfoot .eg-col-actions{z-index:8;background:var(--eg-soft)}
-  .eg-grid-table tbody .eg-col-no{background:#fff!important;color:#64748b!important}
+  .eg-grid-table tbody .eg-col-no{background:var(--eg-soft)!important;color:var(--eg-muted)!important}
   .eg-grid-table thead .eg-col-no{background:var(--eg-soft)!important}
   .eg-cell-clip{display:block;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.eg-status-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:99px;font-size:10px;font-weight:750;background:#e2e8f0;color:#334155}.eg-status-tag.good{background:#dcfce7;color:#166534}.eg-status-tag.warn{background:#fef3c7;color:#92400e}.eg-status-tag.bad{background:#fee2e2;color:#991b1b}.eg-status-tag.info{background:#dbeafe;color:#1d4ed8}
   .eg-grid-empty{padding:32px 14px;text-align:center;color:var(--eg-muted)}.eg-grid-empty i{display:block;font-size:24px;margin-bottom:8px;opacity:.55}
@@ -12590,6 +12590,8 @@ function startGlobalDataSync_(){
     options.customClass.container=mergeClass(options.customClass.container,'app-slide-drawer-container');
     if(options.showCloseButton!==false)options.showCloseButton=true;
     options.heightAuto=false;
+    options.hideClass=Object.assign({},options.hideClass||{});
+    options.hideClass.popup=mergeClass(options.hideClass.popup,'app-slide-drawer-exit');
     var priorDidOpen=typeof options.didOpen==='function'?options.didOpen:null;
     options.didOpen=function(popup){
       try{if(priorDidOpen)priorDidOpen.call(this,popup);}
@@ -12681,5 +12683,270 @@ function startGlobalDataSync_(){
   Swal.__systemWideFormDrawerV1=true;
 })();
 </script>
+
+<style id="instant-no-skeleton-dark-form-drawer-v2">
+  /* Do not render page skeletons, animated placeholders or loading overlays. */
+  #browserRefreshSkeleton,
+  #globalApiActivity,
+  #appRoot .marketplace-page-transition-skeleton,
+  #appRoot .market-skeleton,
+  #appRoot [class*="market-skeleton-"],
+  #appRoot [class*="mpts-"],
+  #appRoot .market-chat-skeleton,
+  #appRoot .seller-chat-context-loading,
+  #adminContent .admin-skeleton,
+  #adminContent .eg-skeleton-grid,
+  #adminContent [class*="eg-skeleton-"],
+  #sellerContent .seller-skeleton,
+  #customerPortalContent .customer-portal-loading-layer,
+  #customerPortalContent .customer-portal-full-skeleton,
+  #customerPortalContent .customer-profile-skeleton,
+  #customerPortalContent .cp-skeleton,
+  #appRoot .inline-spinner,
+  #adminContent .inline-spinner,
+  #sellerContent .inline-spinner,
+  #customerPortalContent .inline-spinner,
+  #appRoot .fa-spinner.fa-spin,
+  #adminContent .fa-spinner.fa-spin,
+  #sellerContent .fa-spinner.fa-spin,
+  #customerPortalContent .fa-spinner.fa-spin,
+  #appRoot .fa-circle-notch.fa-spin,
+  #adminContent .fa-circle-notch.fa-spin,
+  #sellerContent .fa-circle-notch.fa-spin,
+  #customerPortalContent .fa-circle-notch.fa-spin {
+    display:none!important;
+    animation:none!important;
+  }
+
+  /* Right drawer: opening and closing both travel horizontally from/to the right. */
+  .swal2-popup.app-slide-drawer-popup.app-slide-drawer-exit,
+  .swal2-popup.app-slide-drawer-popup.swal2-hide {
+    animation:appDrawerExit .22s cubic-bezier(.4,0,.2,1) both!important;
+    transform-origin:right center!important;
+  }
+
+  /* Dark theme applies to every SweetAlert form, including older dialogs not tagged as drawers. */
+  body.dark .swal2-popup:not(.market-toast),
+  body.dark .swal2-popup:not(.market-toast) > .swal2-title,
+  body.dark .swal2-popup:not(.market-toast) > .swal2-html-container,
+  body.dark .swal2-popup:not(.market-toast) > .swal2-actions,
+  body.dark .swal2-popup:not(.market-toast) > .app-drawer-custom-footer,
+  body.dark .swal2-popup:not(.market-toast) .modal-field,
+  body.dark .swal2-popup:not(.market-toast) .field,
+  body.dark .swal2-popup:not(.market-toast) .form-group,
+  body.dark .swal2-popup:not(.market-toast) .form-section,
+  body.dark .swal2-popup:not(.market-toast) .modal-section,
+  body.dark .swal2-popup:not(.market-toast) .rich-editor-wrap,
+  body.dark .swal2-popup:not(.market-toast) .rich-editor-content,
+  body.dark .swal2-popup:not(.market-toast) .customer-portal-section-card {
+    background:var(--surface)!important;
+    color:var(--ink)!important;
+    border-color:var(--border)!important;
+  }
+  body.dark .swal2-popup:not(.market-toast) label,
+  body.dark .swal2-popup:not(.market-toast) h1,
+  body.dark .swal2-popup:not(.market-toast) h2,
+  body.dark .swal2-popup:not(.market-toast) h3,
+  body.dark .swal2-popup:not(.market-toast) h4,
+  body.dark .swal2-popup:not(.market-toast) b,
+  body.dark .swal2-popup:not(.market-toast) strong,
+  body.dark .swal2-popup:not(.market-toast) .swal2-title {
+    color:var(--ink)!important;
+  }
+  body.dark .swal2-popup:not(.market-toast) p,
+  body.dark .swal2-popup:not(.market-toast) small,
+  body.dark .swal2-popup:not(.market-toast) .modal-help,
+  body.dark .swal2-popup:not(.market-toast) .form-help,
+  body.dark .swal2-popup:not(.market-toast) .help-text {
+    color:var(--muted)!important;
+  }
+  body.dark .swal2-popup:not(.market-toast) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  body.dark .swal2-popup:not(.market-toast) textarea,
+  body.dark .swal2-popup:not(.market-toast) select,
+  body.dark .swal2-popup:not(.market-toast) [contenteditable="true"] {
+    background:var(--bg)!important;
+    color:var(--ink)!important;
+    border-color:var(--border)!important;
+    color-scheme:dark;
+  }
+  body.dark .swal2-popup:not(.market-toast) input::placeholder,
+  body.dark .swal2-popup:not(.market-toast) textarea::placeholder,
+  body.dark .swal2-popup:not(.market-toast) [contenteditable="true"]:empty::before {
+    color:var(--muted)!important;
+  }
+  body.dark .swal2-popup:not(.market-toast) select option {
+    background:var(--surface)!important;
+    color:var(--ink)!important;
+  }
+  body.dark .swal2-popup:not(.market-toast) table,
+  body.dark .swal2-popup:not(.market-toast) thead,
+  body.dark .swal2-popup:not(.market-toast) tbody,
+  body.dark .swal2-popup:not(.market-toast) tr,
+  body.dark .swal2-popup:not(.market-toast) th,
+  body.dark .swal2-popup:not(.market-toast) td {
+    background-color:var(--surface)!important;
+    color:var(--ink)!important;
+    border-color:var(--border)!important;
+  }
+  body.dark .swal2-popup:not(.market-toast) .rich-editor-toolbar,
+  body.dark .swal2-popup:not(.market-toast) .rich-editor-foot,
+  body.dark .swal2-popup:not(.market-toast) .rich-editor-content blockquote {
+    background:var(--surface-2)!important;
+    color:var(--muted)!important;
+    border-color:var(--border)!important;
+  }
+
+  /* Sequence/row-number cells must use the table theme, never a hard-coded white fill. */
+  body.dark .eg-grid .eg-grid-table tbody .eg-col-no,
+  body.dark .eg-grid-table tbody .eg-col-no,
+  body.dark .eg-dom-grid .eg-dom-table-wrapper tbody td.eg-col-no,
+  body.dark .swal2-popup:not(.market-toast) .eg-col-no {
+    background:var(--surface-2)!important;
+    color:var(--ink)!important;
+    border-color:var(--border)!important;
+  }
+
+  /* Keep the active menu blue while preserving the original left-aligned icon and label. */
+  .admin-sidebar .admin-menu > button.active,
+  .admin-sidebar .admin-menu > button.active:hover,
+  .portal-mode-owner .admin-menu > button.active,
+  .portal-mode-owner .admin-menu > button.active:hover,
+  .seller-console:not(.is-collapsed) .seller-sidebar-v2 .seller-nav-item.active,
+  .seller-console:not(.is-collapsed) .seller-sidebar-v2 .seller-nav-item.active:hover,
+  .customer-portal-sidebar .customer-portal-nav-link.active,
+  .customer-portal-sidebar .customer-portal-nav-link.active:hover {
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    width:100%!important;
+    max-width:none!important;
+    min-height:40px;
+    padding:10px 12px!important;
+    border:1px solid #1D63EB!important;
+    border-radius:10px!important;
+    background:#1D63EB!important;
+    color:#fff!important;
+    font-weight:700!important;
+    text-align:left!important;
+    box-shadow:0 5px 14px rgba(29,99,235,.18);
+  }
+  .admin-sidebar .admin-menu > button.active i,
+  .portal-mode-owner .admin-menu > button.active i,
+  .seller-console:not(.is-collapsed) .seller-sidebar-v2 .seller-nav-item.active > i,
+  .customer-portal-sidebar .customer-portal-nav-link.active i {
+    color:#fff!important;
+  }
+  .seller-console:not(.is-collapsed) .seller-sidebar-v2 .seller-nav-item.active em {
+    margin-left:auto!important;
+    background:rgba(255,255,255,.78)!important;
+  }
+  .admin-sidebar .admin-menu > button.active:focus-visible,
+  .seller-sidebar-v2 .seller-nav-item.active:focus-visible,
+  .customer-portal-sidebar .customer-portal-nav-link.active:focus-visible {
+    outline:3px solid rgba(29,99,235,.3)!important;
+    outline-offset:2px!important;
+  }
+  .seller-console.is-collapsed .seller-nav-item.active {
+    justify-content:center!important;
+  }
+  .customer-portal-nav-link.active>span {
+    text-align:left!important;
+  }
+</style>
+
+<script id="instant-no-skeleton-dark-form-drawer-v2-js">
+(function(){
+  if(window.__INSTANT_NO_SKELETON_DARK_FORM_DRAWER_V2__)return;
+  window.__INSTANT_NO_SKELETON_DARK_FORM_DRAWER_V2__=true;
+
+  var noMarkup=function(){return '';};
+  [
+    'marketplacePageTransitionSkeletonMarkup',
+    'marketplaceSkeletonMarkup',
+    'marketplaceProductGridSkeleton',
+    'marketplaceStoreGridSkeleton',
+    'marketplaceTableSkeleton',
+    'adminSkeleton',
+    'adminGridSkeleton',
+    'sellerSkeletonMarkup',
+    'customerPortalFullSkeletonMarkup',
+    'customerProfileSkeletonMarkup'
+  ].forEach(function(name){
+    if(typeof window[name]==='function')window[name]=noMarkup;
+  });
+
+  if(typeof window.marketplaceSetRootSkeleton==='function')
+    window.marketplaceSetRootSkeleton=function(){};
+  if(typeof window.marketplaceRunWithSkeleton==='function')
+    window.marketplaceRunWithSkeleton=function(original,args){
+      return typeof original==='function'?original.apply(this,args||[]):undefined;
+    };
+
+  /* Customer pages render their real page markup immediately; API results replace it in place. */
+  var previousSetCustomerContent=window.customerPortalSetContent;
+  if(typeof previousSetCustomerContent==='function'){
+    window.customerPortalSetContent=function(markup){
+      return previousSetCustomerContent.call(this,markup,true);
+    };
+  }
+
+  /* Remove the top progress pill and disable page-level loading overlays and fake button spinners. */
+  window.beginApiActivity=function(){return {active:false};};
+  window.endApiActivity=function(){};
+  window.beginApiLoading=function(){return {type:'none'};};
+  window.endApiLoading=function(){};
+  window.loading=function(){};
+  APP.apiActivityCount=0;
+  APP.pageLoadingCount=0;
+  var activity=document.getElementById('globalApiActivity');
+  if(activity)activity.remove();
+  var refresh=document.getElementById('browserRefreshSkeleton');
+  if(refresh)refresh.remove();
+  document.documentElement.removeAttribute('data-store-browser-reload');
+
+  /* Old dashboard cards and chat panels contain literal loading copy; replace only placeholder text. */
+  var loadingText=/กำลังโหลด(?:ข้อมูล|กราฟ|ศูนย์ผู้ขาย|หน้าร้านค้า|ร้านค้า|แดชบอร์ด)?|กำลังประมวลผล|กำลังเปิดหน้า|กำลังทำงาน\s+\d+\s+รายการ|loading(?:\s+data)?\.{0,3}/i;
+  function cleanLoadingText(root){
+    if(!root||!document.createTreeWalker)return;
+    var walker=document.createTreeWalker(root,4,null,false),node,parent;
+    while((node=walker.nextNode())){
+      if(!loadingText.test(String(node.nodeValue||'')))continue;
+      parent=node.parentElement;
+      if(parent&&parent.closest&&parent.closest('button,input,textarea,select,.swal2-container,script,style'))continue;
+      node.nodeValue='—';
+    }
+  }
+  cleanLoadingText(document.getElementById('appRoot'));
+  cleanLoadingText(document.getElementById('adminContent'));
+  cleanLoadingText(document.getElementById('sellerContent'));
+  cleanLoadingText(document.getElementById('customerPortalContent'));
+  if(window.MutationObserver&&document.body){
+    var observer=new MutationObserver(function(mutations){
+      mutations.forEach(function(m){
+        for(var i=0;i<m.addedNodes.length;i++){
+          var node=m.addedNodes[i];
+          if(node.nodeType===1){
+            if(node.matches&&node.matches('#browserRefreshSkeleton,#globalApiActivity'))node.remove();
+            else cleanLoadingText(node);
+          }else if(node.nodeType===3&&loadingText.test(String(node.nodeValue||''))){
+            var parent=node.parentElement;
+            if(!(parent&&parent.closest&&parent.closest('button,input,textarea,select,.swal2-container,script,style')))node.nodeValue='—';
+          }
+        }
+      });
+    });
+    observer.observe(document.body,{childList:true,subtree:true});
+  }
+
+  /* The old atomic navigation wrappers wait for a skeleton before finalizing the new page.
+     No skeletons are rendered now; real page data callbacks own the final render instead. */
+  var atomic=window.__STORE_ATOMIC_PAGE_TRANSITIONS__;
+  if(atomic){
+    atomic.admin=null;
+    atomic.seller=null;
+  }
+})();
+</script>
+
 </body>
 </html>
