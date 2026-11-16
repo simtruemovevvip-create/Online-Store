@@ -4058,10 +4058,8 @@ function loadPublicData(onComplete){
         renderProductDetail();
       },true,'กำลังโหลดรายละเอียดสินค้า...');
     }
-    function selectDetailImage(url,button){var main=document.getElementById('detailImage');if(!main)return;main.src=imageUrl(url);var thumbs=document.querySelectorAll('.detail-thumb');for(var i=0;i<thumbs.length;i++)thumbs[i].classList.remove('active');if(button)button.classList.add('active');}
-    function selectDetailImageFromButton(button){if(!button)return;selectDetailImage(button.getAttribute('data-image-url')||'',button);}
-    function loadRelatedProducts(product){var host=document.getElementById('relatedProducts');if(!host||!product)return;var cached=APP.products.filter(function(x){return String(x.categoryId)===String(product.categoryId)&&String(x.id)!==String(product.id);}).slice(0,5);if(cached.length)host.innerHTML=renderProductGrid(cached);apiCall('getProducts',[{categoryId:product.categoryId,page:1,pageSize:10,available:true,sort:'best_seller'}],function(r){var target=document.getElementById('relatedProducts');if(!target||!APP.currentProduct||String(APP.currentProduct.id)!==String(product.id))return;if(r&&r.success){var rows=safeArray(r.data&&r.data.items?r.data.items:r.data).filter(function(x){return String(x.id)!==String(product.id);}).slice(0,5);target.innerHTML=rows.length?renderProductGrid(rows):'<div class="muted">ยังไม่มีสินค้าอื่นในหมวดหมู่นี้</div>'; }else if(!cached.length)target.innerHTML='<div class="muted">ไม่สามารถโหลดสินค้าที่คล้ายกันได้</div>';},false);}
-    function productCategoryBreadcrumb(categoryId){
+        function selectDetailImageFromButton(button){if(!button)return;selectDetailImage(button.getAttribute('data-image-url')||'',button);}
+        function productCategoryBreadcrumb(categoryId){
       var chain=[],seen={},current=String(categoryId||''),guard=0,categories=safeArray(APP.categories);
       while(current&&guard++<6&&!seen[current]){
         seen[current]=true;var item=categories.filter(function(x){return String(x.id)===current;})[0];if(!item)break;
@@ -7606,8 +7604,7 @@ function showChatImageModalFromButton(button){var url=button&&button.getAttribut
     function chatAttachImageChanged(input){var file=input&&input.files&&input.files[0];if(!file)return;if(file.type.indexOf('image/')!==0){alertError('กรุณาเลือกไฟล์รูปภาพ');input.value='';return;}if(file.size>5*1024*1024){alertError('รูปภาพต้องมีขนาดไม่เกิน 5 MB');input.value='';return;}APP.chatPendingFile=file;var box=document.getElementById('chatAttachmentPreview');if(box){box.hidden=false;box.innerHTML='<img src="'+URL.createObjectURL(file)+'" alt="ตัวอย่างรูปภาพ"><span>'+esc(file.name)+'</span><button type="button" onclick="clearChatAttachment()" title="ยกเลิกรูป"><i class="fa-solid fa-xmark"></i></button>';}}
     function clearChatAttachment(){APP.chatPendingFile=null;var box=document.getElementById('chatAttachmentPreview'),input=document.getElementById('chatImageInput');if(box){box.hidden=true;box.innerHTML='';}if(input)input.value='';}
     function sellerDeleteChatMessage(messageId){Swal.fire({title:'ลบข้อความนี้?',text:'ลบได้เฉพาะข้อความที่ยังไม่ถูกอ่านและส่งมาไม่เกิน 5 นาที',icon:'warning',showCancelButton:true,confirmButtonText:'ลบข้อความ',cancelButtonText:'ยกเลิก'}).then(function(x){if(!x.isConfirmed)return;apiCall('sellerDeleteChatMessage',[APP.customerToken,APP.chatThread.id,messageId],function(r){if(!r||!r.success){alertError(r&&r.message||'ไม่สามารถลบข้อความได้');return;}openSellerChatThread(APP.chatThread.id);toast('ลบข้อความแล้ว','success');},false);});}
-    function openChatThreadPage(threadId){APP.chatThread={id:threadId};APP.chatMode='customer';document.getElementById('appRoot').innerHTML='<div class="panel"><h2>สนทนากับร้านค้า</h2><div id="buyerChatWindow"></div></div>';apiCall('getCustomerChatMessages',[APP.customerToken,threadId],function(r){if(r.success)renderChatMessages('buyerChatWindow',safeArray(r.data),'customer');else alertError(r.message);});}
-    function sendCurrentChatMessage(){
+        function sendCurrentChatMessage(){
       var input=document.getElementById('chatMessageInput');if(!input||!APP.chatThread||APP.chatSending)return;
       var message=String(input.value||'').trim(),file=APP.chatPendingFile,isSeller=APP.chatMode==='seller',storeId=!isSeller?APP.customerChatActiveStoreId:'',threadId=APP.chatThread.id;if(!message&&!file)return;
       var localId='client_'+Date.now()+'_'+Math.random().toString(36).slice(2,10),createdAt=new Date().toISOString(),localUrl=file&&window.URL&&URL.createObjectURL?URL.createObjectURL(file):'';
