@@ -3404,8 +3404,8 @@ function getDriveImageDataBatch(token,assetTokens){
   try{
     var ids=safeArray_(assetTokens).map(function(x){return text_(x,100);}).filter(Boolean).slice(0,3);
     var assets=readTable_('DriveAssets',true);
-    var customer=null,adminCustomer=null,sellerContext=null;
-    if(token){try{customer=requireCustomer_(token);}catch(ignoreCustomer){}try{adminCustomer=requireAdmin_(token,'customers.view');}catch(ignoreAdmin){}try{sellerContext=requireSeller_(token);}catch(ignoreSeller){}}
+    var customer=null,adminCustomer=null,adminChat=null,sellerContext=null;
+    if(token){try{customer=requireCustomer_(token);}catch(ignoreCustomer){}try{adminCustomer=requireAdmin_(token,'customers.view');}catch(ignoreAdmin){}try{adminChat=requireAdmin_(token,'sellers.manage');}catch(ignoreAdminChat){}try{sellerContext=requireSeller_(token);}catch(ignoreSeller){}}
     var output=[],totalBytes=0,folderIdMemo=Object.create(null);
     ids.forEach(function(key){
       try{
@@ -3426,7 +3426,7 @@ function getDriveImageDataBatch(token,assetTokens){
             var chatThread=chatThreadId?readTable_('ChatThreads',true).filter(function(t){return t.id===chatThreadId;})[0]:null;
             if(chatThread&&customer&&chatThread.customerId===customer.id&&((asset.ownerType==='customer'&&asset.ownerId===customer.id)||(asset.ownerType==='seller'&&asset.ownerId===chatThread.sellerId)||(asset.ownerType==='admin'&&String(chatThread.sellerId)==='PLATFORM')))allowed=true;
             if(chatThread&&sellerContext&&chatThread.sellerId===sellerContext.store.id&&((asset.ownerType==='seller'&&asset.ownerId===sellerContext.store.id)||(asset.ownerType==='customer'&&asset.ownerId===chatThread.customerId)||(asset.ownerType==='admin'&&String(chatThread.customerId)==='__SYSTEM_OWNER__')))allowed=true;
-            if(chatThread&&adminCustomer)allowed=true;
+            if(chatThread&&(adminCustomer||adminChat))allowed=true;
           }
         }else{
           // Backward compatibility for legacy URLs: allow only files referenced
