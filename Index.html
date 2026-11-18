@@ -13434,7 +13434,7 @@ function startGlobalDataSync_(){
       focusConfirm:false,
       customClass:{popup:'auth-forgot-popup'},
       preConfirm:function(value){
-        if(!value||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(value).trim())){
+        if(!value||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim())){
           Swal.showValidationMessage('กรุณากรอกอีเมลให้ถูกต้อง');
           return false;
         }
