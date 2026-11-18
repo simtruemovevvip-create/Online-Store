@@ -6378,9 +6378,9 @@ function loadPublicData(onComplete){
       APP.adminEditorRequestId=Number(APP.adminEditorRequestId||0)+1;
       var requestId=APP.adminEditorRequestId;
       if(!waiting){openEditorNow(page,id,false);return;}
-      Swal.fire({title:id?cfg.edit:cfg.add,html:'<div class="admin-editor-wait"><span class="inline-spinner"></span><b>กำลังเตรียมข้อมูลฟอร์ม</b><small>กำลังโหลดรายการที่เกี่ยวข้อง สามารถยกเลิกได้</small></div>',width:520,showCancelButton:true,showConfirmButton:false,cancelButtonText:'ยกเลิก',focusConfirm:false,allowOutsideClick:true,customClass:{popup:'enterprise-admin-modal admin-editor-loading-modal'}});
+      /* Load reference lists silently; do not show a separate form-preparation popup. */
       ensureAdminEditorReferences(page,function(){
-        if(APP.adminEditorRequestId!==requestId||!Swal.isVisible())return;
+        if(APP.adminEditorRequestId!==requestId)return;
         openEditorNow(page,id,true);
       });
     }
@@ -13779,5 +13779,95 @@ function startGlobalDataSync_(){
   }
 })();
 </script>
+
+<style id="dark-admin-drawer-surfaces-v4">
+  /* Override legacy light-mode !important rules inside admin form drawers. */
+  body.dark .swal2-container.swal2-backdrop-show .swal2-popup.app-slide-drawer-popup:not(.market-toast),
+  body.dark .swal2-container.swal2-backdrop-show .swal2-popup.enterprise-admin-modal:not(.market-toast) {
+    background:#161b22!important;color:#e7ebf2!important;border-color:#303b49!important;color-scheme:dark!important;
+  }
+  body.dark .swal2-container.swal2-backdrop-show .swal2-popup.app-slide-drawer-popup > .swal2-title,
+  body.dark .swal2-container.swal2-backdrop-show .swal2-popup.app-slide-drawer-popup > .swal2-html-container,
+  body.dark .swal2-container.swal2-backdrop-show .swal2-popup.app-slide-drawer-popup > .swal2-actions,
+  body.dark .swal2-container.swal2-backdrop-show .swal2-popup.app-slide-drawer-popup > .app-drawer-custom-footer,
+  body.dark .swal2-container.swal2-backdrop-show .swal2-popup.enterprise-admin-modal > .swal2-title,
+  body.dark .swal2-container.swal2-backdrop-show .swal2-popup.enterprise-admin-modal > .swal2-html-container,
+  body.dark .swal2-container.swal2-backdrop-show .swal2-popup.enterprise-admin-modal > .swal2-actions {
+    background:#161b22!important;color:#e7ebf2!important;border-color:#303b49!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-editor-intro,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-editor-intro {
+    background:#202833!important;border:1px solid #3b4656!important;color:#e7ebf2!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-editor-intro b,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-editor-intro b,
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-switch-copy b,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-switch-copy b {
+    color:#e7ebf2!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-editor-intro small,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-editor-intro small,
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-switch-copy small,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-switch-copy small {
+    color:#a8b3c2!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-switch-row,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-switch-row {
+    background:#202833!important;border:1px solid #3b4656!important;color:#e7ebf2!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-switch-track,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-switch-track {
+    background:#485568!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-switch-input:checked + .admin-switch-track,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-switch-input:checked + .admin-switch-track {
+    background:#16a34a!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-image-preview,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-image-preview {
+    background:#0d1117!important;border-color:#465365!important;color:#a8b3c2!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-image-preview img,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-image-preview img {
+    background:#0d1117!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .modal-field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  body.dark .swal2-popup.app-slide-drawer-popup .modal-field select,
+  body.dark .swal2-popup.app-slide-drawer-popup .modal-field textarea,
+  body.dark .swal2-popup.enterprise-admin-modal .modal-field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  body.dark .swal2-popup.enterprise-admin-modal .modal-field select,
+  body.dark .swal2-popup.enterprise-admin-modal .modal-field textarea,
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-code-field input,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-code-field input,
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-image-controls input,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-image-controls input {
+    background:#0d1117!important;color:#e7ebf2!important;border:1px solid #465365!important;color-scheme:dark!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .modal-field input::placeholder,
+  body.dark .swal2-popup.app-slide-drawer-popup .modal-field textarea::placeholder,
+  body.dark .swal2-popup.enterprise-admin-modal .modal-field input::placeholder,
+  body.dark .swal2-popup.enterprise-admin-modal .modal-field textarea::placeholder {
+    color:#a8b3c2!important;opacity:1!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .modal-field label,
+  body.dark .swal2-popup.enterprise-admin-modal .modal-field label,
+  body.dark .swal2-popup.app-slide-drawer-popup .admin-switch-copy,
+  body.dark .swal2-popup.enterprise-admin-modal .admin-switch-copy {
+    color:#e7ebf2!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .modal-help,
+  body.dark .swal2-popup.enterprise-admin-modal .modal-help {
+    color:#a8b3c2!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .swal2-cancel,
+  body.dark .swal2-popup.enterprise-admin-modal .swal2-cancel {
+    background:#202833!important;color:#e7ebf2!important;border:1px solid #3b4656!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup .swal2-validation-message,
+  body.dark .swal2-popup.enterprise-admin-modal .swal2-validation-message {
+    background:#3a2027!important;color:#fecaca!important;
+  }
+</style>
+
 </body>
 </html>
