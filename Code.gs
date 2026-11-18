@@ -1403,6 +1403,62 @@ function systemOwnerLogin(username, password) {
   } catch (e) { return fail_(safeError_(e)); }
 }
 
+
+/**
+ * Unified login for Super Admin, store owners and customers.
+ * The browser never supplies an account role; it is resolved from server data.
+ */
+function unifiedLogin(username, password) {
+  try {
+    var identifier = text_(username, 160).trim();
+    if (!identifier || !String(password || '')) throw new Error('กรุณากรอกข้อมูลเข้าสู่ระบบให้ครบถ้วน');
+
+    var platformUser = findRecordByExactColumn_('Users', 'username', identifier.toLowerCase());
+    if (!platformUser && identifier.indexOf('@') > 0) {
+      platformUser = findRecordByExactColumn_('Users', 'email', identifier.toLowerCase());
+    }
+    if (platformUser) {
+      var role = String(platformUser.role || '').toLowerCase();
+      if (role !== 'super admin' && role !== 'superadmin') {
+        throw new Error('บัญชีนี้ไม่มีสิทธิ์เข้าสู่ระบบเจ้าของระบบ');
+      }
+      if (platformUser.status !== 'Active') throw new Error('บัญชีผู้ดูแลถูกปิดใช้งาน');
+      var auth = loginPlatformUser_(platformUser.username, password, 'Super Admin');
+      if (!auth || !auth.success) return auth || fail_('เข้าสู่ระบบไม่สำเร็จ');
+      return ok_({
+        accountType: 'owner',
+        token: auth.data.token,
+        expiresAt: auth.data.expiresAt,
+        user: auth.data.user,
+        mustChangePassword: auth.data.mustChangePassword
+      }, 'เข้าสู่ระบบเจ้าของระบบสำเร็จ');
+    }
+
+    var customer = authenticateCustomerCredentials_(identifier, password);
+    var store = findRecordByExactColumn_('Stores', 'ownerCustomerId', customer.id);
+    if (store) {
+      var sellerSession = createSession_(customer, 'customer');
+      return ok_({
+        accountType: 'seller',
+        token: sellerSession.token,
+        expiresAt: sellerSession.expiresAt,
+        customer: publicCustomer_(customer),
+        store: publicStore_(store)
+      }, 'เข้าสู่ระบบร้านค้าสำเร็จ');
+    }
+
+    var customerSession = createSession_(customer, 'customer');
+    return ok_({
+      accountType: 'customer',
+      token: customerSession.token,
+      expiresAt: customerSession.expiresAt,
+      customer: publicCustomer_(customer)
+    }, 'เข้าสู่ระบบสำเร็จ');
+  } catch (e) {
+    return fail_(safeError_(e));
+  }
+}
+
 function authorizeSocialLoginServices() {
   try {
     // Run once from the Apps Script editor as the deployment owner to grant UrlFetch permission.
@@ -4878,6 +4934,25 @@ function requestPasswordReset(email, accountType) {
     return ok_(true, 'หากพบอีเมลในระบบ ระบบจะส่งลิงก์ตั้งรหัสผ่านไปให้ กรุณาตรวจสอบกล่องจดหมาย');
   } catch (e) { return fail_(safeError_(e)); }
 }
+
+function requestUnifiedPasswordReset(identifier) {
+  try {
+    var value = text_(identifier, 160).trim().toLowerCase();
+    if (!value) throw new Error('กรุณากรอกอีเมลหรือชื่อผู้ใช้');
+    var owner = findRecordByExactColumn_('Users', 'username', value);
+    if (!owner && value.indexOf('@') > 0) owner = findRecordByExactColumn_('Users', 'email', value);
+    if (owner && ['super admin', 'superadmin'].indexOf(String(owner.role || '').toLowerCase()) >= 0) {
+      return requestPasswordReset(value, 'admin');
+    }
+    var customer = findRecordByExactColumn_('Customers', 'email', value);
+    if (!customer) customer = findRecordByExactColumn_('Customers', 'username', value);
+    if (customer && customer.email) return requestPasswordReset(customer.email, 'customer');
+    return ok_(true, 'หากพบบัญชีที่ตรงกัน ระบบจะส่งลิงก์ตั้งรหัสผ่านไปยังอีเมลที่ลงทะเบียน');
+  } catch (e) {
+    return fail_(safeError_(e));
+  }
+}
+
 function resetPassword(resetToken, newPassword) {
   try {
     if (String(newPassword || '').length < 8) throw new Error('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร');
