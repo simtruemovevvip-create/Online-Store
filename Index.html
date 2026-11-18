@@ -13595,7 +13595,7 @@ function startGlobalDataSync_(){
 
   function customerLoginCardMarkup(){return '';}
 
-  window.openCustomerLoginPage=function(){  window.openCustomerLoginPage=function(){
+  window.openCustomerLoginPage=function(){
     if(window.APP)APP.authDestination='customer';
     if(window.clearRegistrationTimer)window.clearRegistrationTimer();
     var html='<div class="customer-auth shop-customer-auth"><div id="shopLoginCardContent">'+customerLoginCardMarkup()+'</div></div>';
