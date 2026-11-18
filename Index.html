@@ -2600,7 +2600,7 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
           <button type="button" class="header-top-link" onclick="openHeaderLanguage()"><i class="fa-solid fa-globe"></i> ภาษา</button>
           <div class="header-auth-actions" id="headerAuthActions">
             <button class="header-top-link header-register" onclick="openCustomerAuth('register')">สมัครใหม่</button>
-            <button class="header-top-link header-login" onclick="openAccessHub()">เข้าสู่ระบบ</button>
+            <button class="header-top-link header-login" onclick="openCustomerAuth('login')">เข้าสู่ระบบ</button>
           </div>
           <button type="button" class="header-profile" id="headerProfile" onclick="openAccount()" style="display:none"><i class="fa-regular fa-circle-user"></i><span id="headerUsername">บัญชีของฉัน</span></button>
         </div>
@@ -13048,6 +13048,264 @@ function startGlobalDataSync_(){
   #customerPortalContent [class*="skeleton"] {
     display:none!important;animation:none!important;
   }
-</style>
+
+    /* Shopee-inspired customer login page */
+    body.store-login-open{overflow:hidden!important}
+    .store-login-screen{position:fixed;inset:0;z-index:2000;overflow-y:auto;background:#f6f6f6;color:#222;font-family:'Prompt','Inter',sans-serif;color-scheme:light}
+    .store-login-screen *{box-sizing:border-box}
+    .shop-login-topbar{height:84px;background:#fff;display:flex;align-items:center;border-bottom:1px solid #f0f0f0}
+    .shop-login-topinner{width:min(1040px,calc(100% - 36px));height:100%;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:18px}
+    .shop-login-brand{display:flex;align-items:center;gap:12px;color:#222;white-space:nowrap}
+    .shop-login-brand-icon{width:39px;height:39px;background:#ee4d2d;color:#fff;border-radius:10px;display:grid;place-items:center;font-size:21px}
+    .shop-login-brand-name{font-size:19px;font-weight:700;letter-spacing:-.3px}
+    .shop-login-brand-divider{height:28px;width:1px;background:#dedede;margin:0 4px}
+    .shop-login-brand strong{font-size:22px;font-weight:500}
+    .shop-login-help{font-size:14px;color:#ee4d2d;white-space:nowrap}
+    .shop-login-help:hover,.shop-login-legal a:hover,.shop-login-register a:hover{color:#d73218;text-decoration:underline}
+    .shop-login-hero{width:100%;min-height:600px;height:calc(100vh - 84px);background:#ee4d2d;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:28px 18px;position:relative}
+    .shop-login-hero:before,.shop-login-hero:after{content:"";position:absolute;border:1px solid rgba(255,255,255,.13);border-radius:50%;pointer-events:none}
+    .shop-login-hero:before{width:620px;height:620px;left:-260px;top:-330px}
+    .shop-login-hero:after{width:760px;height:760px;right:-420px;bottom:-470px}
+    .shop-login-layout{width:min(1040px,100%);min-height:520px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 400px;align-items:center;gap:46px;position:relative;z-index:1}
+    .shop-login-campaign{min-width:0;min-height:470px;position:relative;display:flex;flex-direction:column;justify-content:center;color:#fff;padding:24px 0 28px 20px;isolation:isolate}
+    .shop-login-campaign-brand{position:absolute;left:20px;top:0;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.88)}
+    .shop-login-campaign-brand i{font-size:20px}
+    .shop-login-campaign-copy{position:relative;z-index:2;width:max-content;max-width:100%;text-shadow:0 3px 12px rgba(112,27,8,.13)}
+    .shop-login-campaign-kicker{display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.7);border-radius:3px;padding:5px 10px;font-size:11px;letter-spacing:2px;font-weight:600}
+    .shop-login-campaign-number{font-size:clamp(74px,8.8vw,118px);font-weight:800;letter-spacing:-7px;line-height:.98;margin:12px 0 0}
+    .shop-login-campaign-copy h1{font-size:54px;line-height:.91;letter-spacing:1px;margin:4px 0 10px;font-weight:500}
+    .shop-login-campaign-copy h1 b{font-size:66px;font-weight:800}
+    .shop-login-discount{display:flex;align-items:center;gap:12px;margin:9px 0 15px}
+    .shop-login-discount span{font-size:19px;font-weight:600}
+    .shop-login-discount strong{font-size:68px;line-height:.9;font-weight:800;letter-spacing:-3px}
+    .shop-login-discount strong small{font-size:34px}
+    .shop-login-campaign-tag{display:inline-flex;align-items:center;gap:8px;background:#fff;color:#ee4d2d;border-radius:4px;padding:8px 13px;font-size:14px;font-weight:700;box-shadow:0 8px 20px rgba(120,28,5,.15)}
+    .shop-login-campaign-art{position:absolute;inset:0;pointer-events:none;z-index:1}
+    .shop-login-campaign-orbit{position:absolute;border:1px solid rgba(255,255,255,.19);border-radius:50%;z-index:-1}
+    .shop-login-campaign-orbit.orbit-one{width:390px;height:390px;right:-20px;top:45px}
+    .shop-login-campaign-orbit.orbit-two{width:300px;height:300px;right:25px;top:90px}
+    .shop-login-gift{position:absolute;display:grid;place-items:center;color:#fff;background:linear-gradient(145deg,#ffbf52,#ff7a35);border:5px solid rgba(255,255,255,.65);box-shadow:0 18px 35px rgba(128,31,5,.2);transform:rotate(12deg)}
+    .shop-login-gift.gift-one{width:104px;height:104px;border-radius:20px;right:7%;top:23%;font-size:48px}
+    .shop-login-gift.gift-two{width:76px;height:76px;border-radius:16px;right:27%;bottom:20%;font-size:32px;transform:rotate(-14deg);background:linear-gradient(145deg,#ffdf73,#ff9a40)}
+    .shop-login-campaign-spark{position:absolute;color:#ffe4a6;font-size:35px}
+    .shop-login-campaign-spark.spark-one{right:3%;top:13%}
+    .shop-login-campaign-spark.spark-two{right:29%;top:34%;font-size:24px}
+    .shop-login-campaign-spark.spark-three{right:13%;bottom:15%;font-size:29px}
+    .shop-login-campaign-foot{position:absolute;left:20px;bottom:0;font-size:12px;color:rgba(255,255,255,.83);letter-spacing:.5px}
+    .shop-login-card{width:400px;max-width:100%;background:#fff;border-radius:3px;padding:28px 30px 22px;box-shadow:0 12px 34px rgba(113,29,9,.2);color:#222;min-width:0}
+    .shop-login-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 22px}
+    .shop-login-card-head h2{font-size:20px;line-height:1.35;font-weight:500;color:#222;margin:0}
+    .shop-login-card-head p{font-size:11px;color:#888;margin:3px 0 0}
+    .shop-login-qr-button{display:flex;align-items:center;gap:10px;padding:7px 9px;border:1px solid #ffbf00;background:#fff8dc;color:#ee4d2d;line-height:1.25;font-size:10px;text-align:left;white-space:nowrap}
+    .shop-login-qr-button i{font-size:29px}
+    .shop-login-form{gap:13px}
+    .shop-login-form .modal-field>label,.shop-login-form .auth-label-row label{font-size:12px;font-weight:500;color:#555;margin-bottom:6px}
+    .shop-login-form .modal-field>input,.shop-login-form .auth-password-control{height:43px;border:1px solid #dedede;border-radius:2px;background:#fff}
+    .shop-login-form .modal-field>input{padding:0 12px;font-size:12px;color:#222}
+    .shop-login-form .modal-field>input:focus,.shop-login-form .auth-password-control:focus-within{border-color:#ee4d2d;box-shadow:0 0 0 2px rgba(238,77,45,.09)}
+    .shop-login-form .auth-password-control input{height:41px!important;color:#222;background:#fff;padding:0 12px;font-size:12px}
+    .shop-login-form .auth-password-control button{height:41px;background:#fff;color:#777;border-left:0}
+    .shop-login-form .auth-label-row a{font-size:11px;color:#1769aa}
+    .shop-login-submit{height:42px;border-radius:2px!important;background:#ee4d2d!important;color:#fff!important;border:0!important;font-size:13px}
+    .shop-login-submit:hover{background:#d83b1d!important}
+    .shop-login-remember{display:flex;align-items:center;gap:7px;margin-top:1px;color:#555;font-size:11px}
+    .shop-login-remember input{accent-color:#ee4d2d;width:14px;height:14px;margin:0}
+    .shop-login-remember i{color:#999;font-size:12px}
+    .shop-login-error{padding:8px 10px;border:1px solid #fecaca;background:#fff1f2;color:#b42318;font-size:11px;line-height:1.45}
+    .shop-login-error[hidden]{display:none}
+    .shop-login-divider{margin:19px 0 15px;color:#aaa}
+    .shop-login-divider:before,.shop-login-divider:after{background:#e8e8e8}
+    .shop-login-divider span{font-size:11px;background:#fff;padding:0 12px}
+    .shop-login-social{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important}
+    .shop-login-social .auth-provider-wrap{min-width:0}
+    .shop-login-social .auth-facebook-btn{width:100%;height:39px;min-width:0;justify-content:center;border:1px solid #d9d9d9;border-radius:2px;background:#fff;color:#333;font-size:12px;font-weight:500;gap:8px}
+    .shop-login-social .auth-facebook-btn .fa-facebook{color:#1877f2;font-size:17px}
+    .shop-login-social .auth-facebook-btn .fa-google{color:#4285f4;font-size:16px}
+    .shop-login-social .shop-google-fallback{color:#555}
+    .shop-login-social .auth-provider-slot{width:100%;min-height:39px}
+    .shop-login-social .auth-provider-slot>div,.shop-login-social .auth-provider-slot iframe{max-width:100%!important}
+    .shop-login-social .auth-provider-status{font-size:9px;text-align:center;line-height:1.3;margin-top:3px}
+    .shop-login-legal{font-size:10px;line-height:1.6;color:#888;text-align:center;margin:17px 0 10px}
+    .shop-login-legal a,.shop-login-register a{color:#ee4d2d;font-weight:500}
+    .shop-login-register{font-size:11px;color:#999;text-align:center;margin:0}
+    .shop-login-role-link{text-align:center;margin-top:8px;font-size:10px}
+    .shop-login-role-link a{color:#777;text-decoration:underline;text-underline-offset:2px}
+    .shop-login-qr-view{text-align:center}
+    .shop-login-qr-head{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;margin-bottom:20px}
+    .shop-login-qr-head h2{margin:2px 0 0;font-size:18px;font-weight:500;color:#222}
+    .shop-login-qr-eyebrow{font-size:9px;letter-spacing:1.2px;color:#ee4d2d;font-weight:700}
+    .shop-login-qr-back{border:0;background:#f6f6f6;color:#666;padding:7px 9px;font-size:10px;white-space:nowrap}
+    .shop-login-qr-code{width:236px;height:236px;margin:0 auto 15px;border-radius:3px}
+    .shop-login-qr-code:empty:before{content:"";width:26px;height:26px;border:3px solid #eee;border-top-color:#ee4d2d;border-radius:50%;animation:shopLoginSpin .8s linear infinite}
+    .shop-login-qr-view .qr-login-status{font-size:12px;color:#555;margin-bottom:9px}
+    .shop-login-qr-view .qr-login-tip{font-size:11px;line-height:1.55;color:#888;max-width:320px;margin:0 auto 12px}
+    .shop-login-qr-view .modal-help{font-size:10px;color:#999}
+    .shop-login-help-content,.shop-login-policy-content{text-align:left;color:#444;font-size:13px;line-height:1.7}
+    .shop-login-help-content>div{padding:6px 0}
+    @keyframes shopLoginSpin{to{transform:rotate(360deg)}}
+    .swal2-container{z-index:2100!important}
+    @media(max-width:900px){
+      .shop-login-layout{grid-template-columns:minmax(0,1fr) 390px;gap:22px}
+      .shop-login-campaign-number{font-size:88px}
+      .shop-login-campaign-copy h1{font-size:46px}
+      .shop-login-campaign-copy h1 b{font-size:57px}
+      .shop-login-gift.gift-one{right:0;width:82px;height:82px;font-size:38px}
+      .shop-login-gift.gift-two{right:22%;width:64px;height:64px;font-size:27px}
+      .shop-login-card{width:390px;padding:26px 23px 20px}
+    }
+    @media(max-width:680px){
+      .shop-login-topbar{height:70px}
+      .shop-login-topinner{width:calc(100% - 26px)}
+      .shop-login-brand{gap:8px}
+      .shop-login-brand-icon{width:34px;height:34px;font-size:18px}
+      .shop-login-brand-name{font-size:15px}
+      .shop-login-brand-divider{height:23px;margin:0 1px}
+      .shop-login-brand strong{font-size:18px}
+      .shop-login-help{font-size:12px}
+      .shop-login-hero{height:auto;min-height:calc(100vh - 70px);padding:23px 13px 30px;align-items:flex-start}
+      .shop-login-layout{width:100%;min-height:0;display:flex;justify-content:center;gap:0}
+      .shop-login-campaign{display:none}
+      .shop-login-card{width:min(400px,100%);padding:24px 20px 20px}
+      .shop-login-card-head{margin-bottom:19px}
+      .shop-login-qr-button{gap:7px;padding:6px 7px;font-size:9px}
+      .shop-login-qr-button i{font-size:25px}
+      .shop-login-qr-code{width:226px;height:226px}
+    }
+    @media(max-width:360px){
+      .shop-login-brand-name{display:none}
+      .shop-login-brand strong{font-size:17px}
+      .shop-login-card{padding:21px 15px 18px}
+    }
+
+  </style>
+
+<script>
+(function(){
+  var originalOpenCustomerAuth=window.openCustomerAuth;
+  var originalFinishCustomerLogin=window.finishCustomerLogin;
+
+  function customerLoginCardMarkup(){
+    var loginHeader='<div class="shop-login-card-head"><div><h2>เข้าสู่ระบบ</h2><p>ยินดีต้อนรับกลับมา</p></div><button type="button" class="shop-login-qr-button" onclick="openQrLoginDialog()" aria-label="เข้าสู่ระบบด้วย QR code"><span>เข้าสู่ระบบด้วย<br><b>QR code</b></span><i class="fa-solid fa-qrcode"></i></button></div>';
+    var fields='<form id="customerAuthForm" class="auth-form shop-login-form" onsubmit="submitCustomerAuth(event,false)"><div class="modal-field"><label for="authUser">เบอร์โทรศัพท์ / อีเมล / ชื่อผู้ใช้</label><input id="authUser" type="text" autocomplete="username" inputmode="text" placeholder="กรอกเบอร์โทรศัพท์ อีเมล หรือชื่อผู้ใช้" required></div><div class="modal-field auth-password-field"><div class="auth-label-row"><label for="authPass">รหัสผ่าน</label><a href="#" onclick="event.preventDefault();forgotPassword(\'customer\')">Forgot?</a></div><div class="auth-password-control"><input id="authPass" type="password" autocomplete="current-password" placeholder="กรอกรหัสผ่าน" required><button type="button" onclick="toggleAuthPassword(\'authPass\',this)" aria-label="แสดงรหัสผ่าน"><i class="fa-regular fa-eye"></i></button></div></div><div class="shop-login-error" id="shopLoginError" role="alert" aria-live="polite" hidden></div><button id="authSubmitBtn" class="btn btn-primary auth-submit shop-login-submit" type="submit">เข้าสู่ระบบ</button><label class="auth-remember shop-login-remember"><input id="authRemember" type="checkbox" checked><span>จดจำการเข้าสู่ระบบ</span><i class="fa-regular fa-circle-question" title="เก็บสถานะเข้าสู่ระบบไว้ในอุปกรณ์นี้"></i></label></form>';
+    var socialHtml='<div class="auth-divider shop-login-divider"><span>หรือ</span></div><div class="auth-provider-grid shop-login-social"><div class="auth-provider-wrap"><button type="button" id="facebookLoginButton" class="auth-facebook-btn" onclick="customerFacebookLogin()"><i class="fa-brands fa-facebook"></i> Facebook</button><div class="auth-provider-status" id="facebookAuthStatus"></div></div><div class="auth-provider-wrap"><div class="auth-provider-slot" id="googleSignInButton"><button type="button" class="auth-facebook-btn shop-google-fallback" disabled><i class="fa-brands fa-google"></i> Google</button></div><div class="auth-provider-status" id="googleAuthStatus"></div></div></div>';
+    var legal='<div class="auth-legal shop-login-legal">การเข้าสู่ระบบแสดงว่าคุณยอมรับ <a href="#" onclick="event.preventDefault();showCustomerLoginPolicy(\'terms\')">เงื่อนไขการให้บริการ</a> และ <a href="#" onclick="event.preventDefault();showCustomerLoginPolicy(\'privacyPolicy\')">นโยบายความเป็นส่วนตัว</a></div>';
+    var footer='<div class="auth-bottom-line shop-login-register">เพิ่งเคยเข้ามาใน Online Store ใช่หรือไม่? <a href="#" onclick="event.preventDefault();openCustomerAuth(\'register\')">สมัครใหม่</a></div><div class="shop-login-role-link"><a href="#" onclick="event.preventDefault();openAccessHub()">เข้าสู่ระบบสำหรับร้านค้า / เจ้าของระบบ</a></div>';
+    return '<div class="customer-auth shop-customer-auth">'+loginHeader+fields+socialHtml+legal+footer+'</div>';
+  }
+
+  window.openCustomerLoginPage=function(){
+    var root=document.getElementById('storeCustomerLoginPage');
+    if(!root){
+      root=document.createElement('div');
+      root.id='storeCustomerLoginPage';
+      root.className='store-login-screen';
+      root.innerHTML='<header class="shop-login-topbar"><div class="shop-login-topinner"><a class="shop-login-brand" href="#" onclick="closeCustomerLoginPage();return false" aria-label="กลับหน้าร้าน"><span class="shop-login-brand-icon"><i class="fa-solid fa-bag-shopping"></i></span><span class="shop-login-brand-name">Online Store</span><span class="shop-login-brand-divider"></span><strong>เข้าสู่ระบบ</strong></a><a class="shop-login-help" href="#" onclick="event.preventDefault();showCustomerLoginHelp()">ต้องการความช่วยเหลือ?</a></div></header><main class="shop-login-hero"><div class="shop-login-layout"><section class="shop-login-campaign" aria-label="แคมเปญโปรโมชั่น"><div class="shop-login-campaign-orbit orbit-one"></div><div class="shop-login-campaign-orbit orbit-two"></div><div class="shop-login-campaign-brand"><i class="fa-solid fa-bag-shopping"></i><span>ONLINE STORE</span></div><div class="shop-login-campaign-copy"><span class="shop-login-campaign-kicker">MEGA SHOPPING FESTIVAL</span><div class="shop-login-campaign-number">11.11</div><h1>MEGA<br><b>SALE</b></h1><div class="shop-login-discount"><span>ลดสูงสุด</span><strong>90<small>%</small></strong></div><div class="shop-login-campaign-tag"><i class="fa-solid fa-bolt"></i> ดีลเด็ด ช้อปคุ้มทุกวัน</div></div><div class="shop-login-campaign-art"><div class="shop-login-gift gift-one"><i class="fa-solid fa-gift"></i></div><div class="shop-login-gift gift-two"><i class="fa-solid fa-box-open"></i></div><div class="shop-login-campaign-spark spark-one">✦</div><div class="shop-login-campaign-spark spark-two">✧</div><div class="shop-login-campaign-spark spark-three">✦</div></div><div class="shop-login-campaign-foot">ช้อปง่าย • ปลอดภัย • ส่งตรงถึงคุณ</div></section><section class="shop-login-card" aria-label="แบบฟอร์มเข้าสู่ระบบ"><div id="shopLoginCardContent">'+customerLoginCardMarkup()+'</div></section></div></main></div>';
+      document.body.appendChild(root);
+    }else{
+      var content=document.getElementById('shopLoginCardContent');
+      if(content)content.innerHTML=customerLoginCardMarkup();
+    }
+    document.body.classList.add('store-login-open');
+    window.setTimeout(function(){
+      var user=document.getElementById('authUser');
+      if(user)user.focus();
+      if(window.loadCustomerAuthProviders)window.loadCustomerAuthProviders();
+    },100);
+  };
+
+  window.closeCustomerLoginPage=function(){
+    if(window.stopQrLoginPolling)window.stopQrLoginPolling();
+    var root=document.getElementById('storeCustomerLoginPage');
+    if(root&&root.parentNode)root.parentNode.removeChild(root);
+    document.body.classList.remove('store-login-open');
+  };
+
+  window.showCustomerLoginError=function(message){
+    var box=document.getElementById('shopLoginError');
+    if(box){box.textContent=String(message||'ไม่สามารถเข้าสู่ระบบได้');box.hidden=false;return;}
+    if(window.Swal)Swal.fire({icon:'error',title:'เข้าสู่ระบบไม่สำเร็จ',text:String(message||'กรุณาลองใหม่อีกครั้ง')});
+  };
+
+  window.showCustomerLoginHelp=function(){
+    var settings=(window.APP&&APP.settings)||{},contact=[];
+    if(settings.email)contact.push('<div><i class="fa-regular fa-envelope"></i> '+esc(settings.email)+'</div>');
+    if(settings.phone)contact.push('<div><i class="fa-solid fa-phone"></i> '+esc(settings.phone)+'</div>');
+    var body=contact.length?contact.join(''):'<p>กรุณาติดต่อฝ่ายบริการลูกค้าผ่านช่องทางติดต่อของร้านค้า</p>';
+    Swal.fire({title:'ต้องการความช่วยเหลือ?',html:'<div class="shop-login-help-content">'+body+'</div>',confirmButtonText:'ปิด'});
+  };
+
+  window.showCustomerLoginPolicy=function(key){
+    var title=key==='terms'?'เงื่อนไขการให้บริการ':'นโยบายความเป็นส่วนตัว';
+    var content=String(((window.APP&&APP.settings)||{})[key]||'ร้านค้ายังไม่ได้กำหนดข้อมูลส่วนนี้');
+    Swal.fire({title:title,html:'<div class="shop-login-policy-content">'+sanitizeRichEditorHtml(content)+'</div>',confirmButtonText:'ปิด',width:650});
+  };
+
+  window.showCustomerPasswordLogin=function(){
+    if(window.stopQrLoginPolling)window.stopQrLoginPolling();
+    var content=document.getElementById('shopLoginCardContent');
+    if(content)content.innerHTML=customerLoginCardMarkup();
+    window.setTimeout(function(){if(window.loadCustomerAuthProviders)window.loadCustomerAuthProviders();},80);
+  };
+
+  window.openCustomerAuth=function(mode){
+    mode=mode==='register'?'register':'login';
+    if(window.APP)APP.authDestination='customer';
+    if(window.clearRegistrationTimer)window.clearRegistrationTimer();
+    if(mode==='register'){
+      window.closeCustomerLoginPage();
+      if(originalOpenCustomerAuth)return originalOpenCustomerAuth.call(this,'register');
+      return;
+    }
+    window.openCustomerLoginPage();
+  };
+
+  window.submitCustomerAuth=function(event,isRegister){
+    if(event)event.preventDefault();
+    if(isRegister&&window.startCustomerEmailOtp)return window.startCustomerEmailOtp(event);
+    var button=document.getElementById('authSubmitBtn');
+    var userField=document.getElementById('authUser'),passField=document.getElementById('authPass');
+    var loginId=userField?userField.value.trim():'',password=passField?passField.value:'';
+    if(!loginId||!password){window.showCustomerLoginError('กรุณากรอกข้อมูลเข้าสู่ระบบให้ครบถ้วน');return false;}
+    var remember=window.customerRememberChoice?window.customerRememberChoice():true;
+    if(button){button.disabled=true;button.textContent='กำลังเข้าสู่ระบบ...';}
+    var errorBox=document.getElementById('shopLoginError');
+    if(errorBox){errorBox.hidden=true;errorBox.textContent='';}
+    apiCall('customerLogin',[loginId,password],function(result){
+      if(!result.success){
+        if(button){button.disabled=false;button.textContent='เข้าสู่ระบบ';}
+        window.showCustomerLoginError(result.message||'ไม่สามารถเข้าสู่ระบบได้');
+        return;
+      }
+      window.finishCustomerLogin(result,'เข้าสู่ระบบสำเร็จ',remember);
+    },true,'กำลังเข้าสู่ระบบ...');
+    return false;
+  };
+
+  window.openQrLoginDialog=function(){
+    var rememberAfterQr=window.customerRememberChoice?window.customerRememberChoice():true;
+    var content=document.getElementById('shopLoginCardContent');
+    if(!content){window.openCustomerLoginPage();content=document.getElementById('shopLoginCardContent');}
+    if(!content)return;
+    if(window.stopQrLoginPolling)window.stopQrLoginPolling();
+    content.innerHTML='<div class="shop-login-qr-view"><div class="shop-login-qr-head"><div><span class="shop-login-qr-eyebrow">QUICK & SECURE</span><h2>เข้าสู่ระบบด้วย QR Code</h2></div><button type="button" class="shop-login-qr-back" onclick="showCustomerPasswordLogin()"><i class="fa-solid fa-arrow-left"></i> กลับ</button></div><div id="qrLoginCode" class="qr-login-code shop-login-qr-code"><i class="fa-solid fa-qrcode"></i></div><div class="qr-login-status" id="qrLoginStatus">กำลังสร้าง QR Code...</div><div class="qr-login-tip">เปิดแอปบนโทรศัพท์ สแกน QR Code แล้วกดยืนยันอนุมัติ คอมพิวเตอร์จะเข้าสู่ระบบให้อัตโนมัติ</div><small class="modal-help">QR Code ใช้ได้ 2 นาที และใช้ได้ครั้งเดียว</small></div>';
+    apiCall('customerCreateQrLogin',[],function(r){
+      if(!r.success){var status=document.getElementById('qrLoginStatus');if(status)status.textContent=r.message||'ไม่สามารถสร้าง QR Code ได้';return;}
+      var challenge=r.data.challenge,code=document.getElementById('qrLoginCode');
+      if(!code)return;
+      code.innerHTML='';
+      if(window.QRCode)new QRCode(code,{text:r.data.url,width:220,height:220,colorDark:'#111827',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+      else code.innerHTML='<div class="qr-login-status">ไม่สามารถโหลดตัวสร้าง QR Code ได้ กรุณาตรวจสอบอินเทอร์เน็ต</div>';
+      if(window.startQrLoginPolling)window.startQrLoginPolling(challenge,rememberAfterQr);
+    },true,'กำลังสร้าง QR Code...');
+  };
+
+  if(originalFinishCustomerLogin){
+    window.finishCustomerLogin=function(){
+      window.closeCustomerLoginPage();
+      return originalFinishCustomerLogin.apply(this,arguments);
+    };
+  }
+})();
+</script>
 </body>
 </html>
