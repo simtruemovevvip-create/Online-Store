@@ -13777,6 +13777,9 @@ function startGlobalDataSync_(){
       return originalFinishCustomerLogin.apply(this,arguments);
     };
   }
+  window.customerLoginFooterMarkup=customerLoginFooterMarkup;
+  window.customerLoginCardMarkup=customerLoginCardMarkup;
+  window.renderCustomerLoginFooterQr=renderCustomerLoginFooterQr;
 })();
 </script>
 
@@ -13866,6 +13869,220 @@ function startGlobalDataSync_(){
   body.dark .swal2-popup.app-slide-drawer-popup .swal2-validation-message,
   body.dark .swal2-popup.enterprise-admin-modal .swal2-validation-message {
     background:#3a2027!important;color:#fecaca!important;
+  }
+</style>
+
+
+<script id="full-page-customer-auth-v2">
+(function(){
+  if(window.__FULL_PAGE_CUSTOMER_AUTH_V2__)return;
+  window.__FULL_PAGE_CUSTOMER_AUTH_V2__=true;
+  function progress(step){
+    var labels=['ยืนยันอีเมล','ตั้งรหัสผ่าน','เสร็จสิ้น'],html='<div class="registration-progress">';
+    for(var i=0;i<3;i++){var state=i+1<step?'done':(i+1===step?'active':'');html+='<span class="reg-step '+state+'"><b>'+(i+1<step?'✓':String(i+1))+'</b><small>'+labels[i]+'</small></span>';if(i<2)html+='<i></i>';}
+    return html+'</div>';
+  }
+  function ensureRoot(){
+    var root=document.getElementById('storeCustomerLoginPage');if(root)return root;
+    root=document.createElement('div');root.id='storeCustomerLoginPage';root.className='store-login-screen tw-w-full tw-min-h-screen';
+    root.innerHTML=
+      '<header class="shop-login-topbar"><div class="shop-login-topinner tw-mx-auto tw-flex tw-items-center tw-justify-between tw-max-w-[1040px]">'+
+      '<a class="shop-login-brand" href="#" onclick="closeCustomerLoginPage();return false"><span class="shop-login-brand-icon"><i class="fa-solid fa-bag-shopping"></i></span><span class="shop-login-brand-name">Online Store</span><span class="shop-login-brand-divider"></span><strong id="shopLoginPageTitle">เข้าสู่ระบบ</strong></a>'+
+      '<a class="shop-login-help" href="#" onclick="event.preventDefault();showCustomerLoginHelp()">ต้องการความช่วยเหลือ?</a></div></header>'+
+      '<main class="shop-login-hero tw-w-full tw-flex tw-items-center tw-justify-center"><div class="shop-login-layout tw-mx-auto tw-grid tw-items-center tw-max-w-[1040px]">'+
+      '<section class="shop-login-campaign" aria-label="แคมเปญโปรโมชั่น"><div class="shop-login-campaign-orbit orbit-one"></div><div class="shop-login-campaign-orbit orbit-two"></div>'+
+      '<div class="shop-login-campaign-brand"><i class="fa-solid fa-bag-shopping"></i><span>ONLINE STORE</span></div>'+
+      '<div class="shop-login-campaign-copy"><span class="shop-login-campaign-kicker">MEGA SHOPPING FESTIVAL</span><div class="shop-login-campaign-number">11.11</div><h1>MEGA<br><b>SALE</b></h1>'+
+      '<div class="shop-login-discount"><span>ลดสูงสุด</span><strong>90<small>%</small></strong></div><div class="shop-login-campaign-tag"><i class="fa-solid fa-bolt"></i> ดีลเด็ด ช้อปคุ้มทุกวัน</div></div>'+
+      '<div class="shop-login-campaign-art"><div class="shop-login-gift gift-one"><i class="fa-solid fa-gift"></i></div><div class="shop-login-gift gift-two"><i class="fa-solid fa-box-open"></i></div>'+
+      '<div class="shop-login-campaign-spark spark-one">✦</div><div class="shop-login-campaign-spark spark-two">✧</div><div class="shop-login-campaign-spark spark-three">✦</div></div>'+
+      '<div class="shop-login-campaign-foot">ช้อปง่าย • ปลอดภัย • ส่งตรงถึงคุณ</div></section>'+
+      '<section class="shop-login-card tw-w-[400px] tw-bg-white tw-rounded-sm tw-shadow-lg" aria-label="แบบฟอร์มบัญชีลูกค้า"><div id="shopLoginCardContent">'+(window.customerLoginCardMarkup?window.customerLoginCardMarkup():'')+'</div></section>'+
+      '</div></main>'+(window.customerLoginFooterMarkup?window.customerLoginFooterMarkup():'');
+    document.body.appendChild(root);document.body.classList.add('store-login-open');
+    window.setTimeout(function(){if(window.renderCustomerLoginFooterQr)window.renderCustomerLoginFooterQr();},80);return root;
+  }
+  function render(markup,title,focusId){
+    ensureRoot();var content=document.getElementById('shopLoginCardContent');if(content)content.innerHTML=markup;
+    var pageTitle=document.getElementById('shopLoginPageTitle');if(pageTitle)pageTitle.textContent=title||'เข้าสู่ระบบ';
+    window.setTimeout(function(){var el=focusId&&document.getElementById(focusId);if(el)el.focus();},30);
+  }
+  function feedback(message,success){
+    var box=document.getElementById('shopAuthFeedback');if(!box)return;
+    box.textContent=String(message||'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+    box.className='shop-login-error shop-auth-feedback'+(success?' is-success':'');box.hidden=false;
+  }
+  function intro(title,description){
+    return '<div class="registration-card-head"><button type="button" class="auth-back-arrow" onclick="openCustomerAuth(&quot;login&quot;)" aria-label="กลับไปเข้าสู่ระบบ"><i class="fa-solid fa-arrow-left"></i></button><h2>'+title+'</h2></div><p class="registration-intro">'+description+'</p>';
+  }
+
+  window.openCustomerLoginPage=function(){
+    if(window.APP)APP.authDestination='customer';if(window.clearRegistrationTimer)window.clearRegistrationTimer();
+    ensureRoot();render(window.customerLoginCardMarkup?window.customerLoginCardMarkup():'','เข้าสู่ระบบ','authUser');
+    if(window.loadCustomerAuthProviders)window.loadCustomerAuthProviders();
+  };
+  window.closeCustomerLoginPage=function(){
+    if(window.stopQrLoginPolling)window.stopQrLoginPolling();if(window.clearRegistrationTimer)window.clearRegistrationTimer();
+    var root=document.getElementById('storeCustomerLoginPage');if(root&&root.parentNode)root.parentNode.removeChild(root);
+    document.body.classList.remove('store-login-open');
+  };
+  window.openCustomerAuth=function(mode){
+    mode=mode==='register'?'register':'login';if(window.clearRegistrationTimer)window.clearRegistrationTimer();
+    if(window.APP)APP.authDestination='customer';
+    if(mode==='register'){APP.registration={challengeId:'',email:'',ticket:'',expiresAt:'',resendAt:0};window.renderRegistrationEmailStep();}
+    else window.openCustomerLoginPage();
+  };
+
+  window.renderRegistrationEmailStep=function(){
+    if(window.clearRegistrationTimer)window.clearRegistrationTimer();
+    var html=progress(1)+'<div class="registration-card">'+intro('สมัครสมาชิก','กรอกอีเมลที่คุณใช้งานได้จริง ระบบจะส่งรหัส OTP เพื่อยืนยันก่อนตั้งรหัสผ่าน')+
+      '<form class="auth-form" onsubmit="startCustomerEmailOtp(event)"><div class="modal-field"><label for="authRegisterEmail">อีเมล <span class="required-mark">*</span></label><input id="authRegisterEmail" type="email" inputmode="email" autocomplete="email" placeholder="name@example.com" maxlength="254" required></div>'+
+      '<div id="shopAuthFeedback" class="shop-login-error shop-auth-feedback" role="alert" hidden></div><button id="authSubmitBtn" type="submit" class="btn btn-primary auth-submit">ส่งรหัสยืนยันทางอีเมล</button></form>'+
+      '<p class="registration-note"><i class="fa-solid fa-envelope"></i> ไม่ต้องใช้ SMS หรือหมายเลขโทรศัพท์ในขั้นตอนสมัคร สามารถเพิ่มเบอร์โทรและที่อยู่ภายหลังได้</p>'+
+      '<div class="auth-bottom-line">มีบัญชีอยู่แล้ว? <a href="#" onclick="event.preventDefault();openCustomerAuth(&quot;login&quot;)">เข้าสู่ระบบ</a></div></div>';
+    render(html,'สมัครสมาชิก','authRegisterEmail');
+  };
+  window.startCustomerEmailOtp=function(event){
+    if(event)event.preventDefault();var field=document.getElementById('authRegisterEmail'),email=field?field.value.trim().toLowerCase():'';
+    if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){feedback('กรุณากรอกอีเมลให้ถูกต้อง');return false;}
+    var button=document.getElementById('authSubmitBtn');if(button){button.disabled=true;button.textContent='กำลังส่งรหัสยืนยัน...';}
+    apiCall('beginCustomerEmailRegistration',[email],function(r){
+      if(!r||!r.success){if(button){button.disabled=false;button.textContent='ส่งรหัสยืนยันทางอีเมล';}feedback(r&&r.message||'ส่ง Email OTP ไม่สำเร็จ');return;}
+      APP.registration={challengeId:r.data.challengeId,email:email,ticket:'',expiresAt:r.data.expiresAt,resendAt:Date.now()+Number(r.data.resendAfter||60)*1000};
+      toast('ส่งรหัสยืนยันแล้ว','success','กรุณาตรวจสอบอีเมลและโฟลเดอร์ Spam');window.renderRegistrationOtpStep();
+    },true,'กำลังส่ง Email OTP...');return false;
+  };
+  window.renderRegistrationOtpStep=function(){
+    if(window.clearRegistrationTimer)window.clearRegistrationTimer();var reg=APP.registration||{};
+    var masked=window.maskRegistrationEmail?window.maskRegistrationEmail(reg.email):reg.email;
+    var html=progress(1)+'<div class="registration-card">'+intro('ยืนยันอีเมล','ระบบส่งรหัส OTP ไปยัง<br><strong>'+esc(masked||'')+'</strong>')+
+      '<form class="auth-form" onsubmit="verifyRegistrationOtp(event)"><div class="otp-code-wrap"><input id="registrationOtpCode" class="otp-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="• • • • • •" required aria-label="รหัส OTP 6 หลัก"></div>'+
+      '<div id="shopAuthFeedback" class="shop-login-error shop-auth-feedback" role="alert" hidden></div><div class="otp-resend-line"><span id="otpResendCountdown">กำลังเตรียมการส่งรหัสอีกครั้ง</span><button id="otpResendButton" type="button" onclick="resendCustomerEmailOtpNow()" disabled>ส่งรหัสอีกครั้ง</button></div>'+
+      '<button id="authSubmitBtn" type="submit" class="btn btn-primary auth-submit">ยืนยันรหัสและดำเนินการต่อ</button></form><p class="registration-note"><i class="fa-solid fa-circle-info"></i> รหัสมีอายุ 5 นาที ใช้ได้ครั้งเดียว หากไม่พบอีเมลให้ตรวจสอบโฟลเดอร์ Spam</p>'+
+      '<div class="auth-bottom-line"><a href="#" onclick="event.preventDefault();renderRegistrationEmailStep()">เปลี่ยนอีเมล</a></div></div>';
+    render(html,'สมัครสมาชิก','registrationOtpCode');if(window.startRegistrationOtpCountdown)window.startRegistrationOtpCountdown();
+  };
+  window.verifyRegistrationOtp=function(event){
+    if(event)event.preventDefault();var reg=APP.registration||{},field=document.getElementById('registrationOtpCode'),code=field?field.value.replace(/\D/g,''):'';
+    if(!/^\d{6}$/.test(code)){feedback('กรุณากรอกรหัส OTP ให้ครบ 6 หลัก');return false;}
+    var button=document.getElementById('authSubmitBtn');if(button){button.disabled=true;button.textContent='กำลังตรวจสอบรหัส...';}
+    apiCall('verifyCustomerEmailRegistrationOtp',[reg.challengeId,reg.email,code],function(r){
+      if(!r||!r.success){if(button){button.disabled=false;button.textContent='ยืนยันรหัสและดำเนินการต่อ';}feedback(r&&r.message||'รหัส OTP ไม่ถูกต้อง');return;}
+      APP.registration.ticket=r.data.registrationTicket;APP.registration.expiresAt=r.data.expiresAt;toast('ยืนยันอีเมลสำเร็จ','success');window.renderRegistrationPasswordStep();
+    },true,'กำลังตรวจสอบ Email OTP...');return false;
+  };
+  window.renderRegistrationPasswordStep=function(){
+    if(window.clearRegistrationTimer)window.clearRegistrationTimer();
+    var email=window.maskRegistrationEmail?window.maskRegistrationEmail(APP.registration&&APP.registration.email):'';
+    var html=progress(2)+'<div class="registration-card">'+intro('ตั้งรหัสผ่าน','กำหนดรหัสผ่านสำหรับบัญชี <strong>'+esc(email||'')+'</strong>')+
+      '<form class="auth-form" onsubmit="completeCustomerEmailRegistration(event)"><div class="modal-field"><label for="regPassword">รหัสผ่าน <span class="required-mark">*</span></label><div class="auth-password-control"><input id="regPassword" type="password" autocomplete="new-password" minlength="8" placeholder="อย่างน้อย 8 ตัวอักษร" required><button type="button" onclick="toggleAuthPassword(&quot;regPassword&quot;,this)"><i class="fa-regular fa-eye"></i></button></div></div>'+
+      '<div class="modal-field"><label for="regPasswordConfirm">ยืนยันรหัสผ่าน <span class="required-mark">*</span></label><div class="auth-password-control"><input id="regPasswordConfirm" type="password" autocomplete="new-password" minlength="8" placeholder="กรอกรหัสผ่านอีกครั้ง" required><button type="button" onclick="toggleAuthPassword(&quot;regPasswordConfirm&quot;,this)"><i class="fa-regular fa-eye"></i></button></div></div>'+
+      '<div id="shopAuthFeedback" class="shop-login-error shop-auth-feedback" role="alert" hidden></div><button id="authSubmitBtn" type="submit" class="btn btn-primary auth-submit">สร้างบัญชีสมาชิก</button></form>'+
+      '<p class="registration-note"><i class="fa-solid fa-circle-info"></i> ชื่อ เบอร์โทรศัพท์ และที่อยู่จัดส่ง สามารถเพิ่มภายหลังในหน้าบัญชีของฉัน</p></div>';
+    render(html,'สมัครสมาชิก','regPassword');
+  };
+  window.completeCustomerEmailRegistration=function(event){
+    if(event)event.preventDefault();var reg=APP.registration||{},a=document.getElementById('regPassword'),b=document.getElementById('regPasswordConfirm');
+    var password=a?a.value:'',confirm=b?b.value:'';
+    if(password.length<8){feedback('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');return false;}
+    if(password!==confirm){feedback('รหัสผ่านทั้งสองช่องไม่ตรงกัน');return false;}
+    var button=document.getElementById('authSubmitBtn');if(button){button.disabled=true;button.textContent='กำลังสร้างบัญชี...';}
+    apiCall('customerCompleteEmailRegistration',[reg.challengeId,reg.email,reg.ticket,password],function(r){
+      if(!r||!r.success){if(button){button.disabled=false;button.textContent='สร้างบัญชีสมาชิก';}feedback(r&&r.message||'สมัครสมาชิกไม่สำเร็จ');return;}
+      APP.registration.pendingResult=r;window.renderRegistrationCompleteStep();
+    },true,'กำลังสร้างบัญชีสมาชิก...');return false;
+  };
+  window.renderRegistrationCompleteStep=function(){
+    if(window.clearRegistrationTimer)window.clearRegistrationTimer();
+    var html=progress(3)+'<div class="registration-card registration-complete-card"><div class="registration-complete-icon"><i class="fa-solid fa-check"></i></div><h2>สมัครสมาชิกสำเร็จ</h2>'+
+      '<p class="registration-intro">ยืนยันอีเมลและตั้งรหัสผ่านเรียบร้อยแล้ว<br>คุณสามารถเพิ่มชื่อ เบอร์โทรศัพท์ และที่อยู่จัดส่งภายหลังได้</p>'+
+      '<button type="button" class="btn btn-primary auth-submit" onclick="finishRegistrationWelcome()">เริ่มใช้งาน</button></div>';
+    render(html,'สมัครสมาชิกสำเร็จ');
+  };
+  window.finishRegistrationWelcome=function(){
+    var result=APP.registration&&APP.registration.pendingResult;if(!result||!result.success){feedback('ไม่พบข้อมูลการสมัคร กรุณาเข้าสู่ระบบด้วยอีเมล');return;}
+    APP.registration=null;if(window.finishCustomerLogin)window.finishCustomerLogin(result,'สมัครสมาชิกสำเร็จ',true);
+  };
+
+  window.forgotPassword=function(type){
+    type=type||'customer';if(window.Swal&&window.Swal.isVisible())window.Swal.close();
+    var title=type==='admin'?'กู้คืนบัญชีเจ้าของระบบ':'ลืมรหัสผ่าน',label=type==='admin'?'Username ที่เป็นอีเมล':'อีเมลที่ลงทะเบียนไว้';
+    var html='<div class="customer-auth shop-customer-auth shop-auth-fullpage-form"><div class="auth-head"><div><div class="auth-eyebrow">ACCOUNT RECOVERY</div><h2>'+title+'</h2></div></div>'+
+      '<p class="auth-intro">กรอกอีเมลที่ใช้ลงทะเบียน ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ให้คุณ</p>'+
+      '<form class="auth-form" onsubmit="submitFullPageForgotPassword(event, &quot;'+type+'&quot;)"><div class="modal-field"><label for="forgotPasswordEmail">'+label+' <span class="required-mark">*</span></label><input id="forgotPasswordEmail" type="email" autocomplete="email" placeholder="name@example.com" required></div>'+
+      '<div id="shopAuthFeedback" class="shop-login-error shop-auth-feedback" role="status" hidden></div><button id="forgotPasswordSubmit" class="btn btn-primary auth-submit" type="submit">ส่งลิงก์ตั้งรหัสผ่าน</button></form>'+
+      '<div class="auth-bottom-line"><a href="#" onclick="event.preventDefault();openCustomerAuth(&quot;login&quot;)"><i class="fa-solid fa-arrow-left"></i> กลับไปเข้าสู่ระบบ</a></div></div>';
+    render(html,'ลืมรหัสผ่าน','forgotPasswordEmail');
+  };
+  window.submitFullPageForgotPassword=function(event,type){
+    if(event)event.preventDefault();var field=document.getElementById('forgotPasswordEmail'),email=field?field.value.trim().toLowerCase():'';
+    if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){feedback('กรุณากรอกอีเมลให้ถูกต้อง');return false;}
+    var button=document.getElementById('forgotPasswordSubmit');if(button){button.disabled=true;button.textContent='กำลังส่งลิงก์...';}
+    apiCall('requestPasswordReset',[email,type||'customer'],function(r){
+      if(button){button.disabled=false;button.textContent='ส่งลิงก์ตั้งรหัสผ่าน';}
+      if(r&&r.success){feedback(r.message||'ส่งลิงก์ตั้งรหัสผ่านแล้ว กรุณาตรวจสอบอีเมล',true);if(button)button.disabled=true;}
+      else feedback(r&&r.message||'ไม่สามารถส่งลิงก์ได้ กรุณาลองอีกครั้ง');
+    },true,'กำลังส่งอีเมล...');return false;
+  };
+  window.showResetPassword=function(token){
+    window.__pendingFullPageResetToken=String(token||'');
+    var html='<div class="customer-auth shop-customer-auth shop-auth-fullpage-form"><div class="auth-head"><div><div class="auth-eyebrow">SECURE YOUR ACCOUNT</div><h2>ตั้งรหัสผ่านใหม่</h2></div></div>'+
+      '<p class="auth-intro">กำหนดรหัสผ่านใหม่เพื่อกลับเข้าใช้งานบัญชีของคุณ</p><form class="auth-form" onsubmit="submitFullPageResetPassword(event)">'+
+      '<div class="modal-field"><label for="newPass1">รหัสผ่านใหม่ <span class="required-mark">*</span></label><div class="auth-password-control"><input id="newPass1" type="password" autocomplete="new-password" minlength="8" placeholder="อย่างน้อย 8 ตัวอักษร" required><button type="button" onclick="toggleAuthPassword(&quot;newPass1&quot;,this)"><i class="fa-regular fa-eye"></i></button></div></div>'+
+      '<div class="modal-field"><label for="newPass2">ยืนยันรหัสผ่าน <span class="required-mark">*</span></label><div class="auth-password-control"><input id="newPass2" type="password" autocomplete="new-password" minlength="8" placeholder="กรอกรหัสผ่านอีกครั้ง" required><button type="button" onclick="toggleAuthPassword(&quot;newPass2&quot;,this)"><i class="fa-regular fa-eye"></i></button></div></div>'+
+      '<div id="shopAuthFeedback" class="shop-login-error shop-auth-feedback" role="alert" hidden></div><button id="resetPasswordSubmit" class="btn btn-primary auth-submit" type="submit">บันทึกรหัสผ่านใหม่</button></form>'+
+      '<div class="auth-bottom-line"><a href="#" onclick="event.preventDefault();openCustomerAuth(&quot;login&quot;)">กลับไปเข้าสู่ระบบ</a></div></div>';
+    render(html,'ตั้งรหัสผ่านใหม่','newPass1');
+  };
+  window.submitFullPageResetPassword=function(event){
+    if(event)event.preventDefault();var a=document.getElementById('newPass1'),b=document.getElementById('newPass2');
+    var first=a?a.value:'',second=b?b.value:'';
+    if(first.length<8){feedback('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');return false;}
+    if(first!==second){feedback('รหัสผ่านทั้งสองช่องไม่ตรงกัน');return false;}
+    var button=document.getElementById('resetPasswordSubmit');if(button){button.disabled=true;button.textContent='กำลังบันทึก...';}
+    apiCall('resetPassword',[window.__pendingFullPageResetToken,first],function(r){
+      if(button){button.disabled=false;button.textContent='บันทึกรหัสผ่านใหม่';}
+      if(r&&r.success){if(button)button.disabled=true;feedback(r.message||'เปลี่ยนรหัสผ่านสำเร็จแล้ว กรุณาเข้าสู่ระบบ',true);window.history.replaceState({},document.title,window.location.pathname);}
+      else feedback(r&&r.message||'ตั้งรหัสผ่านไม่สำเร็จ กรุณาลองอีกครั้ง');
+    },true,'กำลังตั้งรหัสผ่าน...');return false;
+  };
+
+  window.showCustomerLoginError=function(message){feedback(message,false);};
+  window.showCustomerPasswordLogin=function(){
+    if(window.stopQrLoginPolling)window.stopQrLoginPolling();
+    render(window.customerLoginCardMarkup?window.customerLoginCardMarkup():'','เข้าสู่ระบบ','authUser');
+    if(window.loadCustomerAuthProviders)window.loadCustomerAuthProviders();
+  };
+})();
+</script>
+<style id="full-page-customer-auth-v2-css">
+  .store-login-screen{position:fixed;inset:0;z-index:20000;overflow-y:auto;background:#f6f6f6;color:#222}
+  .store-login-screen .shop-login-hero{height:auto;min-height:600px;min-height:calc(100vh - 84px);padding:30px 18px}
+  .store-login-screen .shop-login-layout{min-height:520px}
+  .store-login-screen .shop-login-card{align-self:center;width:400px;max-width:100%;max-height:none;overflow:visible}
+  .store-login-screen .shop-login-card .auth-head{margin-bottom:16px}
+  .store-login-screen .shop-login-card .auth-intro{margin:0 0 15px}
+  .store-login-screen .registration-card{padding:8px 0 3px;text-align:center}
+  .store-login-screen .registration-card-head{margin-bottom:13px}
+  .store-login-screen .registration-card-head h2{font-size:19px}
+  .store-login-screen .registration-intro{font-size:12px;line-height:1.55;margin:0 auto 15px}
+  .store-login-screen .registration-progress{gap:5px;margin:0 auto 16px}
+  .store-login-screen .reg-step{min-width:64px}
+  .store-login-screen .reg-step small{font-size:9px}
+  .store-login-screen .reg-step b{width:29px;height:29px}
+  .store-login-screen .registration-progress>i{margin-top:14px}
+  .store-login-screen .otp-code-wrap{padding:8px 0 14px}
+  .store-login-screen .otp-code-input{background:transparent!important;color:#1f2937!important}
+  .store-login-screen .shop-login-card .registration-note{margin:12px 0 5px;font-size:10px}
+  .store-login-screen .shop-auth-fullpage-form .auth-head{margin-bottom:12px}
+  .store-login-screen .shop-auth-feedback{margin:0;padding:8px 10px;border-radius:4px}
+  .store-login-screen .shop-auth-feedback.is-success{background:#ecfdf3;border-color:#86efac;color:#166534}
+  .store-login-screen .auth-password-control input{min-width:0}
+  .store-login-screen .shop-login-card .auth-bottom-line{margin-top:14px}
+  @media(max-width:680px){
+    .store-login-screen .shop-login-hero{min-height:calc(100vh - 70px);padding:22px 13px}
+    .store-login-screen .shop-login-layout{width:100%;min-height:0;display:flex;justify-content:center}
+    .store-login-screen .shop-login-card{width:min(400px,100%);padding:23px 19px 20px}
   }
 </style>
 
