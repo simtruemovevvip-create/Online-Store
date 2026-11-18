@@ -13233,6 +13233,71 @@ function startGlobalDataSync_(){
       .shop-login-download-content{max-width:310px}
     }
 
+  
+    /* Unified form and modal theme tokens: keep every form readable in both themes. */
+    :root{color-scheme:light;--bg:#f4f6fa;--surface:#ffffff;--surface-2:#e7ebf2;--ink:#1f2937;--muted:#64748b}
+    body.dark{color-scheme:dark;--bg:#0d1117;--surface:#161b22;--surface-2:#202833;--ink:#e7ebf2;--muted:#a8b3c2}
+    .swal2-container{z-index:2100!important;padding:16px!important}
+    .swal2-popup:not(.market-toast){background:var(--surface)!important;color:var(--ink)!important;border-color:var(--border)!important}
+    .swal2-popup:not(.market-toast) .swal2-title,
+    .swal2-popup:not(.market-toast) .swal2-html-container,
+    .swal2-popup:not(.market-toast) .swal2-content{color:var(--ink)!important}
+    .swal2-popup:not(.market-toast) .swal2-html-container p,
+    .swal2-popup:not(.market-toast) .swal2-html-container small{color:var(--muted)}
+    .swal2-popup:not(.market-toast) .swal2-input,
+    .swal2-popup:not(.market-toast) .swal2-textarea,
+    .swal2-popup:not(.market-toast) .swal2-select,
+    .swal2-popup:not(.market-toast) input:not([type=checkbox]):not([type=radio]),
+    .swal2-popup:not(.market-toast) select,
+    .swal2-popup:not(.market-toast) textarea{
+      background:var(--bg)!important;color:var(--ink)!important;border:1px solid var(--border)!important;
+      box-shadow:none!important;caret-color:var(--primary)
+    }
+    .swal2-popup:not(.market-toast) input::placeholder,
+    .swal2-popup:not(.market-toast) textarea::placeholder{color:var(--muted)!important;opacity:.8}
+    .swal2-popup:not(.market-toast) input:focus,
+    .swal2-popup:not(.market-toast) select:focus,
+    .swal2-popup:not(.market-toast) textarea:focus{border-color:var(--primary)!important;box-shadow:0 0 0 3px rgba(238,77,45,.13)!important}
+    .modal-field label,.auth-form .modal-field label{color:var(--ink)!important}
+    .modal-field input,.modal-field select,.modal-field textarea,
+    .auth-form .modal-field>input,.auth-password-control,
+    .auth-password-control input,.auth-password-control button{
+      background:var(--surface)!important;color:var(--ink)!important;border-color:var(--border)!important
+    }
+    .modal-field input::placeholder,.modal-field textarea::placeholder,
+    .auth-form input::placeholder{color:var(--muted)!important;opacity:.8}
+    .auth-label-row a,.auth-legal a,.auth-bottom-line a{color:var(--primary)!important}
+    .auth-remember,.auth-intro,.auth-eyebrow,.auth-divider,.registration-intro,
+    .registration-note,.otp-resend-line{color:var(--muted)!important}
+    .reg-step b{background:var(--surface)!important;border-color:var(--border)!important;color:var(--muted)}
+    .auth-popup .swal2-close{color:var(--muted)!important}
+    .swal2-validation-message{background:var(--surface-2)!important;color:var(--ink)!important}
+    .swal2-popup:not(.market-toast) .swal2-cancel{background:var(--surface-2)!important;color:var(--ink)!important}
+    .swal2-popup.auth-customer-popup,.swal2-popup.auth-register-popup{
+      width:min(500px,calc(100vw - 24px))!important;max-height:calc(100vh - 32px)!important;
+      overflow-y:auto!important
+    }
+    .swal2-popup.auth-forgot-popup{
+      width:min(430px,calc(100vw - 24px))!important;padding:24px!important;border-radius:12px!important;
+      border:1px solid var(--border)!important;border-top:4px solid var(--primary)!important;
+      background:var(--surface)!important;color:var(--ink)!important;box-shadow:0 18px 55px rgba(15,23,42,.22)!important
+    }
+    .swal2-popup.auth-forgot-popup .swal2-title{display:block!important;color:var(--ink)!important;font-size:20px!important}
+    .swal2-popup.auth-forgot-popup .swal2-input-label{color:var(--muted)!important}
+    .shop-login-qr-view{color:var(--ink)!important}
+    .shop-login-qr-head h2{color:var(--ink)!important}
+    .shop-login-qr-back{background:var(--surface-2)!important;color:var(--ink)!important;border:1px solid var(--border)!important}
+    .shop-login-qr-view .qr-login-status,.shop-login-qr-view .qr-login-tip,
+    .shop-login-qr-view .modal-help{color:var(--muted)!important}
+    .shop-login-qr-code{background:var(--surface)!important}
+    .shop-login-role-link a{color:var(--muted)!important}
+    .shop-login-error{color:#ef4444;font-size:12px;line-height:1.5}
+    @media(max-width:560px){
+      .swal2-popup.auth-customer-popup,.swal2-popup.auth-register-popup{padding:20px 18px 18px!important}
+      .registration-progress{gap:4px}
+      .reg-step{min-width:72px}
+    }
+
   </style>
 
 <script>
@@ -13271,33 +13336,36 @@ function startGlobalDataSync_(){
   }
 
   function customerLoginCardMarkup(){
-    var loginHeader='<div class="shop-login-card-head"><div><h2>เข้าสู่ระบบ</h2><p>ยินดีต้อนรับกลับมา</p></div><button type="button" class="shop-login-qr-button" onclick="openQrLoginDialog()" aria-label="เข้าสู่ระบบด้วย QR code"><span>เข้าสู่ระบบด้วย<br><b>QR code</b></span><i class="fa-solid fa-qrcode"></i></button></div>';
-    var fields='<form id="customerAuthForm" class="auth-form shop-login-form" onsubmit="submitCustomerAuth(event,false)"><div class="modal-field"><label for="authUser">เบอร์โทรศัพท์ / อีเมล / ชื่อผู้ใช้</label><input id="authUser" type="text" autocomplete="username" inputmode="text" placeholder="กรอกเบอร์โทรศัพท์ อีเมล หรือชื่อผู้ใช้" required></div><div class="modal-field auth-password-field"><div class="auth-label-row"><label for="authPass">รหัสผ่าน</label><a href="#" onclick="event.preventDefault();forgotPassword(\'customer\')">Forgot?</a></div><div class="auth-password-control"><input id="authPass" type="password" autocomplete="current-password" placeholder="กรอกรหัสผ่าน" required><button type="button" onclick="toggleAuthPassword(\'authPass\',this)" aria-label="แสดงรหัสผ่าน"><i class="fa-regular fa-eye"></i></button></div></div><div class="shop-login-error" id="shopLoginError" role="alert" aria-live="polite" hidden></div><button id="authSubmitBtn" class="btn btn-primary auth-submit shop-login-submit" type="submit">เข้าสู่ระบบ</button><label class="auth-remember shop-login-remember"><input id="authRemember" type="checkbox" checked><span>จดจำการเข้าสู่ระบบ</span><i class="fa-regular fa-circle-question" title="เก็บสถานะเข้าสู่ระบบไว้ในอุปกรณ์นี้"></i></label></form>';
-    var socialHtml='<div class="auth-divider shop-login-divider"><span>หรือ</span></div><div class="auth-provider-grid shop-login-social"><div class="auth-provider-wrap"><button type="button" id="facebookLoginButton" class="auth-facebook-btn" onclick="customerFacebookLogin()"><i class="fa-brands fa-facebook"></i> Facebook</button><div class="auth-provider-status" id="facebookAuthStatus"></div></div><div class="auth-provider-wrap"><div class="auth-provider-slot" id="googleSignInButton"><button type="button" class="auth-facebook-btn shop-google-fallback" disabled><i class="fa-brands fa-google"></i> Google</button></div><div class="auth-provider-status" id="googleAuthStatus"></div></div></div>';
-    var legal='<div class="auth-legal shop-login-legal">การเข้าสู่ระบบแสดงว่าคุณยอมรับ <a href="#" onclick="event.preventDefault();showCustomerLoginPolicy(\'terms\')">เงื่อนไขการให้บริการ</a> และ <a href="#" onclick="event.preventDefault();showCustomerLoginPolicy(\'privacyPolicy\')">นโยบายความเป็นส่วนตัว</a></div>';
-    var footer='<div class="auth-bottom-line shop-login-register">เพิ่งเคยเข้ามาใน Online Store ใช่หรือไม่? <a href="#" onclick="event.preventDefault();openCustomerAuth(\'register\')">สมัครใหม่</a></div><div class="shop-login-role-link"><a href="#" onclick="event.preventDefault();openAccessHub()">เข้าสู่ระบบสำหรับร้านค้า / เจ้าของระบบ</a></div>';
-    return '<div class="customer-auth shop-customer-auth">'+loginHeader+fields+socialHtml+legal+footer+'</div>';
+    var loginHeader='<div class="auth-head"><div><div class="auth-eyebrow">WELCOME BACK</div><h2>เข้าสู่ระบบ</h2></div><button type="button" class="auth-qr-mini" onclick="openQrLoginDialog()"><span>เข้าสู่ระบบด้วย<br><b>QR code</b></span><i class="fa-solid fa-qrcode"></i></button></div>';
+    var intro='<div class="auth-intro">เข้าสู่ระบบด้วยเบอร์โทรศัพท์ อีเมล หรือชื่อผู้ใช้ที่ลงทะเบียนไว้</div>';
+    var fields='<form id="customerAuthForm" class="auth-form" onsubmit="submitCustomerAuth(event,false)"><div class="modal-field"><label for="authUser">เบอร์โทรศัพท์ / อีเมล / ชื่อผู้ใช้</label><input id="authUser" type="text" autocomplete="username" inputmode="text" placeholder="กรอกเบอร์โทรศัพท์ อีเมล หรือชื่อผู้ใช้" required></div><div class="modal-field auth-password-field"><div class="auth-label-row"><label for="authPass">รหัสผ่าน</label><a href="#" onclick="event.preventDefault();forgotPassword(\'customer\')">ลืมรหัสผ่าน?</a></div><div class="auth-password-control"><input id="authPass" type="password" autocomplete="current-password" placeholder="กรอกรหัสผ่าน" required><button type="button" onclick="toggleAuthPassword(\'authPass\',this)" aria-label="แสดงรหัสผ่าน"><i class="fa-regular fa-eye"></i></button></div></div><div class="shop-login-error" id="shopLoginError" role="alert" aria-live="polite" hidden></div><button id="authSubmitBtn" class="btn btn-primary auth-submit" type="submit">เข้าสู่ระบบ</button><label class="auth-remember"><input id="authRemember" type="checkbox" checked><span>จดจำการเข้าสู่ระบบ</span><i class="fa-regular fa-circle-question" title="เก็บสถานะเข้าสู่ระบบไว้ในอุปกรณ์นี้"></i></label></form>';
+    var socialHtml='<div class="auth-divider"><span>หรือเข้าสู่ระบบด้วย</span></div><div class="auth-provider-grid"><div class="auth-provider-wrap"><button type="button" id="facebookLoginButton" class="auth-facebook-btn" onclick="customerFacebookLogin()"><i class="fa-brands fa-facebook"></i> Facebook</button><div class="auth-provider-status" id="facebookAuthStatus"></div></div><div class="auth-provider-wrap"><div class="auth-provider-slot" id="googleSignInButton"><button type="button" class="auth-facebook-btn shop-google-fallback" disabled><i class="fa-brands fa-google"></i> Google</button></div><div class="auth-provider-status" id="googleAuthStatus"></div></div></div>';
+    var legal='<div class="auth-legal">การเข้าสู่ระบบแสดงว่าคุณยอมรับ <a href="#" onclick="event.preventDefault();showCustomerLoginPolicy(\'terms\')">เงื่อนไขการให้บริการ</a> และ <a href="#" onclick="event.preventDefault();showCustomerLoginPolicy(\'privacyPolicy\')">นโยบายความเป็นส่วนตัว</a></div>';
+    var footer='<div class="auth-bottom-line"><span>ยังไม่มีบัญชี?</span> <a href="#" onclick="event.preventDefault();openCustomerAuth(\'register\')">สมัครสมาชิก</a></div><div class="shop-login-role-link"><a href="#" onclick="event.preventDefault();openAccessHub()">เข้าสู่ระบบสำหรับร้านค้า / เจ้าของระบบ</a></div>';
+    return '<div class="customer-auth shop-customer-auth">'+loginHeader+intro+fields+socialHtml+legal+footer+'</div>';
   }
 
   window.openCustomerLoginPage=function(){
-    var root=document.getElementById('storeCustomerLoginPage');
-    if(!root){
-      root=document.createElement('div');
-      root.id='storeCustomerLoginPage';
-      root.className='store-login-screen tw-w-full tw-min-h-screen';
-      root.innerHTML='<header class="shop-login-topbar"><div class="shop-login-topinner tw-mx-auto tw-flex tw-items-center tw-justify-between tw-max-w-[1040px]"><a class="shop-login-brand" href="#" onclick="closeCustomerLoginPage();return false" aria-label="กลับหน้าร้าน"><span class="shop-login-brand-icon"><i class="fa-solid fa-bag-shopping"></i></span><span class="shop-login-brand-name">Online Store</span><span class="shop-login-brand-divider"></span><strong>เข้าสู่ระบบ</strong></a><a class="shop-login-help" href="#" onclick="event.preventDefault();showCustomerLoginHelp()">ต้องการความช่วยเหลือ?</a></div></header><main class="shop-login-hero tw-w-full tw-flex tw-items-center tw-justify-center"><div class="shop-login-layout tw-mx-auto tw-grid tw-items-center tw-max-w-[1040px]"><section class="shop-login-campaign" aria-label="แคมเปญโปรโมชั่น"><div class="shop-login-campaign-orbit orbit-one"></div><div class="shop-login-campaign-orbit orbit-two"></div><div class="shop-login-campaign-brand"><i class="fa-solid fa-bag-shopping"></i><span>ONLINE STORE</span></div><div class="shop-login-campaign-copy"><span class="shop-login-campaign-kicker">MEGA SHOPPING FESTIVAL</span><div class="shop-login-campaign-number">11.11</div><h1>MEGA<br><b>SALE</b></h1><div class="shop-login-discount"><span>ลดสูงสุด</span><strong>90<small>%</small></strong></div><div class="shop-login-campaign-tag"><i class="fa-solid fa-bolt"></i> ดีลเด็ด ช้อปคุ้มทุกวัน</div></div><div class="shop-login-campaign-art"><div class="shop-login-gift gift-one"><i class="fa-solid fa-gift"></i></div><div class="shop-login-gift gift-two"><i class="fa-solid fa-box-open"></i></div><div class="shop-login-campaign-spark spark-one">✦</div><div class="shop-login-campaign-spark spark-two">✧</div><div class="shop-login-campaign-spark spark-three">✦</div></div><div class="shop-login-campaign-foot">ช้อปง่าย • ปลอดภัย • ส่งตรงถึงคุณ</div></section><section class="shop-login-card tw-w-[400px] tw-bg-white tw-rounded-sm tw-shadow-lg" aria-label="แบบฟอร์มเข้าสู่ระบบ"><div id="shopLoginCardContent">'+customerLoginCardMarkup()+'</div></section></div></main>'+customerLoginFooterMarkup()+'</div>';
-      document.body.appendChild(root);
-    }else{
-      var content=document.getElementById('shopLoginCardContent');
-      if(content)content.innerHTML=customerLoginCardMarkup();
-    }
-    document.body.classList.add('store-login-open');
-    window.setTimeout(function(){renderCustomerLoginFooterQr();},80);
-    window.setTimeout(function(){
-      var user=document.getElementById('authUser');
-      if(user)user.focus();
-      if(window.loadCustomerAuthProviders)window.loadCustomerAuthProviders();
-    },100);
+    if(window.APP)APP.authDestination='customer';
+    if(window.clearRegistrationTimer)window.clearRegistrationTimer();
+    var html='<div class="customer-auth shop-customer-auth"><div id="shopLoginCardContent">'+customerLoginCardMarkup()+'</div></div>';
+    Swal.fire({
+      title:'',
+      html:html,
+      width:500,
+      position:'center',
+      showConfirmButton:false,
+      showCancelButton:false,
+      showCloseButton:true,
+      focusConfirm:false,
+      customClass:{popup:'auth-popup auth-customer-popup',htmlContainer:'auth-popup-html'},
+      didOpen:function(){
+        var user=document.getElementById('authUser');
+        if(user)user.focus();
+        if(window.loadCustomerAuthProviders)window.loadCustomerAuthProviders();
+      },
+      willClose:function(){if(window.stopQrLoginPolling)window.stopQrLoginPolling();}
+    });
   };
 
   window.closeCustomerLoginPage=function(){
@@ -13305,6 +13373,10 @@ function startGlobalDataSync_(){
     var root=document.getElementById('storeCustomerLoginPage');
     if(root&&root.parentNode)root.parentNode.removeChild(root);
     document.body.classList.remove('store-login-open');
+    if(window.Swal&&window.Swal.getPopup){
+      var popup=window.Swal.getPopup();
+      if(popup&&popup.classList.contains('auth-customer-popup'))window.Swal.close();
+    }
   };
 
   window.showCustomerLoginError=function(message){
@@ -13336,14 +13408,45 @@ function startGlobalDataSync_(){
 
   window.openCustomerAuth=function(mode){
     mode=mode==='register'?'register':'login';
-    if(window.APP)APP.authDestination='customer';
     if(window.clearRegistrationTimer)window.clearRegistrationTimer();
     if(mode==='register'){
+      if(window.APP&&!(APP.authDestination==='seller'))APP.authDestination='customer';
       window.closeCustomerLoginPage();
       if(originalOpenCustomerAuth)return originalOpenCustomerAuth.call(this,'register');
       return;
     }
+    if(window.APP)APP.authDestination='customer';
     window.openCustomerLoginPage();
+  };
+
+  window.forgotPassword=function(type){
+    type=type||'customer';
+    Swal.fire({
+      title:'ลืมรหัสผ่าน',
+      input:'email',
+      inputLabel:type==='admin'?'Username ที่เป็นอีเมล':'อีเมลที่ลงทะเบียนไว้',
+      inputPlaceholder:'name@example.com',
+      inputAttributes:{autocapitalize:'off',autocorrect:'off',autocomplete:'email'},
+      showCancelButton:true,
+      confirmButtonText:'ส่งลิงก์ตั้งรหัสผ่าน',
+      cancelButtonText:'ยกเลิก',
+      position:'center',
+      focusConfirm:false,
+      customClass:{popup:'auth-forgot-popup'},
+      preConfirm:function(value){
+        if(!value||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(value).trim())){
+          Swal.showValidationMessage('กรุณากรอกอีเมลให้ถูกต้อง');
+          return false;
+        }
+        return String(value).trim().toLowerCase();
+      }
+    }).then(function(r){
+      if(!r.isConfirmed)return;
+      apiCall('requestPasswordReset',[r.value,type],function(x){
+        if(x.success)toast(x.message,'info');
+        else alertError(x.message);
+      },true,'กำลังส่งอีเมล...');
+    });
   };
 
   window.submitCustomerAuth=function(event,isRegister){
