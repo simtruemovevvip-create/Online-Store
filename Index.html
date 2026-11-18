@@ -13298,7 +13298,289 @@ function startGlobalDataSync_(){
       .reg-step{min-width:72px}
     }
 
-  </style>
+  
+  /* System-wide form theme: shared tokens for every page, modal and drawer. */
+  :root{
+    color-scheme:light;
+    --form-control-bg:#ffffff;
+    --form-control-border:#cbd5e1;
+    --form-control-text:#1f2937;
+    --form-control-muted:#64748b;
+    --form-control-hover:#e7ebf2;
+    --form-focus-ring:rgba(238,77,45,.18);
+  }
+  body.dark{
+    color-scheme:dark;
+    --bg:#0d1117;
+    --surface:#161b22;
+    --surface-2:#202833;
+    --ink:#e7ebf2;
+    --muted:#a8b3c2;
+    --border:#303b49;
+    --form-control-bg:#0d1117;
+    --form-control-border:#465365;
+    --form-control-text:#e7ebf2;
+    --form-control-muted:#a8b3c2;
+    --form-control-hover:#202833;
+    --form-focus-ring:rgba(238,77,45,.25);
+  }
+
+  /* Text inputs and dropdowns across customer, seller, owner and admin workspaces. */
+  form input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+  form select,
+  form textarea,
+  #appRoot input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+  #appRoot select,#appRoot textarea,
+  #adminContent input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+  #adminContent select,#adminContent textarea,
+  #sellerContent input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+  #sellerContent select,#sellerContent textarea,
+  #customerPortalContent input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+  #customerPortalContent select,#customerPortalContent textarea,
+  .modal-field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .modal-field select,.modal-field textarea,
+  .field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .field select,.field textarea,
+  .form-group input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .form-group select,.form-group textarea,
+  .form-control,.form-input,.admin-settings-section .field input,
+  .admin-settings-section .field select,.admin-settings-section .field textarea,
+  .seller-image-upload-fields input,
+  .seller-broadcast-form input:not([type="checkbox"]):not([type="radio"]),
+  .seller-broadcast-form textarea {
+    background-color:var(--form-control-bg)!important;
+    color:var(--form-control-text)!important;
+    border-color:var(--form-control-border)!important;
+    caret-color:var(--primary);
+    color-scheme:inherit;
+  }
+  form input::placeholder,form textarea::placeholder,
+  #appRoot input::placeholder,#appRoot textarea::placeholder,
+  #adminContent input::placeholder,#adminContent textarea::placeholder,
+  #sellerContent input::placeholder,#sellerContent textarea::placeholder,
+  #customerPortalContent input::placeholder,#customerPortalContent textarea::placeholder,
+  .modal-field input::placeholder,.modal-field textarea::placeholder,
+  .field input::placeholder,.field textarea::placeholder,
+  .form-group input::placeholder,.form-group textarea::placeholder,
+  .form-control::placeholder,.form-input::placeholder,
+  [contenteditable="true"]:empty::before {
+    color:var(--form-control-muted)!important;
+    opacity:1!important;
+  }
+  form input:focus,form select:focus,form textarea:focus,
+  #appRoot input:focus,#appRoot select:focus,#appRoot textarea:focus,
+  #adminContent input:focus,#adminContent select:focus,#adminContent textarea:focus,
+  #sellerContent input:focus,#sellerContent select:focus,#sellerContent textarea:focus,
+  #customerPortalContent input:focus,#customerPortalContent select:focus,#customerPortalContent textarea:focus,
+  .modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus,
+  .field input:focus,.field select:focus,.field textarea:focus,
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus,
+  .form-control:focus,.form-input:focus {
+    border-color:var(--primary)!important;
+    outline:0!important;
+    box-shadow:0 0 0 3px var(--form-focus-ring)!important;
+  }
+  form label,.field label,.modal-field label,.form-group label,
+  .form-label,.control-label,.admin-settings-section .field label,
+  .seller-broadcast-form>label {
+    color:var(--form-control-text);
+  }
+  form small,.field small,.modal-field small,.form-help,.help-text,
+  .field-description,.form-text {
+    color:var(--form-control-muted);
+  }
+  select option,select optgroup {
+    background:var(--surface)!important;
+    color:var(--form-control-text)!important;
+  }
+  input[type="checkbox"],input[type="radio"] {
+    accent-color:var(--primary)!important;
+    color-scheme:inherit;
+  }
+  input[type="file"] {
+    background:var(--form-control-bg)!important;
+    color:var(--form-control-text)!important;
+    border:1px dashed var(--form-control-border)!important;
+    padding:7px!important;
+  }
+  input[type="file"]::file-selector-button {
+    color:var(--form-control-text)!important;
+    background:var(--form-control-hover)!important;
+    border:1px solid var(--form-control-border)!important;
+    border-radius:7px;
+    padding:7px 11px;
+    margin-right:10px;
+    cursor:pointer;
+  }
+  input[type="color"] {
+    background:var(--form-control-bg)!important;
+    border:1px solid var(--form-control-border)!important;
+    color-scheme:inherit;
+  }
+  input[type="range"]{accent-color:var(--primary)!important;color-scheme:inherit}
+  input:disabled,select:disabled,textarea:disabled,
+  input[readonly],textarea[readonly] {
+    background:var(--form-control-hover)!important;
+    color:var(--form-control-muted)!important;
+    border-color:var(--form-control-border)!important;
+    opacity:.8;
+  }
+  fieldset{border-color:var(--form-control-border)!important}
+  .is-invalid,.input-error, input[aria-invalid="true"],select[aria-invalid="true"],textarea[aria-invalid="true"]{
+    border-color:#ef4444!important;
+  }
+  .invalid-feedback,.field-error,.form-error,.validation-error{color:#ef4444!important}
+
+  /* Rich text editors and editable message fields follow the selected theme too. */
+  [contenteditable="true"],.rich-editor-content,.ql-container .ql-editor,
+  .tox .tox-edit-area__iframe,.note-editable {
+    background:var(--form-control-bg)!important;
+    color:var(--form-control-text)!important;
+    border-color:var(--form-control-border)!important;
+    caret-color:var(--primary);
+  }
+  .rich-editor-toolbar,.rich-editor-foot,.ql-toolbar,.tox .tox-toolbar,
+  .tox .tox-toolbar__primary,.note-toolbar {
+    background:var(--form-control-hover)!important;
+    color:var(--form-control-text)!important;
+    border-color:var(--form-control-border)!important;
+  }
+  body.dark .rich-editor-content,body.dark .ql-container,
+  body.dark .tox .tox-edit-area,body.dark .note-editor {
+    border-color:var(--form-control-border)!important;
+  }
+
+  /* Drawer forms previously forced dark colors; make the drawer respect both modes. */
+  body:not(.dark) .swal2-popup.app-slide-drawer-popup {
+    --bg:#f4f6fa!important;
+    --surface:#ffffff!important;
+    --surface-2:#e7ebf2!important;
+    --ink:#1f2937!important;
+    --muted:#64748b!important;
+    --border:#cbd5e1!important;
+    color-scheme:light!important;
+    background:#ffffff!important;
+    color:#1f2937!important;
+    border-color:#cbd5e1!important;
+  }
+  body.dark .swal2-popup.app-slide-drawer-popup {
+    --bg:#0d1117!important;
+    --surface:#161b22!important;
+    --surface-2:#202833!important;
+    --ink:#e7ebf2!important;
+    --muted:#a8b3c2!important;
+    --border:#3b4656!important;
+    color-scheme:dark!important;
+    background:#161b22!important;
+    color:#e7ebf2!important;
+    border-color:#3b4656!important;
+  }
+  .swal2-popup.app-slide-drawer-popup > .swal2-title,
+  .swal2-popup.app-slide-drawer-popup > .swal2-html-container,
+  .swal2-popup.app-slide-drawer-popup > .swal2-actions,
+  .swal2-popup.app-slide-drawer-popup > .app-drawer-custom-footer,
+  .swal2-popup.app-slide-drawer-popup .modal-field,
+  .swal2-popup.app-slide-drawer-popup .field,
+  .swal2-popup.app-slide-drawer-popup .form-group,
+  .swal2-popup.app-slide-drawer-popup .form-section,
+  .swal2-popup.app-slide-drawer-popup .modal-section,
+  .swal2-popup.app-slide-drawer-popup .customer-portal-section-card {
+    background:var(--surface)!important;
+    color:var(--ink)!important;
+    border-color:var(--border)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup label,
+  .swal2-popup.app-slide-drawer-popup h1,
+  .swal2-popup.app-slide-drawer-popup h2,
+  .swal2-popup.app-slide-drawer-popup h3,
+  .swal2-popup.app-slide-drawer-popup h4,
+  .swal2-popup.app-slide-drawer-popup b,
+  .swal2-popup.app-slide-drawer-popup strong,
+  .swal2-popup.app-slide-drawer-popup .swal2-title{
+    color:var(--ink)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup p,
+  .swal2-popup.app-slide-drawer-popup small,
+  .swal2-popup.app-slide-drawer-popup .modal-help,
+  .swal2-popup.app-slide-drawer-popup .form-help,
+  .swal2-popup.app-slide-drawer-popup .help-text{
+    color:var(--muted)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .swal2-popup.app-slide-drawer-popup select,
+  .swal2-popup.app-slide-drawer-popup textarea,
+  .swal2-popup.app-slide-drawer-popup [contenteditable="true"],
+  .swal2-popup.app-slide-drawer-popup .rich-editor-content{
+    background:var(--bg)!important;
+    color:var(--ink)!important;
+    border:1px solid var(--border)!important;
+    color-scheme:inherit!important;
+  }
+  .swal2-popup.app-slide-drawer-popup input::placeholder,
+  .swal2-popup.app-slide-drawer-popup textarea::placeholder,
+  .swal2-popup.app-slide-drawer-popup [contenteditable="true"]:empty::before{
+    color:var(--muted)!important;
+    opacity:1!important;
+  }
+  .swal2-popup.app-slide-drawer-popup select option{
+    background:var(--surface)!important;
+    color:var(--ink)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup table,
+  .swal2-popup.app-slide-drawer-popup thead,
+  .swal2-popup.app-slide-drawer-popup tbody,
+  .swal2-popup.app-slide-drawer-popup tr,
+  .swal2-popup.app-slide-drawer-popup th,
+  .swal2-popup.app-slide-drawer-popup td{
+    background:var(--surface)!important;
+    color:var(--ink)!important;
+    border-color:var(--border)!important;
+  }
+  .swal2-popup.app-slide-drawer-popup .rich-editor-toolbar,
+  .swal2-popup.app-slide-drawer-popup .rich-editor-foot{
+    background:var(--surface-2)!important;
+    color:var(--muted)!important;
+    border-color:var(--border)!important;
+  }
+
+  /* Other SweetAlert dialogs (forgot password, OTP, profile and confirmation forms). */
+  .swal2-popup:not(.market-toast):not(.app-slide-drawer-popup){
+    background:var(--surface)!important;
+    color:var(--ink)!important;
+    border-color:var(--border)!important;
+  }
+  .swal2-popup:not(.market-toast):not(.app-slide-drawer-popup) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .swal2-popup:not(.market-toast):not(.app-slide-drawer-popup) select,
+  .swal2-popup:not(.market-toast):not(.app-slide-drawer-popup) textarea{
+    background:var(--form-control-bg)!important;
+    color:var(--form-control-text)!important;
+    border-color:var(--form-control-border)!important;
+    color-scheme:inherit;
+  }
+  .swal2-popup:not(.market-toast):not(.app-slide-drawer-popup) label,
+  .swal2-popup:not(.market-toast):not(.app-slide-drawer-popup) .swal2-input-label,
+  .swal2-popup:not(.market-toast):not(.app-slide-drawer-popup) .swal2-title{
+    color:var(--form-control-text)!important;
+  }
+  .swal2-popup:not(.market-toast):not(.app-slide-drawer-popup) .swal2-html-container p,
+  .swal2-popup:not(.market-toast):not(.app-slide-drawer-popup) .swal2-html-container small{
+    color:var(--form-control-muted)!important;
+  }
+  body.dark .swal2-popup:not(.market-toast):not(.app-slide-drawer-popup) select option{
+    background:#161b22!important;color:#e7ebf2!important;
+  }
+  .swal2-popup:not(.market-toast) .swal2-validation-message{
+    background:var(--form-control-hover)!important;color:var(--form-control-text)!important;
+  }
+  .swal2-popup .swal2-close{color:var(--form-control-muted)!important}
+
+  @media(prefers-reduced-motion:no-preference){
+    form input,form select,form textarea,.modal-field input,.modal-field select,.modal-field textarea{
+      transition:background-color .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease;
+    }
+  }
+
+</style>
 
 <script>
 (function(){
