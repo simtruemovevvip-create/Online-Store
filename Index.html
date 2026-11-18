@@ -3264,7 +3264,7 @@ function marketplacePageTransitionSkeletonMarkup(){
     }
     function openEntryPortalLogin(role){clearEntryPortalContext();openCustomerLoginPage();}
 
-    function restoreAccessPortal(){    function restoreAccessPortal(){
+    function restoreAccessPortal(){
       var mode=APP.accessMode;
       if(APP.entryPortal&&!APP.adminToken&&!APP.customerToken){
         APP.accessMode='guest';applyAccessMode('guest');loadPublicData();
@@ -5054,7 +5054,7 @@ function loadPublicData(onComplete){
     function toggleAuthPassword(id,button){var el=document.getElementById(id);if(!el)return;el.type=el.type==='password'?'text':'password';if(button)button.innerHTML=el.type==='password'?'<i class="fa-regular fa-eye"></i>':'<i class="fa-regular fa-eye-slash"></i>';}
 
     function openAccessHub(){openCustomerLoginPage();}
-    function portalLoginUrl(role){    function portalLoginUrl(role){
+    function portalLoginUrl(role){
       role=['customer','seller','owner'].indexOf(String(role||''))>=0?String(role):'customer';
       var base=String(document.body.getAttribute('data-web-app-url')||'').trim();
       if(!base){base=String(window.location.href||'').split('#')[0].split('?')[0];}
@@ -5080,7 +5080,7 @@ function loadPublicData(onComplete){
     function goPortalLogin(role){navigateAppTopLevel(portalLoginUrl(role));}
     function selectAccessRole(role){if(window.Swal)Swal.close();openCustomerLoginPage();}
 
-    function clearRegistrationTimer(){    function clearRegistrationTimer(){if(APP.registrationTimer){clearInterval(APP.registrationTimer);APP.registrationTimer=null;}}
+    function clearRegistrationTimer(){if(APP.registrationTimer){clearInterval(APP.registrationTimer);APP.registrationTimer=null;}}
     function maskRegistrationEmail(email){
       var parts=String(email||'').split('@');
       if(parts.length!==2)return 'อีเมลที่ลงทะเบียน';
@@ -5109,7 +5109,7 @@ function loadPublicData(onComplete){
       openCustomerLoginPage();
     }
 
-    function renderRegistrationEmailStep(){    function renderRegistrationEmailStep(){
+    function renderRegistrationEmailStep(){
       clearRegistrationTimer();
       var html=registrationProgress(1)+'<div class="registration-card"><div class="registration-card-head"><button type="button" class="auth-back-arrow" onclick="openCustomerAuth(\'login\')" aria-label="ย้อนกลับ"><i class="fa-solid fa-arrow-left"></i></button><h2>ยืนยันอีเมลของคุณ</h2></div><p class="registration-intro">กรอกอีเมลที่คุณใช้งานได้จริง ระบบจะส่งรหัส OTP เพื่อยืนยันก่อนตั้งรหัสผ่าน</p><form class="auth-form" onsubmit="startCustomerEmailOtp(event)"><div class="modal-field"><label for="authRegisterEmail">อีเมล</label><input id="authRegisterEmail" type="email" inputmode="email" autocomplete="email" placeholder="name@example.com" maxlength="254" required></div><button id="authSubmitBtn" type="submit" class="btn btn-primary auth-submit">ส่งรหัสยืนยันทางอีเมล</button></form><p class="registration-note"><i class="fa-solid fa-envelope"></i> ไม่ต้องใช้ SMS หรือหมายเลขโทรศัพท์ในขั้นตอนสมัคร สามารถเพิ่มเบอร์โทรและที่อยู่ภายหลังในบัญชีของฉัน</p><div class="auth-bottom-line">มีบัญชีอยู่แล้ว? <a href="#" onclick="event.preventDefault();openCustomerAuth(\'login\')">เข้าสู่ระบบ</a></div></div>';
       Swal.fire({title:'',html:html,width:560,showConfirmButton:false,showCancelButton:false,showCloseButton:true,focusConfirm:false,customClass:{popup:'auth-popup auth-register-popup auth-otp-popup',htmlContainer:'auth-popup-html'},didOpen:function(){var e=document.getElementById('authRegisterEmail');if(e)e.focus();}});
@@ -5205,12 +5205,12 @@ function loadPublicData(onComplete){
       return false;
     }
 
-    function startSellerRegistration(){    function startSellerRegistration(){APP.authDestination='seller';openCustomerAuth('register');}
+    function startSellerRegistration(){APP.authDestination='seller';openCustomerAuth('register');}
     function openSystemOwnerLogin(){openCustomerLoginPage();}
     function submitSystemOwnerAuth(event){if(event)event.preventDefault();openCustomerLoginPage();return false;}
     function openAdminLogin(){openCustomerLoginPage();}
 
-    function loadCustomerAuthProviders(){    function loadCustomerAuthProviders(){
+    function loadCustomerAuthProviders(){
       if(!document.getElementById('googleSignInButton'))return;
       apiCall('getCustomerAuthConfig',[],function(r){
         if(!r.success)return;
