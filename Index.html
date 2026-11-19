@@ -5241,10 +5241,14 @@ function loadPublicData(onComplete){
         APP.authProviders=r.data||{};
         var googleStatus=document.getElementById('googleAuthStatus');
         var facebookStatus=document.getElementById('facebookAuthStatus');
-        if(!APP.authProviders.googleEnabled){if(googleStatus)googleStatus.textContent='ต้องตั้งค่า Google Client ID ก่อน';var g=document.getElementById('googleSignInButton');if(g)g.innerHTML='<button type="button" class="auth-facebook-btn" style="background:#fff;color:#5f6368;border-color:#d7dce3" disabled><i class="fa-brands fa-google"></i> Google</button>';}
+        if(!APP.authProviders.googleEnabled){if(googleStatus)googleStatus.textContent='ต้องตั้งค่า Google Client ID ใน Apps Script ก่อน';var g=document.getElementById('googleSignInButton');if(g)g.innerHTML='<button type="button" class="auth-facebook-btn" style="background:#fff;color:#5f6368;border-color:#d7dce3" disabled><i class="fa-brands fa-google"></i> Google</button>';}
         else renderGoogleAuthButton(0);
-        if(!APP.authProviders.facebookEnabled){if(facebookStatus)facebookStatus.textContent='ต้องตั้งค่า Facebook App ID/Secret ก่อน';var fbButton=document.getElementById('facebookLoginButton');if(fbButton)fbButton.disabled=true;}
-        if(APP.authProviders.facebookEnabled)ensureFacebookSdk(APP.authProviders.facebookAppId);
+        if(!APP.authProviders.facebookEnabled){if(facebookStatus)facebookStatus.textContent='ต้องตั้งค่า Facebook App ID และ App Secret ใน Apps Script ก่อน';var fbButton=document.getElementById('facebookLoginButton');if(fbButton)fbButton.disabled=true;}
+        if(APP.authProviders.facebookEnabled){
+          ensureFacebookSdk(APP.authProviders.facebookAppId).catch(function(){
+            if(facebookStatus)facebookStatus.textContent='โหลด Facebook Login ไม่สำเร็จ กรุณารีเฟรชหน้า';
+          });
+        }
       });
     }
 
@@ -5267,19 +5271,94 @@ function loadPublicData(onComplete){
     }
 
     function ensureFacebookSdk(appId){
-      if(window.FB&&window.FBReady)return;
-      window.fbAsyncInit=function(){try{FB.init({appId:appId,cookie:true,xfbml:false,version:'v27.0'});window.FBReady=true;}catch(e){window.FBReady=false;}};
-      if(!document.getElementById('facebook-jssdk')){var js=document.createElement('script');js.id='facebook-jssdk';js.async=true;js.defer=true;js.crossOrigin='anonymous';js.src='https://connect.facebook.net/th_TH/sdk.js';document.head.appendChild(js);}
+      if(window.FB&&window.FBReady)return Promise.resolve(window.FB);
+      if(!appId)return Promise.reject(new Error('Facebook App ID is missing'));
+      if(window.__facebookSdkPromise)return window.__facebookSdkPromise;
+      window.__facebookSdkPromise=new Promise(function(resolve,reject){
+        var settled=false,timeoutId=null;
+        function finish(error){
+          if(settled)return;
+          settled=true;
+          if(timeoutId)clearTimeout(timeoutId);
+          if(error){
+            window.FBReady=false;
+            window.__facebookSdkPromise=null;
+            var failedScript=document.getElementById('facebook-jssdk');
+            if(failedScript&&failedScript.parentNode)failedScript.parentNode.removeChild(failedScript);
+            reject(error);
+            return;
+          }
+          window.FBReady=true;
+          resolve(window.FB);
+        }
+        function initializeFacebook(){
+          if(settled)return;
+          try{
+            if(!window.FB)throw new Error('Facebook SDK did not initialize');
+            if(!window.__facebookSdkInitialized){
+              window.FB.init({appId:String(appId),cookie:true,xfbml:false,version:'v27.0'});
+              window.__facebookSdkInitialized=true;
+            }
+            finish();
+          }catch(error){finish(error);}
+        }
+        window.fbAsyncInit=initializeFacebook;
+        if(window.FB){initializeFacebook();return;}
+        timeoutId=window.setTimeout(function(){finish(new Error('Facebook SDK load timeout'));},15000);
+        var js=document.getElementById('facebook-jssdk');
+        if(!js){
+          js=document.createElement('script');
+          js.id='facebook-jssdk';
+          js.async=true;
+          js.defer=true;
+          js.crossOrigin='anonymous';
+          js.src='https://connect.facebook.net/th_TH/sdk.js';
+          js.onerror=function(){finish(new Error('Facebook SDK failed to load'));};
+          document.head.appendChild(js);
+        }else{
+          js.addEventListener('error',function(){finish(new Error('Facebook SDK failed to load'));},{once:true});
+        }
+      });
+      return window.__facebookSdkPromise;
     }
 
     function customerFacebookLogin(){
-      if(!APP.authProviders){loadCustomerAuthProviders();alertError('กำลังเตรียม Facebook Login กรุณากดอีกครั้ง');return;}
-      if(!APP.authProviders.facebookEnabled){alertError('ยังไม่ได้ตั้งค่า Facebook App ID และ App Secret');return;}
-      if(!window.FB||!window.FBReady){ensureFacebookSdk(APP.authProviders.facebookAppId);alertError('กำลังโหลด Facebook Login กรุณารอสักครู่แล้วกดอีกครั้ง');return;}
-      FB.login(function(response){
-        if(!response||response.status!=='connected'||!response.authResponse||!response.authResponse.accessToken){alertError('ยกเลิกหรือเข้าสู่ระบบ Facebook ไม่สำเร็จ');return;}
-        apiCall('customerSocialLogin',['facebook',response.authResponse.accessToken],function(r){if(!r.success){alertError(r.message);return;}finishCustomerLogin(r,'เข้าสู่ระบบด้วย Facebook สำเร็จ',customerRememberChoice());},true,'กำลังตรวจสอบบัญชี Facebook...');
-      },{scope:'public_profile,email'});
+      if(!APP.authProviders){loadCustomerAuthProviders();alertError('กำลังเตรียม Facebook Login กรุณารอสักครู่');return;}
+      if(!APP.authProviders.facebookEnabled){alertError('ยังไม่ได้ตั้งค่า Facebook App ID และ App Secret ใน Apps Script');return;}
+      var button=document.getElementById('facebookLoginButton');
+      var status=document.getElementById('facebookAuthStatus');
+      if(!window.FB||!window.FBReady){
+        if(button)button.disabled=true;
+        if(status)status.textContent='กำลังเชื่อมต่อ Facebook...';
+        ensureFacebookSdk(APP.authProviders.facebookAppId).then(function(){
+          if(button)button.disabled=false;
+          if(status)status.textContent='';
+          customerFacebookLogin();
+        }).catch(function(){
+          if(button)button.disabled=false;
+          if(status)status.textContent='โหลด Facebook Login ไม่สำเร็จ กรุณารีเฟรชหน้า';
+          alertError('ไม่สามารถโหลด Facebook Login ได้ กรุณารีเฟรชหน้าแล้วลองอีกครั้ง');
+        });
+        return;
+      }
+      if(button)button.disabled=true;
+      try{
+        FB.login(function(response){
+          if(!response||response.status!=='connected'||!response.authResponse||!response.authResponse.accessToken){
+            if(button)button.disabled=false;
+            alertError('ยกเลิกหรือเข้าสู่ระบบ Facebook ไม่สำเร็จ');
+            return;
+          }
+          apiCall('customerSocialLogin',['facebook',response.authResponse.accessToken],function(r){
+            if(button)button.disabled=false;
+            if(!r.success){alertError(r.message);return;}
+            finishCustomerLogin(r,'เข้าสู่ระบบด้วย Facebook สำเร็จ',customerRememberChoice());
+          },true,'กำลังตรวจสอบบัญชี Facebook...');
+        },{scope:'public_profile,email'});
+      }catch(error){
+        if(button)button.disabled=false;
+        alertError('ไม่สามารถเปิดหน้าต่าง Facebook Login ได้ กรุณาอนุญาต Popup แล้วลองใหม่');
+      }
     }
 
     function finishCustomerLogin(result,successMessage,remember){
