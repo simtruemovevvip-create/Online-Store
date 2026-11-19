@@ -76,7 +76,7 @@ var DEFAULT_SETTINGS_ = {
   marketplaceCommissionRate: '5', returnWindowDays: '7', coinRewardRate: '1', sellerRegistrationEnabled: 'true',
   // Customer authentication page appearance and copy (editable from Store Settings).
   authPageBackgroundColor: '#f6f6f6', authPageCardColor: '#ffffff', authPageTextColor: '#222222',
-  authPagePrimaryColor: '#ee4d2d', authPageCampaignColor: '#ee4d2d', authPageCardRadius: '4',
+  authPagePrimaryColor: '#ee4d2d', authPageCampaignColor: '#ee4d2d', authPageCardRadius: '4', authPageCardWidth: '400',
   authPageLogo: '', authPageHelpLabel: 'ต้องการความช่วยเหลือ?',
   authPageFooterText: '© Online Store. All rights reserved.',
   authPageShowFooter: 'true', authPageShowHelp: 'true',
@@ -91,7 +91,8 @@ var DEFAULT_SETTINGS_ = {
   authLoginRememberLabel: 'จดจำการเข้าสู่ระบบ', authLoginQrLabel: 'เข้าสู่ระบบด้วย QR code',
   authLoginSocialLabel: 'หรือเข้าสู่ระบบด้วย', authLoginRegisterPrompt: 'ยังไม่มีบัญชี?',
   authLoginRegisterLabel: 'สมัครสมาชิก',
-  authLoginSellerLinkLabel: 'เข้าสู่ระบบสำหรับร้านค้า / เจ้าของระบบ',
+  authLoginSellerLinkLabel: 'เข้าสู่ระบบสำหรับร้านค้า / เจ้าของระบบ', authLoginShowSellerLink: 'true',
+  authLoginTermsLabel: 'เงื่อนไขการให้บริการ', authLoginPrivacyLabel: 'นโยบายความเป็นส่วนตัว',
   authLoginLegalIntro: 'การเข้าสู่ระบบแสดงว่าคุณยอมรับ',
   authLoginCampaignImage: '', authLoginCampaignKicker: 'MEGA SHOPPING FESTIVAL',
   authLoginCampaignNumber: '11.11', authLoginCampaignHeadline: 'MEGA',
@@ -106,7 +107,7 @@ var DEFAULT_SETTINGS_ = {
   authRegisterLoginPrompt: 'มีบัญชีอยู่แล้ว?', authRegisterLoginLabel: 'เข้าสู่ระบบ',
   authRegisterOtpTitle: 'ยืนยันอีเมล',
   authRegisterOtpDescription: 'ระบบส่งรหัส OTP ไปยัง',
-  authRegisterOtpSubmitLabel: 'ยืนยันรหัสและดำเนินการต่อ',
+  authRegisterOtpSubmitLabel: 'ยืนยันรหัสและดำเนินการต่อ', authRegisterOtpResendLabel: 'ส่งรหัสอีกครั้ง', authRegisterChangeEmailLabel: 'เปลี่ยนอีเมล',
   authRegisterOtpNote: 'รหัสมีอายุ 5 นาที ใช้ได้ครั้งเดียว หากไม่พบอีเมลให้ตรวจสอบโฟลเดอร์ Spam',
   authRegisterPasswordTitle: 'ตั้งรหัสผ่าน',
   authRegisterPasswordDescription: 'กำหนดรหัสผ่านสำหรับบัญชี',
@@ -1681,6 +1682,7 @@ function saveSettings(token, data) {
     data = data || {};
     ['primaryColor','secondaryColor','accentColor','authPageBackgroundColor','authPageCardColor','authPageTextColor','authPagePrimaryColor','authPageCampaignColor'].forEach(function(k) { if (Object.prototype.hasOwnProperty.call(data,k) && data[k] && !/^#[0-9a-fA-F]{6}$/.test(String(data[k]))) throw new Error('รูปแบบสี '+k+' ไม่ถูกต้อง กรุณาใช้ Hex Color เช่น #EE4D2D'); });
     if (Object.prototype.hasOwnProperty.call(data,'authPageCardRadius')) { var authRadius=Number(data.authPageCardRadius); if(!isFinite(authRadius)||authRadius<0||authRadius>32) throw new Error('ความโค้งของการ์ดต้องอยู่ระหว่าง 0 ถึง 32 พิกเซล'); data.authPageCardRadius=String(Math.round(authRadius)); }
+    if (Object.prototype.hasOwnProperty.call(data,'authPageCardWidth')) { var authWidth=Number(data.authPageCardWidth); if(!isFinite(authWidth)||authWidth<320||authWidth>600) throw new Error('ความกว้างของฟอร์มต้องอยู่ระหว่าง 320 ถึง 600 พิกเซล'); data.authPageCardWidth=String(Math.round(authWidth)); }
     if (Object.prototype.hasOwnProperty.call(data, 'setFaviconUrl') && data.setFaviconUrl) {
       var faviconSettingValue = String(data.setFaviconUrl).trim();
       var isDriveFaviconToken = /^drive-asset:\/\/[A-Za-z0-9_-]{20,80}$/i.test(faviconSettingValue);
