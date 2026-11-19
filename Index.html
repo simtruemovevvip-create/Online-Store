@@ -7461,7 +7461,9 @@ function adjustInventoryDialog(productId,variantId){
             '<li>Google: สร้าง OAuth Client แบบ Web application ใน <a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noopener">Google Cloud Console</a> แล้วเพิ่ม Origin ด้านบนใน Authorized JavaScript origins</li>'+
             '<li>Facebook: สร้างแอปใน <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener">Meta for Developers</a> เพิ่มผลิตภัณฑ์ Facebook Login และตั้ง App Domains / Website URL ให้ตรงกับ Web App</li>'+
             '<li>คัดลอก Google Client ID, Facebook App ID และ App Secret มาใส่ที่นี่ แล้วกดบันทึก</li>'+
-            '<li>หากแอป Facebook ยังอยู่ Development Mode จะให้เฉพาะผู้ดูแล นักพัฒนา และผู้ทดสอบของแอปเข้าสู่ระบบได้ เมื่อต้องการเปิดให้ผู้ใช้ทั่วไปต้องตั้งค่าโหมดและข้อกำหนดของ Meta ให้ครบ</li>'+
+            '<li>เปิด Apps Script Editor เลือกฟังก์ชัน <code>authorizeSocialLoginServices</code> แล้วกด Run หนึ่งครั้งด้วยบัญชีเจ้าของสคริปต์ เพื่ออนุญาตการเรียก UrlFetchApp ฝั่งเซิร์ฟเวอร์</li>'+
+            '<li>หาก Google OAuth Consent Screen ยังอยู่ Testing ให้เพิ่มบัญชีที่จะทดสอบเป็น Test User ก่อน ส่วนแอป Facebook ใน Development Mode จะให้เฉพาะผู้ดูแล นักพัฒนา และผู้ทดสอบของแอปเข้าสู่ระบบได้</li>'+
+            '<li>เมื่อต้องการเปิดให้ผู้ใช้ทั่วไป ต้องตั้งค่า Google OAuth Consent Screen และ Meta App ให้เป็น Production / Live และผ่านข้อกำหนดที่ผู้ให้บริการร้องขอ</li>'+
           '</ol><p class="modal-help">หลังบันทึก ให้ปิดและเปิดหน้าเข้าสู่ระบบใหม่เพื่อโหลดการตั้งค่าผู้ให้บริการล่าสุด</p></div>'+
           '<div class="social-login-actions"><button type="button" class="btn btn-primary" onclick="saveSocialLoginAdminConfig(this)"><i class="fa-solid fa-floppy-disk"></i> บันทึกการตั้งค่า Google / Facebook</button></div>';
         host.innerHTML=html;
