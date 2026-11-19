@@ -1546,7 +1546,7 @@ function saveSocialLoginAdminConfig(token, data) {
     if (incomingSecret && !/^[A-Za-z0-9_-]{16,256}$/.test(incomingSecret)) {
       throw new Error('รูปแบบ Facebook App Secret ไม่ถูกต้อง');
     }
-    if (facebookAppId && appChanged && oldFacebookSecret && !incomingSecret) {
+    if (facebookAppId && appChanged && oldFacebookSecret && !incomingSecret && !clearSecret) {
       throw new Error('คุณเปลี่ยน Facebook App ID แล้ว กรุณากรอก App Secret ของ App ใหม่นี้ด้วย');
     }
 
