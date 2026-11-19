@@ -1470,17 +1470,110 @@ function authorizeSocialLoginServices() {
   } catch (e) { return fail_(safeError_(e)); }
 }
 
+/**
+ * Returns only non-secret social provider settings to the sign-in page.
+ * Facebook App Secret is deliberately never returned to the browser.
+ */
 function getCustomerAuthConfig() {
   try {
     var props = PropertiesService.getScriptProperties();
     var googleClientId = props.getProperty('GOOGLE_CLIENT_ID') || '';
     var facebookAppId = props.getProperty('FACEBOOK_APP_ID') || '';
+    var facebookSecret = props.getProperty('FACEBOOK_APP_SECRET') || '';
+    var graphVersion = props.getProperty('FACEBOOK_GRAPH_VERSION') || 'v27.0';
     return ok_({
       googleEnabled: !!googleClientId,
       googleClientId: googleClientId,
-      facebookEnabled: !!facebookAppId && !!props.getProperty('FACEBOOK_APP_SECRET'),
-      facebookAppId: facebookAppId
+      facebookEnabled: !!facebookAppId && !!facebookSecret,
+      facebookAppId: facebookAppId,
+      facebookGraphVersion: graphVersion
     });
+  } catch (e) { return fail_(safeError_(e)); }
+}
+
+/**
+ * Admin-only social login configuration reader.
+ * Returns IDs and a boolean for the secret; it never returns the secret value.
+ */
+function getSocialLoginAdminConfig(token) {
+  try {
+    requireAdmin_(token, 'settings.manage');
+    var props = PropertiesService.getScriptProperties();
+    var googleClientId = props.getProperty('GOOGLE_CLIENT_ID') || '';
+    var facebookAppId = props.getProperty('FACEBOOK_APP_ID') || '';
+    var facebookSecret = props.getProperty('FACEBOOK_APP_SECRET') || '';
+    var graphVersion = props.getProperty('FACEBOOK_GRAPH_VERSION') || 'v27.0';
+    return ok_({
+      googleClientId: googleClientId,
+      googleEnabled: !!googleClientId,
+      facebookAppId: facebookAppId,
+      facebookSecretConfigured: !!facebookSecret,
+      facebookEnabled: !!facebookAppId && !!facebookSecret,
+      facebookGraphVersion: graphVersion
+    });
+  } catch (e) { return fail_(safeError_(e)); }
+}
+
+/**
+ * Saves social provider credentials into Script Properties.
+ * Secrets never enter the Settings sheet, public settings cache, logs or response.
+ */
+function saveSocialLoginAdminConfig(token, data) {
+  try {
+    var user = requireAdmin_(token, 'settings.manage');
+    data = data || {};
+    var props = PropertiesService.getScriptProperties();
+    var oldFacebookAppId = props.getProperty('FACEBOOK_APP_ID') || '';
+    var oldFacebookSecret = props.getProperty('FACEBOOK_APP_SECRET') || '';
+
+    if (Object.prototype.hasOwnProperty.call(data, 'googleClientId')) {
+      var googleClientId = text_(data.googleClientId, 255).trim();
+      if (googleClientId && !/^[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(googleClientId)) {
+        throw new Error('Google Client ID ไม่ถูกต้อง ต้องเป็น Web OAuth Client ID ที่ลงท้ายด้วย .apps.googleusercontent.com');
+      }
+      if (googleClientId) props.setProperty('GOOGLE_CLIENT_ID', googleClientId);
+      else props.deleteProperty('GOOGLE_CLIENT_ID');
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, 'facebookAppId')) {
+      var facebookAppId = text_(data.facebookAppId, 40).trim();
+      if (facebookAppId && !/^[0-9]{5,30}$/.test(facebookAppId)) {
+        throw new Error('Facebook App ID ต้องเป็นตัวเลข 5–30 หลัก');
+      }
+      var appChanged = facebookAppId !== oldFacebookAppId;
+      var incomingSecret = text_(data.facebookAppSecret, 256).trim();
+      var clearSecret = data.clearFacebookAppSecret === true || String(data.clearFacebookAppSecret).toLowerCase() === 'true';
+
+      if (facebookAppId && appChanged && oldFacebookSecret && !incomingSecret) {
+        throw new Error('คุณเปลี่ยน Facebook App ID แล้ว กรุณากรอก App Secret ของ App ใหม่นี้ด้วย');
+      }
+      if (incomingSecret && clearSecret) throw new Error('เลือกกรอก App Secret ใหม่ หรือเลือกนำ Secret เดิมออก อย่างใดอย่างหนึ่ง');
+
+      if (facebookAppId) {
+        props.setProperty('FACEBOOK_APP_ID', facebookAppId);
+        if (incomingSecret) {
+          if (!/^[A-Za-z0-9_-]{16,256}$/.test(incomingSecret)) throw new Error('รูปแบบ Facebook App Secret ไม่ถูกต้อง');
+          props.setProperty('FACEBOOK_APP_SECRET', incomingSecret);
+        } else if (clearSecret) {
+          props.deleteProperty('FACEBOOK_APP_SECRET');
+        }
+      } else {
+        props.deleteProperty('FACEBOOK_APP_ID');
+        props.deleteProperty('FACEBOOK_APP_SECRET');
+      }
+    } else if (String(data.clearFacebookAppSecret).toLowerCase() === 'true') {
+      props.deleteProperty('FACEBOOK_APP_SECRET');
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, 'facebookGraphVersion')) {
+      var graphVersion = text_(data.facebookGraphVersion, 20).trim();
+      if (!/^v[0-9]+\.0$/.test(graphVersion)) throw new Error('Graph API Version ต้องอยู่ในรูปแบบ v27.0');
+      props.setProperty('FACEBOOK_GRAPH_VERSION', graphVersion);
+    }
+
+    clearRuntimeCaches_();
+    log_('Update Social Login Config', 'Settings', 'Updated Google/Facebook login provider configuration', user.username);
+    return getSocialLoginAdminConfig(token);
   } catch (e) { return fail_(safeError_(e)); }
 }
 
