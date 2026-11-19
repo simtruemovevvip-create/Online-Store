@@ -7240,6 +7240,9 @@ function adjustInventoryDialog(productId,variantId){
             ['authRegisterLoginPrompt','ข้อความแจ้งว่ามีบัญชีแล้ว'],
             ['authRegisterLoginLabel','ข้อความลิงก์กลับเข้าสู่ระบบ'],
             ['authRegisterShowProgress','แสดงแถบขั้นตอนสมัครสมาชิก','switch'],
+            ['authRegisterProgressEmailLabel','ชื่อขั้นตอนที่ 1'],
+            ['authRegisterProgressPasswordLabel','ชื่อขั้นตอนที่ 2'],
+            ['authRegisterProgressDoneLabel','ชื่อขั้นตอนที่ 3'],
             ['authRegisterOtpTitle','หัวข้อขั้นตอนยืนยันอีเมล'],
             ['authRegisterOtpDescription','คำอธิบายขั้นตอนยืนยันอีเมล'],
             ['authRegisterOtpSubmitLabel','ข้อความปุ่มยืนยัน OTP'],
@@ -13988,7 +13991,7 @@ function startGlobalDataSync_(){
   window.__FULL_PAGE_CUSTOMER_AUTH_V2__=true;
   function progress(step){
     if(window.authPageEnabled&&!window.authPageEnabled('authRegisterShowProgress',true))return '';
-    var labels=['ยืนยันอีเมล','ตั้งรหัสผ่าน','เสร็จสิ้น'],html='<div class="registration-progress">';
+    var text=window.authPageText||function(k,f){return f;};var labels=[text('authRegisterProgressEmailLabel','ยืนยันอีเมล'),text('authRegisterProgressPasswordLabel','ตั้งรหัสผ่าน'),text('authRegisterProgressDoneLabel','เสร็จสิ้น')],html='<div class="registration-progress">';
     for(var i=0;i<3;i++){var state=i+1<step?'done':(i+1===step?'active':'');html+='<span class="reg-step '+state+'"><b>'+(i+1<step?'✓':String(i+1))+'</b><small>'+labels[i]+'</small></span>';if(i<2)html+='<i></i>';}
     return html+'</div>';
   }
@@ -14079,7 +14082,7 @@ function startGlobalDataSync_(){
 
   window.openCustomerLoginPage=function(){
     if(window.APP)APP.authDestination='customer';if(window.clearRegistrationTimer)window.clearRegistrationTimer();
-    ensureRoot();render(window.customerLoginCardMarkup?window.customerLoginCardMarkup():'','เข้าสู่ระบบ','authUser');
+    ensureRoot();render(window.customerLoginCardMarkup?window.customerLoginCardMarkup():'',window.authPageText?window.authPageText('authLoginTitle','เข้าสู่ระบบ'):'เข้าสู่ระบบ','authUser');
     if(window.loadCustomerAuthProviders)window.loadCustomerAuthProviders();
   };
   window.closeCustomerLoginPage=function(){
@@ -14220,7 +14223,7 @@ function startGlobalDataSync_(){
   window.showCustomerLoginError=function(message){feedback(message,false);};
   window.showCustomerPasswordLogin=function(){
     if(window.stopQrLoginPolling)window.stopQrLoginPolling();
-    render(window.customerLoginCardMarkup?window.customerLoginCardMarkup():'','เข้าสู่ระบบ','authUser');
+    render(window.customerLoginCardMarkup?window.customerLoginCardMarkup():'',window.authPageText?window.authPageText('authLoginTitle','เข้าสู่ระบบ'):'เข้าสู่ระบบ','authUser');
     if(window.loadCustomerAuthProviders)window.loadCustomerAuthProviders();
   };
 })();
