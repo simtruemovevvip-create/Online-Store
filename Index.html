@@ -7191,6 +7191,7 @@ function adjustInventoryDialog(productId,variantId){
             ['authPagePrimaryColor','สีปุ่มและจุดเน้น','color'],
             ['authPageCampaignColor','สีพื้นหลังแคมเปญ','color'],
             ['authPageCardRadius','ความโค้งมุมฟอร์ม (0–32 px)','number'],
+            ['authPageCardWidth','ความกว้างฟอร์ม (320–600 px)','number'],
             ['authPageHelpLabel','ข้อความลิงก์ช่วยเหลือ'],
             ['authPageShowHelp','แสดงลิงก์ช่วยเหลือ','switch'],
             ['authPageShowFooter','แสดงส่วนท้ายหน้า (Footer)','switch'],
@@ -7216,6 +7217,9 @@ function adjustInventoryDialog(productId,variantId){
             ['authLoginRegisterPrompt','ข้อความเชิญชวนสมัครสมาชิก'],
             ['authLoginRegisterLabel','ข้อความลิงก์สมัครสมาชิก'],
             ['authLoginSellerLinkLabel','ข้อความลิงก์เข้าสู่ระบบร้านค้า'],
+            ['authLoginShowSellerLink','แสดงลิงก์เข้าสู่ระบบร้านค้า','switch'],
+            ['authLoginTermsLabel','ข้อความลิงก์เงื่อนไขการให้บริการ'],
+            ['authLoginPrivacyLabel','ข้อความลิงก์นโยบายความเป็นส่วนตัว'],
             ['authLoginShowCampaign','แสดงแบนเนอร์แคมเปญด้านซ้าย','switch'],
             ['authLoginCampaignImage','ภาพพื้นหลังแคมเปญ (ไม่บังคับ)','image:Website'],
             ['authLoginCampaignKicker','ข้อความเล็กบนแคมเปญ'],
@@ -7239,6 +7243,8 @@ function adjustInventoryDialog(productId,variantId){
             ['authRegisterOtpTitle','หัวข้อขั้นตอนยืนยันอีเมล'],
             ['authRegisterOtpDescription','คำอธิบายขั้นตอนยืนยันอีเมล'],
             ['authRegisterOtpSubmitLabel','ข้อความปุ่มยืนยัน OTP'],
+            ['authRegisterOtpResendLabel','ข้อความปุ่มส่ง OTP อีกครั้ง'],
+            ['authRegisterChangeEmailLabel','ข้อความลิงก์เปลี่ยนอีเมล'],
             ['authRegisterOtpNote','คำแนะนำใต้ช่อง OTP','textarea'],
             ['authRegisterPasswordTitle','หัวข้อขั้นตอนตั้งรหัสผ่าน'],
             ['authRegisterPasswordDescription','คำอธิบายขั้นตอนตั้งรหัสผ่าน'],
@@ -13724,8 +13730,9 @@ function startGlobalDataSync_(){
     var intro='<div class="auth-intro">'+esc(authPageText('authLoginDescription','เข้าสู่ระบบด้วยเบอร์โทรศัพท์ อีเมล หรือชื่อผู้ใช้ที่ลงทะเบียนไว้'))+'</div>';
     var fields='<form id="customerAuthForm" class="auth-form" onsubmit="submitCustomerAuth(event,false)"><div class="modal-field"><label for="authUser">'+esc(authPageText('authLoginUserLabel','เบอร์โทรศัพท์ / อีเมล / ชื่อผู้ใช้'))+'</label><input id="authUser" type="text" autocomplete="username" inputmode="text" placeholder="'+esc(authPageText('authLoginUserPlaceholder','กรอกเบอร์โทรศัพท์ อีเมล หรือชื่อผู้ใช้'))+'" required></div><div class="modal-field auth-password-field"><div class="auth-label-row"><label for="authPass">'+esc(authPageText('authLoginPasswordLabel','รหัสผ่าน'))+'</label><a href="#" onclick="event.preventDefault();forgotPassword(\'customer\')">'+esc(authPageText('authLoginForgotLabel','ลืมรหัสผ่าน?'))+'</a></div><div class="auth-password-control"><input id="authPass" type="password" autocomplete="current-password" placeholder="'+esc(authPageText('authLoginPasswordPlaceholder','กรอกรหัสผ่าน'))+'" required><button type="button" onclick="toggleAuthPassword(\'authPass\',this)" aria-label="แสดงรหัสผ่าน"><i class="fa-regular fa-eye"></i></button></div></div><div class="shop-login-error" id="shopLoginError" role="alert" aria-live="polite" hidden></div><button id="authSubmitBtn" class="btn btn-primary auth-submit" type="submit">'+esc(authPageText('authLoginSubmitLabel','เข้าสู่ระบบ'))+'</button>'+(authPageEnabled('authLoginShowRemember',true)?'<label class="auth-remember"><input id="authRemember" type="checkbox" checked><span>'+esc(authPageText('authLoginRememberLabel','จดจำการเข้าสู่ระบบ'))+'</span><i class="fa-regular fa-circle-question" title="เก็บสถานะเข้าสู่ระบบไว้ในอุปกรณ์นี้"></i></label>':'')+'</form>';
     var socialHtml=authPageEnabled('authLoginShowSocial',true)?'<div class="auth-divider"><span>'+esc(authPageText('authLoginSocialLabel','หรือเข้าสู่ระบบด้วย'))+'</span></div><div class="auth-provider-grid"><div class="auth-provider-wrap"><button type="button" id="facebookLoginButton" class="auth-facebook-btn" onclick="customerFacebookLogin()"><i class="fa-brands fa-facebook"></i> Facebook</button><div class="auth-provider-status" id="facebookAuthStatus"></div></div><div class="auth-provider-wrap"><div class="auth-provider-slot" id="googleSignInButton"><button type="button" class="auth-facebook-btn shop-google-fallback" disabled><i class="fa-brands fa-google"></i> Google</button></div><div class="auth-provider-status" id="googleAuthStatus"></div></div></div>':'';
-    var legal=authPageEnabled('authLoginShowLegal',true)?'<div class="auth-legal">'+esc(authPageText('authLoginLegalIntro','การเข้าสู่ระบบแสดงว่าคุณยอมรับ'))+' <a href="#" onclick="event.preventDefault();showCustomerLoginPolicy(\'terms\')">เงื่อนไขการให้บริการ</a> และ <a href="#" onclick="event.preventDefault();showCustomerLoginPolicy(\'privacyPolicy\')">นโยบายความเป็นส่วนตัว</a></div>':'';
-    var footer='<div class="auth-bottom-line"><span>'+esc(authPageText('authLoginRegisterPrompt','ยังไม่มีบัญชี?'))+'</span> <a href="#" onclick="event.preventDefault();openCustomerAuth(\'register\')">'+esc(authPageText('authLoginRegisterLabel','สมัครสมาชิก'))+'</a></div><div class="shop-login-role-link"><a href="#" onclick="event.preventDefault();openAccessHub()">'+esc(authPageText('authLoginSellerLinkLabel','เข้าสู่ระบบสำหรับร้านค้า / เจ้าของระบบ'))+'</a></div>';
+    var legal=authPageEnabled('authLoginShowLegal',true)?'<div class="auth-legal">'+esc(authPageText('authLoginLegalIntro','การเข้าสู่ระบบแสดงว่าคุณยอมรับ'))+' <a href="#" onclick="event.preventDefault();showCustomerLoginPolicy(\'terms\')">'+esc(authPageText('authLoginTermsLabel','เงื่อนไขการให้บริการ'))+'</a> และ <a href="#" onclick="event.preventDefault();showCustomerLoginPolicy(\'privacyPolicy\')">'+esc(authPageText('authLoginPrivacyLabel','นโยบายความเป็นส่วนตัว'))+'</a></div>':'';
+    var roleLink=authPageEnabled('authLoginShowSellerLink',true)?'<div class="shop-login-role-link"><a href="#" onclick="event.preventDefault();openAccessHub()">'+esc(authPageText('authLoginSellerLinkLabel','เข้าสู่ระบบสำหรับร้านค้า / เจ้าของระบบ'))+'</a></div>':'';
+    var footer='<div class="auth-bottom-line"><span>'+esc(authPageText('authLoginRegisterPrompt','ยังไม่มีบัญชี?'))+'</span> <a href="#" onclick="event.preventDefault();openCustomerAuth(\'register\')">'+esc(authPageText('authLoginRegisterLabel','สมัครสมาชิก'))+'</a></div>'+roleLink;
     return '<div class="customer-auth shop-customer-auth">'+loginHeader+intro+fields+socialHtml+legal+footer+'</div>';
   }
 
@@ -13997,13 +14004,19 @@ function startGlobalDataSync_(){
     root.style.setProperty('--auth-page-campaign-bg',get('authPageCampaignColor','#ee4d2d'));
     var radius=Math.max(0,Math.min(32,parseInt(get('authPageCardRadius','4'),10)||0));
     root.style.setProperty('--auth-page-card-radius',radius+'px');
+    var width=Math.max(320,Math.min(600,parseInt(get('authPageCardWidth','400'),10)||400));
+    root.style.setProperty('--auth-page-card-width',width+'px');
     var brandName=root.querySelector('.shop-login-brand-name');if(brandName)brandName.textContent=String(settings.storeName||'Online Store');
     var brandIcon=root.querySelector('.shop-login-brand-icon'),logo=get('authPageLogo','')||settings.logo||'';
     if(brandIcon){brandIcon.innerHTML=logo&&typeof imageUrl==='function'?'<img src="'+esc(imageUrl(logo))+'" alt="'+esc(settings.storeName||'Store logo')+'" style="width:100%;height:100%;object-fit:contain;background:#fff;border-radius:inherit">':'<i class="fa-solid fa-bag-shopping"></i>';}
     var help=root.querySelector('.shop-login-help');if(help){help.textContent=get('authPageHelpLabel','ต้องการความช่วยเหลือ?');help.style.display=on('authPageShowHelp',true)?'':'none';}
     var campaign=root.querySelector('.shop-login-campaign');
     if(campaign){
-      campaign.style.display=on('authLoginShowCampaign',true)?'':'none';
+      var campaignVisible=on('authLoginShowCampaign',true);
+      campaign.style.display=campaignVisible?'':'none';
+      var layout=root.querySelector('.shop-login-layout'),authCard=root.querySelector('.shop-login-card');
+      if(layout)layout.style.gridTemplateColumns=campaignVisible?'':'1fr';
+      if(authCard){authCard.style.gridColumn=campaignVisible?'':'1';authCard.style.justifySelf='center';}
       campaign.style.backgroundColor=get('authPageCampaignColor','#ee4d2d');
       var banner=get('authLoginCampaignImage','');
       var img=campaign.querySelector('.auth-custom-campaign-image');
@@ -14097,7 +14110,7 @@ function startGlobalDataSync_(){
     if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){feedback('กรุณากรอกอีเมลให้ถูกต้อง');return false;}
     var button=document.getElementById('authSubmitBtn');if(button){button.disabled=true;button.textContent='กำลังส่งรหัสยืนยัน...';}
     apiCall('beginCustomerEmailRegistration',[email],function(r){
-      if(!r||!r.success){if(button){button.disabled=false;button.textContent='ส่งรหัสยืนยันทางอีเมล';}feedback(r&&r.message||'ส่ง Email OTP ไม่สำเร็จ');return;}
+      if(!r||!r.success){if(button){button.disabled=false;button.textContent=window.authPageText?window.authPageText('authRegisterSubmitLabel','ส่งรหัสยืนยันทางอีเมล'):'ส่งรหัสยืนยันทางอีเมล';}feedback(r&&r.message||'ส่ง Email OTP ไม่สำเร็จ');return;}
       APP.registration={challengeId:r.data.challengeId,email:email,ticket:'',expiresAt:r.data.expiresAt,resendAt:Date.now()+Number(r.data.resendAfter||60)*1000};
       toast('ส่งรหัสยืนยันแล้ว','success','กรุณาตรวจสอบอีเมลและโฟลเดอร์ Spam');window.renderRegistrationOtpStep();
     },true,'กำลังส่ง Email OTP...');return false;
@@ -14108,9 +14121,9 @@ function startGlobalDataSync_(){
     var masked=window.maskRegistrationEmail?window.maskRegistrationEmail(reg.email):reg.email;
     var html=progress(1)+'<div class="registration-card">'+intro(esc(text('authRegisterOtpTitle','ยืนยันอีเมล')),esc(text('authRegisterOtpDescription','ระบบส่งรหัส OTP ไปยัง'))+'<br><strong>'+esc(masked||'')+'</strong>')+
       '<form class="auth-form" onsubmit="verifyRegistrationOtp(event)"><div class="otp-code-wrap"><input id="registrationOtpCode" class="otp-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="• • • • • •" required aria-label="รหัส OTP 6 หลัก"></div>'+
-      '<div id="shopAuthFeedback" class="shop-login-error shop-auth-feedback" role="alert" hidden></div><div class="otp-resend-line"><span id="otpResendCountdown">กำลังเตรียมการส่งรหัสอีกครั้ง</span><button id="otpResendButton" type="button" onclick="resendCustomerEmailOtpNow()" disabled>ส่งรหัสอีกครั้ง</button></div>'+
+      '<div id="shopAuthFeedback" class="shop-login-error shop-auth-feedback" role="alert" hidden></div><div class="otp-resend-line"><span id="otpResendCountdown">กำลังเตรียมการส่งรหัสอีกครั้ง</span><button id="otpResendButton" type="button" onclick="resendCustomerEmailOtpNow()" disabled>'+esc(text('authRegisterOtpResendLabel','ส่งรหัสอีกครั้ง'))+'</button></div>'+
       '<button id="authSubmitBtn" type="submit" class="btn btn-primary auth-submit">'+esc(text('authRegisterOtpSubmitLabel','ยืนยันรหัสและดำเนินการต่อ'))+'</button></form><p class="registration-note"><i class="fa-solid fa-circle-info"></i> '+esc(text('authRegisterOtpNote','รหัสมีอายุ 5 นาที ใช้ได้ครั้งเดียว หากไม่พบอีเมลให้ตรวจสอบโฟลเดอร์ Spam'))+'</p>'+
-      '<div class="auth-bottom-line"><a href="#" onclick="event.preventDefault();renderRegistrationEmailStep()">เปลี่ยนอีเมล</a></div></div>';
+      '<div class="auth-bottom-line"><a href="#" onclick="event.preventDefault();renderRegistrationEmailStep()">'+esc(text('authRegisterChangeEmailLabel','เปลี่ยนอีเมล'))+'</a></div></div>';
     render(html,text('authRegisterOtpTitle','ยืนยันอีเมล'),'registrationOtpCode');if(window.startRegistrationOtpCountdown)window.startRegistrationOtpCountdown();
   };
   window.verifyRegistrationOtp=function(event){
@@ -14118,7 +14131,7 @@ function startGlobalDataSync_(){
     if(!/^\d{6}$/.test(code)){feedback('กรุณากรอกรหัส OTP ให้ครบ 6 หลัก');return false;}
     var button=document.getElementById('authSubmitBtn');if(button){button.disabled=true;button.textContent='กำลังตรวจสอบรหัส...';}
     apiCall('verifyCustomerEmailRegistrationOtp',[reg.challengeId,reg.email,code],function(r){
-      if(!r||!r.success){if(button){button.disabled=false;button.textContent='ยืนยันรหัสและดำเนินการต่อ';}feedback(r&&r.message||'รหัส OTP ไม่ถูกต้อง');return;}
+      if(!r||!r.success){if(button){button.disabled=false;button.textContent=window.authPageText?window.authPageText('authRegisterOtpSubmitLabel','ยืนยันรหัสและดำเนินการต่อ'):'ยืนยันรหัสและดำเนินการต่อ';}feedback(r&&r.message||'รหัส OTP ไม่ถูกต้อง');return;}
       APP.registration.ticket=r.data.registrationTicket;APP.registration.expiresAt=r.data.expiresAt;toast('ยืนยันอีเมลสำเร็จ','success');window.renderRegistrationPasswordStep();
     },true,'กำลังตรวจสอบ Email OTP...');return false;
   };
@@ -14140,7 +14153,7 @@ function startGlobalDataSync_(){
     if(password!==confirm){feedback('รหัสผ่านทั้งสองช่องไม่ตรงกัน');return false;}
     var button=document.getElementById('authSubmitBtn');if(button){button.disabled=true;button.textContent='กำลังสร้างบัญชี...';}
     apiCall('customerCompleteEmailRegistration',[reg.challengeId,reg.email,reg.ticket,password],function(r){
-      if(!r||!r.success){if(button){button.disabled=false;button.textContent='สร้างบัญชีสมาชิก';}feedback(r&&r.message||'สมัครสมาชิกไม่สำเร็จ');return;}
+      if(!r||!r.success){if(button){button.disabled=false;button.textContent=window.authPageText?window.authPageText('authRegisterPasswordSubmitLabel','สร้างบัญชีสมาชิก'):'สร้างบัญชีสมาชิก';}feedback(r&&r.message||'สมัครสมาชิกไม่สำเร็จ');return;}
       APP.registration.pendingResult=r;window.renderRegistrationCompleteStep();
     },true,'กำลังสร้างบัญชีสมาชิก...');return false;
   };
@@ -14174,7 +14187,7 @@ function startGlobalDataSync_(){
     if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){feedback('กรุณากรอกอีเมลให้ถูกต้อง');return false;}
     var button=document.getElementById('forgotPasswordSubmit');if(button){button.disabled=true;button.textContent='กำลังส่งลิงก์...';}
     apiCall('requestPasswordReset',[email,type||'customer'],function(r){
-      if(button){button.disabled=false;button.textContent='ส่งลิงก์ตั้งรหัสผ่าน';}
+      if(button){button.disabled=false;button.textContent=window.authPageText?window.authPageText('authForgotSubmitLabel','ส่งลิงก์ตั้งรหัสผ่าน'):'ส่งลิงก์ตั้งรหัสผ่าน';}
       if(r&&r.success){feedback(r.message||'ส่งลิงก์ตั้งรหัสผ่านแล้ว กรุณาตรวจสอบอีเมล',true);if(button)button.disabled=true;}
       else feedback(r&&r.message||'ไม่สามารถส่งลิงก์ได้ กรุณาลองอีกครั้ง');
     },true,'กำลังส่งอีเมล...');return false;
@@ -14198,7 +14211,7 @@ function startGlobalDataSync_(){
     if(first!==second){feedback('รหัสผ่านทั้งสองช่องไม่ตรงกัน');return false;}
     var button=document.getElementById('resetPasswordSubmit');if(button){button.disabled=true;button.textContent='กำลังบันทึก...';}
     apiCall('resetPassword',[window.__pendingFullPageResetToken,first],function(r){
-      if(button){button.disabled=false;button.textContent='บันทึกรหัสผ่านใหม่';}
+      if(button){button.disabled=false;button.textContent=window.authPageText?window.authPageText('authResetSubmitLabel','บันทึกรหัสผ่านใหม่'):'บันทึกรหัสผ่านใหม่';}
       if(r&&r.success){if(button)button.disabled=true;feedback(r.message||'เปลี่ยนรหัสผ่านสำเร็จแล้ว กรุณาเข้าสู่ระบบ',true);window.history.replaceState({},document.title,window.location.pathname);}
       else feedback(r&&r.message||'ตั้งรหัสผ่านไม่สำเร็จ กรุณาลองอีกครั้ง');
     },true,'กำลังตั้งรหัสผ่าน...');return false;
@@ -14246,10 +14259,17 @@ function startGlobalDataSync_(){
     color:var(--auth-page-text,#222222)!important;
   }
   .store-login-screen .shop-login-card{
+    width:min(var(--auth-page-card-width,400px),100%)!important;
     background:var(--auth-page-card-bg,#ffffff)!important;
     color:var(--auth-page-text,#222222)!important;
     border-radius:var(--auth-page-card-radius,4px)!important;
   }
+  .store-login-screen .shop-login-card .modal-field>label,
+  .store-login-screen .shop-login-card .auth-label-row label,
+  .store-login-screen .shop-login-card .auth-intro,
+  .store-login-screen .shop-login-card .registration-intro{color:var(--auth-page-text,#222222)!important}
+  .store-login-screen .shop-login-card .modal-field>input,
+  .store-login-screen .shop-login-card .auth-password-control input{color:var(--auth-page-text,#222222)!important}
   .store-login-screen .shop-login-card .auth-head h2,
   .store-login-screen .shop-login-card .auth-intro,
   .store-login-screen .shop-login-card .registration-card-head h2,
@@ -14259,7 +14279,7 @@ function startGlobalDataSync_(){
     background:var(--auth-page-primary,#ee4d2d)!important;
     border-color:var(--auth-page-primary,#ee4d2d)!important;
   }
-  .store-login-screen .shop-login-campaign{background-color:var(--auth-page-campaign-bg,#ee4d2d)!important}
+  .store-login-screen .shop-login-campaign{background-color:var(--auth-page-campaign-bg,#ee4d2d)!important;background-image:none!important}
   .store-login-screen .auth-custom-campaign-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.36;z-index:0;pointer-events:none}
   .store-login-screen .shop-login-campaign>*:not(.auth-custom-campaign-image){position:relative;z-index:1}
   .store-login-screen .shop-login-campaign-art{z-index:1}
