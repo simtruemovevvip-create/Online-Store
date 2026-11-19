@@ -5217,12 +5217,31 @@ function loadPublicData(onComplete){
         APP.authProviders=r.data||{};
         var googleStatus=document.getElementById('googleAuthStatus');
         var facebookStatus=document.getElementById('facebookAuthStatus');
-        if(!APP.authProviders.googleEnabled){if(googleStatus)googleStatus.textContent='ต้องตั้งค่า Google Client ID ใน Apps Script ก่อน';var g=document.getElementById('googleSignInButton');if(g)g.innerHTML='<button type="button" class="auth-facebook-btn" style="background:#fff;color:#5f6368;border-color:#d7dce3" disabled><i class="fa-brands fa-google"></i> Google</button>';}
-        else renderGoogleAuthButton(0);
-        if(!APP.authProviders.facebookEnabled){if(facebookStatus)facebookStatus.textContent='ต้องตั้งค่า Facebook App ID และ App Secret ใน Apps Script ก่อน';var fbButton=document.getElementById('facebookLoginButton');if(fbButton)fbButton.disabled=true;}
-        if(APP.authProviders.facebookEnabled){
-          ensureFacebookSdk(APP.authProviders.facebookAppId).catch(function(){
-            if(facebookStatus)facebookStatus.textContent='โหลด Facebook Login ไม่สำเร็จ กรุณารีเฟรชหน้า';
+        var authOrigin=window.location.origin||'unknown';
+        var authHost=window.location.hostname||'unknown';
+        APP.authPageOrigin=authOrigin;
+        console.info('[Online-Store Auth] Page origin:',authOrigin);
+        if(!APP.authProviders.googleEnabled){
+          if(googleStatus)googleStatus.textContent='ต้องตั้งค่า Google Client ID ใน Apps Script ก่อน';
+          var g=document.getElementById('googleSignInButton');
+          if(g)g.innerHTML='<button type="button" class="auth-facebook-btn" style="background:#fff;color:#5f6368;border-color:#d7dce3" disabled><i class="fa-brands fa-google"></i> Google</button>';
+        }else{
+          if(googleStatus){
+            googleStatus.textContent=/googleusercontent\.com$/i.test(authHost)
+              ?'Google ไม่อนุญาต origin นี้สำหรับ JavaScript OAuth: '+authOrigin
+              :'Google OAuth origin ที่ต้องลงทะเบียน: '+authOrigin;
+          }
+          renderGoogleAuthButton(0);
+        }
+        if(!APP.authProviders.facebookEnabled){
+          if(facebookStatus)facebookStatus.textContent='ต้องตั้งค่า Facebook App ID และ App Secret ใน Apps Script ก่อน';
+          var fbButton=document.getElementById('facebookLoginButton');
+          if(fbButton)fbButton.disabled=true;
+        }else{
+          if(facebookStatus)facebookStatus.textContent='Meta Allowed Domains ต้องมี: '+authHost;
+          ensureFacebookSdk(APP.authProviders.facebookAppId).catch(function(error){
+            console.error('[Online-Store Auth] Facebook SDK initialization failed:',error&&error.message?error.message:error);
+            if(facebookStatus)facebookStatus.textContent='โหลด Facebook SDK ไม่สำเร็จ ตรวจโดเมนและการเปิด JavaScript SDK ใน Meta';
           });
         }
       });
@@ -5308,12 +5327,13 @@ function loadPublicData(onComplete){
         if(status)status.textContent='กำลังเชื่อมต่อ Facebook...';
         ensureFacebookSdk(APP.authProviders.facebookAppId).then(function(){
           if(button)button.disabled=false;
-          if(status)status.textContent='';
+          if(status)status.textContent='Meta Allowed Domains: '+(window.location.hostname||'unknown');
           customerFacebookLogin();
-        }).catch(function(){
+        }).catch(function(error){
           if(button)button.disabled=false;
-          if(status)status.textContent='โหลด Facebook Login ไม่สำเร็จ กรุณารีเฟรชหน้า';
-          alertError('ไม่สามารถโหลด Facebook Login ได้ กรุณารีเฟรชหน้าแล้วลองอีกครั้ง');
+          console.error('[Online-Store Auth] Facebook SDK load failed:',error&&error.message?error.message:error);
+          if(status)status.textContent='Facebook SDK โหลดไม่สำเร็จ ตรวจ Allowed Domains และ JavaScript SDK';
+          alertError('โหลด Facebook SDK ไม่สำเร็จ ตรวจสอบ Meta App > Facebook Login > Settings และโดเมนที่อนุญาต');
         });
         return;
       }
@@ -5322,7 +5342,24 @@ function loadPublicData(onComplete){
         FB.login(function(response){
           if(!response||response.status!=='connected'||!response.authResponse||!response.authResponse.accessToken){
             if(button)button.disabled=false;
-            alertError('ยกเลิกหรือเข้าสู่ระบบ Facebook ไม่สำเร็จ');
+            var fbError=response&&(response.error||response.error_message||response.error_reason);
+            var detail=typeof fbError==='string'?fbError:(fbError&&(fbError.message||fbError.type))||'';
+            if(response)console.warn('[Online-Store Auth] Facebook login did not return an access token:',{
+              status:response.status||'unknown',
+              error:detail,
+              code:fbError&&fbError.code||null,
+              subcode:fbError&&fbError.error_subcode||null,
+              origin:window.location.origin||'unknown'
+            });
+            if(/domain|origin|redirect|javascript sdk|not enabled|invalid app/i.test(detail)){
+              alertError('Facebook App ยังไม่อนุญาตโดเมนนี้ หรือยังไม่ได้เปิด Login with the JavaScript SDK ตรวจ Meta Allowed Domains: '+(window.location.hostname||'unknown'));
+            }else if(response&&response.status==='not_authorized'){
+              alertError('บัญชี Facebook ยังไม่ได้อนุญาตให้ Online-Store เข้าถึง กรุณากดยืนยันสิทธิ์อีกครั้ง');
+            }else if(response&&response.status==='unknown'){
+              alertError('Facebook ไม่ส่งผลการเข้าสู่ระบบกลับมา ตรวจ Popup/Cookie และ Meta Allowed Domains: '+(window.location.hostname||'unknown'));
+            }else{
+              alertError('การเข้าสู่ระบบ Facebook ถูกยกเลิก หรือไม่ได้รับอนุญาต กรุณาลองใหม่');
+            }
             return;
           }
           apiCall('customerSocialLogin',['facebook',response.authResponse.accessToken],function(r){
@@ -5333,6 +5370,7 @@ function loadPublicData(onComplete){
         },{scope:'public_profile,email'});
       }catch(error){
         if(button)button.disabled=false;
+        console.error('[Online-Store Auth] FB.login exception:',error);
         alertError('ไม่สามารถเปิดหน้าต่าง Facebook Login ได้ กรุณาอนุญาต Popup แล้วลองใหม่');
       }
     }
