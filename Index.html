@@ -5235,16 +5235,43 @@ function loadPublicData(onComplete){
     function openAdminLogin(){openSystemOwnerLogin();}
 
     function loadCustomerAuthProviders(){
-      if(!document.getElementById('googleSignInButton'))return;
+      var googleHost=document.getElementById('googleSignInButton');
+      var fbButton=document.getElementById('facebookLoginButton');
+      if(!googleHost&&!fbButton)return;
+      var googleStatus=document.getElementById('googleAuthStatus');
+      var facebookStatus=document.getElementById('facebookAuthStatus');
+      if(fbButton)fbButton.disabled=true;
+      if(googleStatus)googleStatus.textContent='กำลังตรวจสอบการตั้งค่า Google...';
+      if(facebookStatus)facebookStatus.textContent='กำลังตรวจสอบการตั้งค่า Facebook...';
       apiCall('getCustomerAuthConfig',[],function(r){
-        if(!r.success)return;
+        if(!r||!r.success){
+          APP.authProviders=null;
+          if(googleStatus)googleStatus.textContent='ตรวจสอบการตั้งค่า Google ไม่สำเร็จ';
+          if(facebookStatus)facebookStatus.textContent='ตรวจสอบการตั้งค่า Facebook ไม่สำเร็จ';
+          if(googleHost)googleHost.innerHTML='<button type="button" class="auth-facebook-btn shop-google-fallback" disabled><i class="fa-brands fa-google"></i> Google</button>';
+          if(fbButton)fbButton.disabled=true;
+          return;
+        }
         APP.authProviders=r.data||{};
-        var googleStatus=document.getElementById('googleAuthStatus');
-        var facebookStatus=document.getElementById('facebookAuthStatus');
-        if(!APP.authProviders.googleEnabled){if(googleStatus)googleStatus.textContent='ต้องตั้งค่า Google Client ID ก่อน';var g=document.getElementById('googleSignInButton');if(g)g.innerHTML='<button type="button" class="auth-facebook-btn" style="background:#fff;color:#5f6368;border-color:#d7dce3" disabled><i class="fa-brands fa-google"></i> Google</button>';}
-        else renderGoogleAuthButton(0);
-        if(!APP.authProviders.facebookEnabled){if(facebookStatus)facebookStatus.textContent='ต้องตั้งค่า Facebook App ID/Secret ก่อน';var fbButton=document.getElementById('facebookLoginButton');if(fbButton)fbButton.disabled=true;}
-        if(APP.authProviders.facebookEnabled)ensureFacebookSdk(APP.authProviders.facebookAppId);
+        if(!APP.authProviders.googleEnabled){
+          if(googleStatus)googleStatus.textContent='Google ยังไม่เปิดใช้งาน · กรุณาตั้งค่า Web Client ID';
+          if(googleHost)googleHost.innerHTML='<button type="button" class="auth-facebook-btn shop-google-fallback" disabled><i class="fa-brands fa-google"></i> Google</button>';
+        }else{
+          if(googleStatus)googleStatus.textContent='กำลังเตรียม Google Sign-In...';
+          renderGoogleAuthButton(0);
+        }
+        if(!APP.authProviders.facebookEnabled){
+          if(facebookStatus)facebookStatus.textContent='Facebook ยังไม่เปิดใช้งาน · กรุณาตั้งค่า App ID และ App Secret';
+          if(fbButton)fbButton.disabled=true;
+        }else{
+          if(facebookStatus)facebookStatus.textContent='กำลังเชื่อมต่อ Facebook Login...';
+          ensureFacebookSdk(APP.authProviders.facebookAppId,APP.authProviders.facebookGraphVersion,function(ready,message){
+            var currentButton=document.getElementById('facebookLoginButton');
+            var currentStatus=document.getElementById('facebookAuthStatus');
+            if(currentButton)currentButton.disabled=!ready;
+            if(currentStatus)currentStatus.textContent=ready?'พร้อมใช้งาน Facebook Login':(message||'โหลด Facebook Login ไม่สำเร็จ');
+          });
+        }
       });
     }
 
@@ -5252,33 +5279,80 @@ function loadPublicData(onComplete){
       var host=document.getElementById('googleSignInButton');
       if(!host)return;
       if(!window.google||!google.accounts||!google.accounts.id){
-        if(attempt<20){setTimeout(function(){renderGoogleAuthButton(attempt+1);},250);return;}
-        host.innerHTML='<span class="auth-provider-status">โหลด Google Sign-In ไม่สำเร็จ</span>';return;
+        if(attempt<24){setTimeout(function(){renderGoogleAuthButton(attempt+1);},250);return;}
+        host.innerHTML='<button type="button" class="auth-facebook-btn shop-google-fallback" disabled><i class="fa-brands fa-google"></i> Google</button>';
+        var status=document.getElementById('googleAuthStatus');if(status)status.textContent='โหลด Google Identity Services ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตหรือ Origin ที่อนุญาต';
+        return;
       }
-      if(!APP.authProviders||!APP.authProviders.googleClientId)return;
-      host.innerHTML='';
-      if(!window.customerGoogleInitialized){google.accounts.id.initialize({client_id:APP.authProviders.googleClientId,callback:handleGoogleCredential,ux_mode:'popup',auto_select:false});window.customerGoogleInitialized=true;}
-      var providerWidth=Math.max(120,Math.min(220,Math.floor(host.clientWidth||180)));google.accounts.id.renderButton(host,{type:'standard',theme:'outline',size:'large',text:'continue_with',shape:'rectangular',logo_alignment:'left',width:providerWidth});
+      var config=APP.authProviders||{},clientId=String(config.googleClientId||'');
+      if(!clientId)return;
+      try{
+        host.innerHTML='';
+        if(window.customerGoogleClientId!==clientId){
+          google.accounts.id.initialize({client_id:clientId,callback:handleGoogleCredential,ux_mode:'popup',auto_select:false});
+          window.customerGoogleClientId=clientId;
+        }
+        var providerWidth=Math.max(120,Math.min(260,Math.floor(host.clientWidth||190)));
+        google.accounts.id.renderButton(host,{type:'standard',theme:'outline',size:'large',text:'continue_with',shape:'rectangular',logo_alignment:'left',width:providerWidth});
+        var status=document.getElementById('googleAuthStatus');if(status)status.textContent='พร้อมใช้งาน Google Sign-In';
+      }catch(error){
+        host.innerHTML='<button type="button" class="auth-facebook-btn shop-google-fallback" disabled><i class="fa-brands fa-google"></i> Google</button>';
+        var statusError=document.getElementById('googleAuthStatus');if(statusError)statusError.textContent='ตั้งค่า Google Sign-In ไม่สำเร็จ: '+String(error&&error.message||error);
+      }
     }
 
     function handleGoogleCredential(response){
       if(!response||!response.credential){alertError('Google ไม่ส่งข้อมูลยืนยันตัวตน');return;}
-      apiCall('customerSocialLogin',['google',response.credential],function(r){if(!r.success){alertError(r.message);return;}finishCustomerLogin(r,'เข้าสู่ระบบด้วย Google สำเร็จ',customerRememberChoice());},true,'กำลังตรวจสอบบัญชี Google...');
+      apiCall('customerSocialLogin',['google',response.credential],function(r){
+        if(!r||!r.success){alertError(r&&r.message||'ยืนยันบัญชี Google ไม่สำเร็จ');return;}
+        finishCustomerLogin(r,'เข้าสู่ระบบด้วย Google สำเร็จ',customerRememberChoice());
+      },true,'กำลังตรวจสอบบัญชี Google...');
     }
 
-    function ensureFacebookSdk(appId){
-      if(window.FB&&window.FBReady)return;
-      window.fbAsyncInit=function(){try{FB.init({appId:appId,cookie:true,xfbml:false,version:'v27.0'});window.FBReady=true;}catch(e){window.FBReady=false;}};
-      if(!document.getElementById('facebook-jssdk')){var js=document.createElement('script');js.id='facebook-jssdk';js.async=true;js.defer=true;js.crossOrigin='anonymous';js.src='https://connect.facebook.net/th_TH/sdk.js';document.head.appendChild(js);}
+    function ensureFacebookSdk(appId,graphVersion,callback){
+      appId=String(appId||'').trim();
+      graphVersion=/^v[0-9]+\\.0$/.test(String(graphVersion||''))?String(graphVersion):'v27.0';
+      callback=typeof callback==='function'?callback:function(){};
+      if(!appId){callback(false,'ไม่พบ Facebook App ID');return;}
+      if(window.FBReady&&window.FBAppId===appId){callback(true,'');return;}
+      if(window.FBReady&&window.FBAppId&&window.FBAppId!==appId){callback(false,'มี Facebook SDK จาก App ID เดิมอยู่ กรุณารีเฟรชหน้าเว็บก่อนทดสอบ App ใหม่');return;}
+      function initializeFacebook(){
+        if(!window.FB){callback(false,'Facebook SDK ยังโหลดไม่สำเร็จ');return;}
+        try{
+          FB.init({appId:appId,cookie:false,xfbml:false,version:graphVersion});
+          window.FBReady=true;window.FBAppId=appId;window.FBGraphVersion=graphVersion;
+          callback(true,'');
+        }catch(error){window.FBReady=false;callback(false,'เริ่มต้น Facebook SDK ไม่สำเร็จ: '+String(error&&error.message||error));}
+      }
+      window.fbAsyncInit=initializeFacebook;
+      if(window.FB){initializeFacebook();return;}
+      var js=document.getElementById('facebook-jssdk');
+      if(js){
+        js.addEventListener('error',function(){callback(false,'โหลด Facebook SDK ไม่สำเร็จ กรุณาตรวจสอบเครือข่ายหรือ Meta App Domains');},{once:true});
+        return;
+      }
+      js=document.createElement('script');js.id='facebook-jssdk';js.async=true;js.defer=true;js.crossOrigin='anonymous';
+      js.onerror=function(){callback(false,'โหลด Facebook SDK ไม่สำเร็จ กรุณาตรวจสอบเครือข่ายหรือ Meta App Domains');};
+      js.src='https://connect.facebook.net/th_TH/sdk.js';document.head.appendChild(js);
     }
 
     function customerFacebookLogin(){
-      if(!APP.authProviders){loadCustomerAuthProviders();alertError('กำลังเตรียม Facebook Login กรุณากดอีกครั้ง');return;}
-      if(!APP.authProviders.facebookEnabled){alertError('ยังไม่ได้ตั้งค่า Facebook App ID และ App Secret');return;}
-      if(!window.FB||!window.FBReady){ensureFacebookSdk(APP.authProviders.facebookAppId);alertError('กำลังโหลด Facebook Login กรุณารอสักครู่แล้วกดอีกครั้ง');return;}
+      var config=APP.authProviders||{};
+      if(!config.facebookEnabled){alertError('ยังไม่ได้ตั้งค่า Facebook App ID และ App Secret');return;}
+      if(!window.FB||!window.FBReady||window.FBAppId!==String(config.facebookAppId||'')){
+        var status=document.getElementById('facebookAuthStatus');if(status)status.textContent='กำลังเตรียม Facebook Login กรุณากดอีกครั้งเมื่อปุ่มพร้อมใช้งาน';
+        ensureFacebookSdk(config.facebookAppId,config.facebookGraphVersion,function(ready,message){
+          var button=document.getElementById('facebookLoginButton');if(button)button.disabled=!ready;
+          var currentStatus=document.getElementById('facebookAuthStatus');if(currentStatus)currentStatus.textContent=ready?'พร้อมใช้งาน Facebook Login':(message||'Facebook Login ยังไม่พร้อม');
+        });
+        return;
+      }
       FB.login(function(response){
         if(!response||response.status!=='connected'||!response.authResponse||!response.authResponse.accessToken){alertError('ยกเลิกหรือเข้าสู่ระบบ Facebook ไม่สำเร็จ');return;}
-        apiCall('customerSocialLogin',['facebook',response.authResponse.accessToken],function(r){if(!r.success){alertError(r.message);return;}finishCustomerLogin(r,'เข้าสู่ระบบด้วย Facebook สำเร็จ',customerRememberChoice());},true,'กำลังตรวจสอบบัญชี Facebook...');
+        apiCall('customerSocialLogin',['facebook',response.authResponse.accessToken],function(r){
+          if(!r||!r.success){alertError(r&&r.message||'ยืนยันบัญชี Facebook ไม่สำเร็จ');return;}
+          finishCustomerLogin(r,'เข้าสู่ระบบด้วย Facebook สำเร็จ',customerRememberChoice());
+        },true,'กำลังตรวจสอบบัญชี Facebook...');
       },{scope:'public_profile,email'});
     }
 
