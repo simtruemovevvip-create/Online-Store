@@ -73,7 +73,53 @@ var DEFAULT_SETTINGS_ = {
   tiktok: '', line: '', youtube: '', googleMaps: '', returnPolicy: '', privacyPolicy: '', terms: '',
   primaryColor: '#ee4d2d', secondaryColor: '#0f172a', accentColor: '#f59e0b', footerText: 'ขอบคุณที่เลือกซื้อสินค้ากับเรา',
   seoTitle: 'Online Store', seoDescription: '', homeSections: '[]', mallStoreIds: '[]',
-  marketplaceCommissionRate: '5', returnWindowDays: '7', coinRewardRate: '1', sellerRegistrationEnabled: 'true'
+  marketplaceCommissionRate: '5', returnWindowDays: '7', coinRewardRate: '1', sellerRegistrationEnabled: 'true',
+  accountPageBgColor: '#f6f7fb', accountPageCardColor: '#ffffff', accountPageTextColor: '#1f2937',
+  accountPageMutedColor: '#64748b', accountPagePrimaryColor: '#ee4d2d', accountPageAccentColor: '#f59e0b',
+  accountPageLogo: '', accountPageBrandName: '', accountPageBrandSubtitle: '',
+  accountPageHelpText: 'ต้องการความช่วยเหลือ?', accountPageHelpUrl: '',
+  accountPageShowPromo: 'true', accountPagePromoImage: '', accountPagePromoEyebrow: 'ONLINE STORE',
+  accountPagePromoTitle: 'ช้อปง่าย ได้ครบ', accountPagePromoDescription: 'ค้นหาสินค้าคุณภาพและข้อเสนอพิเศษได้ในที่เดียว',
+  accountPagePromoBadge: 'ดีลพิเศษสำหรับคุณ', accountPagePromoFootnote: 'ช้อปง่าย • ปลอดภัย • ส่งตรงถึงคุณ',
+  accountPageFooterText: '', accountPageShowFooter: 'true', accountPageCardRadius: '8', accountPageButtonRadius: '6',
+  accountLoginTitle: 'เข้าสู่ระบบ',
+  accountLoginDescription: 'เจ้าของระบบ ร้านค้า และลูกค้า ใช้แบบฟอร์มเดียวกัน ระบบจะตรวจสอบประเภทบัญชีและสิทธิ์ให้อัตโนมัติ',
+  accountLoginIdentifierLabel: 'อีเมล / เบอร์โทรศัพท์ / ชื่อผู้ใช้',
+  accountLoginIdentifierPlaceholder: 'กรอกอีเมล เบอร์โทรศัพท์ หรือชื่อผู้ใช้',
+  accountLoginPasswordLabel: 'รหัสผ่าน', accountLoginPasswordPlaceholder: 'กรอกรหัสผ่าน',
+  accountLoginButtonText: 'เข้าสู่ระบบ', accountLoginRememberText: 'จดจำการเข้าสู่ระบบ',
+  accountLoginForgotText: 'ลืมรหัสผ่าน?', accountLoginRegisterPrompt: 'ยังไม่มีบัญชี?',
+  accountLoginRegisterLinkText: 'สมัครสมาชิกด้วยอีเมล', accountLoginSellerLinkText: 'สมัครเปิดร้านค้า',
+  accountLoginSocialText: 'หรือเข้าสู่ระบบด้วย',
+  accountLoginShowQr: 'true', accountLoginShowSocial: 'true', accountLoginShowGoogle: 'true',
+  accountLoginShowFacebook: 'true', accountLoginShowRemember: 'true',
+  accountLoginShowRegister: 'true', accountLoginShowSellerRegister: 'true',
+  accountRegisterTitle: 'สมัครสมาชิก',
+  accountRegisterDescription: 'กรอกอีเมลที่คุณใช้งานได้จริง ระบบจะส่งรหัส OTP เพื่อยืนยันก่อนตั้งรหัสผ่าน',
+  accountRegisterEmailLabel: 'อีเมล', accountRegisterEmailPlaceholder: 'name@example.com',
+  accountRegisterSendOtpText: 'ส่งรหัสยืนยันทางอีเมล',
+  accountRegisterNote: 'ไม่ต้องใช้ SMS หรือหมายเลขโทรศัพท์ในขั้นตอนสมัคร สามารถเพิ่มเบอร์โทรและที่อยู่ภายหลังได้',
+  accountRegisterStepEmailText: 'ยืนยันอีเมล', accountRegisterStepPasswordText: 'ตั้งรหัสผ่าน', accountRegisterStepCompleteText: 'เสร็จสิ้น',
+  accountRegisterOtpTitle: 'ยืนยันอีเมล', accountRegisterOtpDescription: 'ระบบส่งรหัส OTP ไปยัง',
+  accountRegisterOtpPlaceholder: '• • • • • •', accountRegisterOtpButtonText: 'ยืนยันรหัสและดำเนินการต่อ',
+  accountRegisterResendText: 'ส่งรหัสอีกครั้ง', accountRegisterChangeEmailText: 'เปลี่ยนอีเมล',
+  accountRegisterPasswordTitle: 'ตั้งรหัสผ่าน', accountRegisterPasswordDescription: 'กำหนดรหัสผ่านสำหรับบัญชี',
+  accountRegisterPasswordLabel: 'รหัสผ่าน', accountRegisterConfirmPasswordLabel: 'ยืนยันรหัสผ่าน',
+  accountRegisterCreateButtonText: 'สร้างบัญชีสมาชิก',
+  accountRegisterSuccessTitle: 'สมัครสมาชิกสำเร็จ',
+  accountRegisterSuccessDescription: 'ยืนยันอีเมลและตั้งรหัสผ่านเรียบร้อยแล้ว คุณสามารถเพิ่มชื่อ เบอร์โทรศัพท์ และที่อยู่จัดส่งภายหลังได้',
+  accountRegisterSuccessButtonText: 'เริ่มใช้งาน', accountRegisterBackToLoginText: 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ',
+  accountForgotTitle: 'ลืมรหัสผ่าน',
+  accountForgotDescription: 'กรอกอีเมลหรือชื่อผู้ใช้ที่ลงทะเบียน ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ให้คุณ',
+  accountForgotIdentifierLabel: 'อีเมลหรือชื่อผู้ใช้',
+  accountForgotIdentifierPlaceholder: 'กรอกอีเมลหรือชื่อผู้ใช้',
+  accountForgotSubmitText: 'ส่งลิงก์ตั้งรหัสผ่าน',
+  accountForgotBackText: 'กลับไปเข้าสู่ระบบ',
+  accountForgotSuccessMessage: 'หากพบบัญชีที่ตรงกัน ระบบจะส่งลิงก์ตั้งรหัสผ่านไปยังอีเมลที่ลงทะเบียน',
+  accountResetTitle: 'ตั้งรหัสผ่านใหม่',
+  accountResetDescription: 'กำหนดรหัสผ่านใหม่เพื่อกลับเข้าใช้งานบัญชีของคุณ',
+  accountResetPasswordLabel: 'รหัสผ่านใหม่', accountResetConfirmPasswordLabel: 'ยืนยันรหัสผ่าน',
+  accountResetSubmitText: 'บันทึกรหัสผ่านใหม่', accountResetBackText: 'กลับไปเข้าสู่ระบบ'
 };
 
 function doGet(e) {
@@ -864,7 +910,7 @@ function invalidateTable_(name) {
 }
 
 function upsertSetting_(key, value) {
-  if (['logo', 'favicon', 'setFaviconUrl', 'heroImage', 'bankQrImage'].indexOf(String(key)) >= 0 && typeof value === 'string' && value.indexOf('drive-asset://') >= 0) {
+  if (['logo', 'favicon', 'setFaviconUrl', 'heroImage', 'bankQrImage', 'accountPageLogo', 'accountPagePromoImage'].indexOf(String(key)) >= 0 && typeof value === 'string' && value.indexOf('drive-asset://') >= 0) {
     value = normalizeDriveAssetUrlValue_(value, getDriveAssetTokenMap_(), true);
   }
   var rows = readTable_('Settings', false);
@@ -1677,7 +1723,7 @@ function saveSettings(token, data) {
   try {
     var user = requireAdmin_(token, 'settings.manage');
     data = data || {};
-    ['primaryColor','secondaryColor','accentColor'].forEach(function(k) { if (Object.prototype.hasOwnProperty.call(data,k) && data[k] && !/^#[0-9a-fA-F]{6}$/.test(String(data[k]))) throw new Error('รูปแบบสี '+k+' ไม่ถูกต้อง กรุณาใช้ Hex Color เช่น #EE4D2D'); });
+    ['primaryColor','secondaryColor','accentColor','accountPageBgColor','accountPageCardColor','accountPageTextColor','accountPageMutedColor','accountPagePrimaryColor','accountPageAccentColor'].forEach(function(k) { if (Object.prototype.hasOwnProperty.call(data,k) && data[k] && !/^#[0-9a-fA-F]{6}$/.test(String(data[k]))) throw new Error('รูปแบบสี '+k+' ไม่ถูกต้อง กรุณาใช้ Hex Color เช่น #EE4D2D'); });
     if (Object.prototype.hasOwnProperty.call(data, 'setFaviconUrl') && data.setFaviconUrl) {
       var faviconSettingValue = String(data.setFaviconUrl).trim();
       var isDriveFaviconToken = /^drive-asset:\/\/[A-Za-z0-9_-]{20,80}$/i.test(faviconSettingValue);
