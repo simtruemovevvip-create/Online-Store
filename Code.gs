@@ -73,7 +73,66 @@ var DEFAULT_SETTINGS_ = {
   tiktok: '', line: '', youtube: '', googleMaps: '', returnPolicy: '', privacyPolicy: '', terms: '',
   primaryColor: '#ee4d2d', secondaryColor: '#0f172a', accentColor: '#f59e0b', footerText: 'ขอบคุณที่เลือกซื้อสินค้ากับเรา',
   seoTitle: 'Online Store', seoDescription: '', homeSections: '[]', mallStoreIds: '[]',
-  marketplaceCommissionRate: '5', returnWindowDays: '7', coinRewardRate: '1', sellerRegistrationEnabled: 'true'
+  marketplaceCommissionRate: '5', returnWindowDays: '7', coinRewardRate: '1', sellerRegistrationEnabled: 'true',
+  // Customer authentication page appearance and copy (editable from Store Settings).
+  authPageBackgroundColor: '#f6f6f6', authPageCardColor: '#ffffff', authPageTextColor: '#222222',
+  authPagePrimaryColor: '#ee4d2d', authPageCampaignColor: '#ee4d2d', authPageCardRadius: '4', authPageCardWidth: '400',
+  authPageLogo: '', authPageHelpLabel: 'ต้องการความช่วยเหลือ?',
+  authPageFooterText: '© Online Store. All rights reserved.',
+  authPageShowFooter: 'true', authPageShowHelp: 'true',
+  authLoginShowCampaign: 'true', authLoginShowQr: 'true', authLoginShowSocial: 'true',
+  authLoginShowRemember: 'true', authLoginShowLegal: 'true',
+  authLoginEyebrow: 'WELCOME BACK', authLoginTitle: 'เข้าสู่ระบบ',
+  authLoginDescription: 'เข้าสู่ระบบด้วยเบอร์โทรศัพท์ อีเมล หรือชื่อผู้ใช้ที่ลงทะเบียนไว้',
+  authLoginUserLabel: 'เบอร์โทรศัพท์ / อีเมล / ชื่อผู้ใช้',
+  authLoginUserPlaceholder: 'กรอกเบอร์โทรศัพท์ อีเมล หรือชื่อผู้ใช้',
+  authLoginPasswordLabel: 'รหัสผ่าน', authLoginPasswordPlaceholder: 'กรอกรหัสผ่าน',
+  authLoginForgotLabel: 'ลืมรหัสผ่าน?', authLoginSubmitLabel: 'เข้าสู่ระบบ',
+  authLoginRememberLabel: 'จดจำการเข้าสู่ระบบ', authLoginQrLabel: 'เข้าสู่ระบบด้วย QR code',
+  authLoginSocialLabel: 'หรือเข้าสู่ระบบด้วย', authLoginRegisterPrompt: 'ยังไม่มีบัญชี?',
+  authLoginRegisterLabel: 'สมัครสมาชิก',
+  authLoginSellerLinkLabel: 'เข้าสู่ระบบสำหรับร้านค้า / เจ้าของระบบ', authLoginShowSellerLink: 'true',
+  authLoginTermsLabel: 'เงื่อนไขการให้บริการ', authLoginPrivacyLabel: 'นโยบายความเป็นส่วนตัว',
+  authLoginLegalIntro: 'การเข้าสู่ระบบแสดงว่าคุณยอมรับ',
+  authLoginCampaignImage: '', authLoginCampaignKicker: 'MEGA SHOPPING FESTIVAL',
+  authLoginCampaignNumber: '11.11', authLoginCampaignHeadline: 'MEGA',
+  authLoginCampaignSubheadline: 'SALE', authLoginCampaignDiscountText: 'ลดสูงสุด',
+  authLoginCampaignDiscountValue: '90', authLoginCampaignTag: 'ดีลเด็ด ช้อปคุ้มทุกวัน',
+  authLoginCampaignFoot: 'ช้อปง่าย • ปลอดภัย • ส่งตรงถึงคุณ',
+  authRegisterShowProgress: 'true', authRegisterProgressEmailLabel: 'ยืนยันอีเมล', authRegisterProgressPasswordLabel: 'ตั้งรหัสผ่าน', authRegisterProgressDoneLabel: 'เสร็จสิ้น', authRegisterTitle: 'สมัครสมาชิก',
+  authRegisterDescription: 'กรอกอีเมลที่คุณใช้งานได้จริง ระบบจะส่งรหัส OTP เพื่อยืนยันก่อนตั้งรหัสผ่าน',
+  authRegisterEmailLabel: 'อีเมล', authRegisterEmailPlaceholder: 'name@example.com',
+  authRegisterSubmitLabel: 'ส่งรหัสยืนยันทางอีเมล',
+  authRegisterNote: 'ไม่ต้องใช้ SMS หรือหมายเลขโทรศัพท์ในขั้นตอนสมัคร สามารถเพิ่มเบอร์โทรและที่อยู่ภายหลังได้',
+  authRegisterLoginPrompt: 'มีบัญชีอยู่แล้ว?', authRegisterLoginLabel: 'เข้าสู่ระบบ',
+  authRegisterOtpTitle: 'ยืนยันอีเมล',
+  authRegisterOtpDescription: 'ระบบส่งรหัส OTP ไปยัง',
+  authRegisterOtpSubmitLabel: 'ยืนยันรหัสและดำเนินการต่อ', authRegisterOtpResendLabel: 'ส่งรหัสอีกครั้ง', authRegisterChangeEmailLabel: 'เปลี่ยนอีเมล',
+  authRegisterOtpNote: 'รหัสมีอายุ 5 นาที ใช้ได้ครั้งเดียว หากไม่พบอีเมลให้ตรวจสอบโฟลเดอร์ Spam',
+  authRegisterPasswordTitle: 'ตั้งรหัสผ่าน',
+  authRegisterPasswordDescription: 'กำหนดรหัสผ่านสำหรับบัญชี',
+  authRegisterPasswordLabel: 'รหัสผ่าน',
+  authRegisterPasswordPlaceholder: 'อย่างน้อย 8 ตัวอักษร',
+  authRegisterConfirmLabel: 'ยืนยันรหัสผ่าน',
+  authRegisterConfirmPlaceholder: 'กรอกรหัสผ่านอีกครั้ง',
+  authRegisterPasswordSubmitLabel: 'สร้างบัญชีสมาชิก',
+  authRegisterPasswordNote: 'ชื่อ เบอร์โทรศัพท์ และที่อยู่จัดส่ง สามารถเพิ่มภายหลังในหน้าบัญชีของฉัน',
+  authRegisterCompleteTitle: 'สมัครสมาชิกสำเร็จ',
+  authRegisterCompleteDescription: 'ยืนยันอีเมลและตั้งรหัสผ่านเรียบร้อยแล้ว คุณสามารถเพิ่มชื่อ เบอร์โทรศัพท์ และที่อยู่จัดส่งภายหลังได้',
+  authRegisterCompleteButtonLabel: 'เริ่มใช้งาน',
+  authForgotEyebrow: 'ACCOUNT RECOVERY', authForgotTitle: 'ลืมรหัสผ่าน',
+  authForgotDescription: 'กรอกอีเมลที่ใช้ลงทะเบียน ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ให้คุณ',
+  authForgotEmailLabel: 'อีเมลที่ลงทะเบียนไว้',
+  authForgotEmailPlaceholder: 'name@example.com',
+  authForgotSubmitLabel: 'ส่งลิงก์ตั้งรหัสผ่าน',
+  authForgotBackLabel: 'กลับไปเข้าสู่ระบบ',
+  authResetEyebrow: 'SECURE YOUR ACCOUNT', authResetTitle: 'ตั้งรหัสผ่านใหม่',
+  authResetDescription: 'กำหนดรหัสผ่านใหม่เพื่อกลับเข้าใช้งานบัญชีของคุณ',
+  authResetPasswordLabel: 'รหัสผ่านใหม่',
+  authResetPasswordPlaceholder: 'อย่างน้อย 8 ตัวอักษร',
+  authResetConfirmLabel: 'ยืนยันรหัสผ่าน',
+  authResetConfirmPlaceholder: 'กรอกรหัสผ่านอีกครั้ง',
+  authResetSubmitLabel: 'บันทึกรหัสผ่านใหม่', authResetBackLabel: 'กลับไปเข้าสู่ระบบ'
 };
 
 function doGet(e) {
@@ -1621,7 +1680,9 @@ function saveSettings(token, data) {
   try {
     var user = requireAdmin_(token, 'settings.manage');
     data = data || {};
-    ['primaryColor','secondaryColor','accentColor'].forEach(function(k) { if (Object.prototype.hasOwnProperty.call(data,k) && data[k] && !/^#[0-9a-fA-F]{6}$/.test(String(data[k]))) throw new Error('รูปแบบสี '+k+' ไม่ถูกต้อง กรุณาใช้ Hex Color เช่น #EE4D2D'); });
+    ['primaryColor','secondaryColor','accentColor','authPageBackgroundColor','authPageCardColor','authPageTextColor','authPagePrimaryColor','authPageCampaignColor'].forEach(function(k) { if (Object.prototype.hasOwnProperty.call(data,k) && data[k] && !/^#[0-9a-fA-F]{6}$/.test(String(data[k]))) throw new Error('รูปแบบสี '+k+' ไม่ถูกต้อง กรุณาใช้ Hex Color เช่น #EE4D2D'); });
+    if (Object.prototype.hasOwnProperty.call(data,'authPageCardRadius')) { var authRadius=Number(data.authPageCardRadius); if(!isFinite(authRadius)||authRadius<0||authRadius>32) throw new Error('ความโค้งของการ์ดต้องอยู่ระหว่าง 0 ถึง 32 พิกเซล'); data.authPageCardRadius=String(Math.round(authRadius)); }
+    if (Object.prototype.hasOwnProperty.call(data,'authPageCardWidth')) { var authWidth=Number(data.authPageCardWidth); if(!isFinite(authWidth)||authWidth<320||authWidth>600) throw new Error('ความกว้างของฟอร์มต้องอยู่ระหว่าง 320 ถึง 600 พิกเซล'); data.authPageCardWidth=String(Math.round(authWidth)); }
     if (Object.prototype.hasOwnProperty.call(data, 'setFaviconUrl') && data.setFaviconUrl) {
       var faviconSettingValue = String(data.setFaviconUrl).trim();
       var isDriveFaviconToken = /^drive-asset:\/\/[A-Za-z0-9_-]{20,80}$/i.test(faviconSettingValue);
