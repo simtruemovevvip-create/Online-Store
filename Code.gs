@@ -1581,6 +1581,25 @@ function saveSocialLoginAdminConfig(token, data) {
   } catch (e) { return fail_(safeError_(e)); }
 }
 
+/**
+ * Verifies the provider credential on the server, then creates the customer
+ * session. The browser never receives a local session until verification passes.
+ */
+function customerSocialLogin(provider, credential) {
+  try {
+    provider = String(provider || '').toLowerCase();
+    credential = text_(credential, 10000);
+    if (!credential) throw new Error('ไม่พบข้อมูลยืนยันตัวตนจากผู้ให้บริการ');
+    var profile;
+    if (provider === 'google') profile = verifyGoogleCustomerCredential_(credential);
+    else if (provider === 'facebook') profile = verifyFacebookCustomerCredential_(credential);
+    else throw new Error('ไม่รองรับผู้ให้บริการเข้าสู่ระบบนี้');
+    var customer = socialLoginOrCreateCustomer_(provider, profile);
+    var session = createSession_(customer, 'customer');
+    return ok_({ token: session.token, expiresAt: session.expiresAt, customer: publicCustomer_(customer) }, 'เข้าสู่ระบบสำเร็จ');
+  } catch (e) { return fail_(safeError_(e)); }
+}
+
 function verifyGoogleCustomerCredential_(idToken) {
   var props = PropertiesService.getScriptProperties();
   var clientId = props.getProperty('GOOGLE_CLIENT_ID') || '';
