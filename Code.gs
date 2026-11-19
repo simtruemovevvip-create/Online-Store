@@ -99,7 +99,7 @@ var DEFAULT_SETTINGS_ = {
   authLoginCampaignSubheadline: 'SALE', authLoginCampaignDiscountText: 'ลดสูงสุด',
   authLoginCampaignDiscountValue: '90', authLoginCampaignTag: 'ดีลเด็ด ช้อปคุ้มทุกวัน',
   authLoginCampaignFoot: 'ช้อปง่าย • ปลอดภัย • ส่งตรงถึงคุณ',
-  authRegisterShowProgress: 'true', authRegisterTitle: 'สมัครสมาชิก',
+  authRegisterShowProgress: 'true', authRegisterProgressEmailLabel: 'ยืนยันอีเมล', authRegisterProgressPasswordLabel: 'ตั้งรหัสผ่าน', authRegisterProgressDoneLabel: 'เสร็จสิ้น', authRegisterTitle: 'สมัครสมาชิก',
   authRegisterDescription: 'กรอกอีเมลที่คุณใช้งานได้จริง ระบบจะส่งรหัส OTP เพื่อยืนยันก่อนตั้งรหัสผ่าน',
   authRegisterEmailLabel: 'อีเมล', authRegisterEmailPlaceholder: 'name@example.com',
   authRegisterSubmitLabel: 'ส่งรหัสยืนยันทางอีเมล',
