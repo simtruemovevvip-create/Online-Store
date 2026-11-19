@@ -9,8 +9,11 @@
 1. เปิด [Google Cloud Console](https://console.cloud.google.com/) แล้วเลือกหรือสร้าง Project
 2. ไปที่ Google Auth Platform และตั้งค่า Branding / Audience ให้เรียบร้อย
 3. ไปที่ Clients แล้วสร้าง OAuth Client ID ชนิด **Web application**
-4. ใน **Authorized JavaScript origins** ใส่ origin ที่หน้าเว็บใช้จริง โดยดูจาก address bar หลังเปิด Web App แล้วคัดลอกเฉพาะ protocol + hostname เช่น `https://script.google.com` หรือ `https://script.googleusercontent.com` (ไม่ใส่ path และไม่ใส่ `/exec`) หากระบบแสดงทั้งสอง host ให้เพิ่มทั้งสองค่า
-5. คัดลอก Client ID ที่ลงท้ายด้วย `.apps.googleusercontent.com`
+4. ตรวจ origin จริงที่หน้าเว็บกำลังรัน โดยเปิด DevTools Console (กด F12 > Console) แล้วพิมพ์ `location.origin` คัดลอกผลลัพธ์แบบเต็มเฉพาะ origin ซึ่งต้องมี `https://` และไม่มี path/query
+5. ใน **Authorized JavaScript origins** เพิ่ม origin นั้น เช่น หากกำลังทดสอบ Vercel Preview ของ PR นี้และ address bar ใช้โดเมนดังกล่าว ให้เพิ่ม `https://onlinestorevip-git-unified-login-simtruemovevvip-1638s-projects.vercel.app` (ใช้เฉพาะเมื่อเป็น URL ที่เปิดอยู่จริง) แล้วเพิ่ม production domain แยกอีกหนึ่งรายการเมื่อมีโดเมนจริง
+6. คัดลอก Client ID ที่ลงท้ายด้วย `.apps.googleusercontent.com`
+
+**สำคัญสำหรับ Apps Script:** Google ไม่อนุญาตให้ลงทะเบียน host ที่ลงท้ายด้วย `googleusercontent.com` เป็น Authorized JavaScript Origin หาก `location.origin` ของหน้า HTML Service เป็น host ดังกล่าว การใช้ Google Identity Services แบบ JavaScript popup ใน iframe นั้นจะไม่สามารถแก้ได้ด้วยการเพิ่ม origin นี้ ให้ทดสอบจาก frontend บนโดเมน HTTPS ที่คุณควบคุม (เช่น Vercel/custom domain) หรือเปลี่ยนเป็น OAuth authorization-code/redirect flow ที่มี callback URL ที่ลงทะเบียนได้ อย่าใส่ `https://script.googleusercontent.com` ลงใน Authorized JavaScript origins เพราะ Google ปฏิเสธโดเมนนี้
 
 คู่มือ Google: [Create a Google Identity Services client ID](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid)
 
@@ -18,10 +21,11 @@
 
 1. เปิด [Meta for Developers](https://developers.facebook.com/apps/) แล้วสร้างหรือเลือก App
 2. เพิ่มผลิตภัณฑ์ **Facebook Login** และเลือกการตั้งค่าสำหรับ Web
-3. ใน App Settings > Basic กำหนด App Domains เป็น host ที่ Web App ใช้งานจริง (ไม่ใส่ protocol หรือ path)
-4. ใน Facebook Login settings เปิดการใช้งาน JavaScript SDK / Web OAuth ตามหน้าตั้งค่าของ App และอนุญาต domain เดียวกัน
-5. ตั้ง App ให้เป็น Live เมื่อผ่านการทดสอบและทำข้อกำหนดของ Meta ครบแล้ว ใน Development mode ให้ทดสอบด้วยบัญชีที่เป็น App role/tester เท่านั้น
-6. คัดลอก **App ID** และ **App Secret** เก็บไว้ในที่ปลอดภัย
+3. ใน App Settings > Basic กำหนด App Domains เป็น hostname ที่ Web App ใช้งานจริง (ไม่ใส่ protocol หรือ path)
+4. ใน Facebook Login settings เปิด **Login with the JavaScript SDK = Yes** และเพิ่ม hostname ที่หน้าเว็บใช้งานอยู่ใน **Allowed Domains for the JavaScript SDK** (ไม่ใส่ path) หากทดสอบ PR Preview ให้เพิ่ม `onlinestorevip-git-unified-login-simtruemovevvip-1638s-projects.vercel.app` เฉพาะเมื่อ address bar ใช้ host นี้จริง และเพิ่ม production host แยกต่างหาก
+5. ตรวจให้แน่ใจว่า App ID ใน Script Properties เป็น App เดียวกับ App ID ในหน้า Meta
+6. ตั้ง App ให้เป็น Live เมื่อผ่านการทดสอบและทำข้อกำหนดของ Meta ครบแล้ว ใน Development mode ให้ทดสอบด้วยบัญชีที่เป็น App role/tester เท่านั้น
+7. คัดลอก **App ID** และ **App Secret** เก็บไว้ในที่ปลอดภัย
 
 คู่มือ Meta: [Facebook Login](https://developers.facebook.com/docs/facebook-login/) และ [JavaScript SDK Quickstart](https://developers.facebook.com/docs/javascript/quickstart/)
 
