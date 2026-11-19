@@ -7299,19 +7299,22 @@ function adjustInventoryDialog(productId,variantId){
           html+='<div class="field"><label for="setting_'+key+'">'+esc(label)+'</label><input id="setting_'+key+'" type="'+(kind==='number'?'number':(kind==='email'?'email':(kind==='url'?'url':'text'))) +'" value="'+esc(val)+'"></div>';
         });html+='</div></section>';});
         html+='<section class="admin-settings-section admin-home-banner-settings" data-settings-panel="homepage" hidden><header><h3>จัดการป้ายและแบนเนอร์หน้าร้าน</h3><p>เพิ่มรูปและกำหนดตำแหน่ง Hero Banner, โปรโมชั่น 3 ช่อง, SHOPEE MALL และ Vertical Promo Banner พร้อมตั้งค่าลิงก์ปลายทางได้จากส่วนนี้</p></header><div id="adminHeroBannerManager"><div class="admin-skeleton" aria-label="กำลังโหลดรายการแบนเนอร์">'+adminSkeleton('banners')+'</div></div></section>';
-        html+='<section class="admin-settings-section" data-settings-panel="members" hidden><header><h3>การยืนยันตัวตนสมาชิก</h3><p>ระบบสมัครสมาชิกใช้ Email OTP ผ่าน Google Apps Script MailApp ไม่มี SMS OTP หรือ Twilio</p></header><div class="admin-email-otp-card"><span class="status-pill active">Email OTP</span><p class="muted" id="emailOtpServiceStatus">กำลังตรวจสอบสถานะ MailApp...</p><button type="button" class="btn btn-outline btn-small" onclick="refreshEmailOtpServiceStatus()">ตรวจสอบโควตาอีเมล</button></div></section></div>';
+        html+='<section class="admin-settings-section" data-settings-panel="members" hidden><header><h3>การยืนยันตัวตนสมาชิก</h3><p>ตั้งค่าการสมัครสมาชิกและช่องทางเข้าสู่ระบบผ่านผู้ให้บริการภายนอก</p></header>'+
+          '<div class="admin-email-otp-card"><span class="status-pill active">Email OTP</span><p class="muted" id="emailOtpServiceStatus">กำลังตรวจสอบสถานะ MailApp...</p><button type="button" class="btn btn-outline btn-small" onclick="refreshEmailOtpServiceStatus()">ตรวจสอบโควตาอีเมล</button></div>'+
+          '<div class="admin-social-login-card"><div class="admin-social-login-head"><div><h3>เข้าสู่ระบบด้วย Google และ Facebook</h3><p>ตั้งค่าข้อมูล OAuth ของแอป เพื่อเปิดใช้งานปุ่ม Google และ Facebook ในหน้าเข้าสู่ระบบลูกค้า</p></div><span class="status-pill" id="socialLoginConfigStatus">กำลังตรวจสอบ</span></div><div id="socialLoginAdminConfig"><div class="admin-skeleton">กำลังโหลดการตั้งค่าผู้ให้บริการ...</div></div></div></section></div>';
         document.getElementById('adminContent').innerHTML=html;document.getElementById('adminContent').setAttribute('aria-busy','false');APP.editSettingsKeys=allKeys;
         var activeSettingsTab=String(APP.adminSettingsActiveTab||'brand');
         if(settingsTabIds.indexOf(activeSettingsTab)<0&&activeSettingsTab!=='members')activeSettingsTab='brand';
         APP.adminSettingsActiveTab=activeSettingsTab;
         switchAdminSettingsTab(activeSettingsTab,document.querySelector('#adminContent [data-settings-tab="'+activeSettingsTab+'"]'));
-        refreshEmailOtpServiceStatus();loadAdminHeroBanners();if(typeof onLoaded==='function')onLoaded(true,'');
+        refreshEmailOtpServiceStatus();loadSocialLoginAdminConfig();loadAdminHeroBanners();if(typeof onLoaded==='function')onLoaded(true,'');
       });
     }
     function switchAdminSettingsTab(tabId,button){
       var allowed=['brand','contact','sales','payments','appearance','policies','homepage','auth','members'];
       tabId=allowed.indexOf(String(tabId||''))>=0?String(tabId):'brand';
       APP.adminSettingsActiveTab=tabId;
+      if(tabId==='members'&&typeof loadSocialLoginAdminConfig==='function')loadSocialLoginAdminConfig();
       var panels=document.querySelectorAll('#adminContent [data-settings-panel]');
       panels.forEach(function(panel){panel.hidden=panel.getAttribute('data-settings-panel')!==tabId;});
       var tabs=document.querySelectorAll('#adminContent [data-settings-tab]');
@@ -7341,6 +7344,81 @@ function adjustInventoryDialog(productId,variantId){
         APP.settings=Object.assign({},APP.settings,d);loadAdminSettings(function(ok,message){if(!ok){restoreInlineButton(busy);alertError('บันทึกแล้วแต่โหลดการตั้งค่าล่าสุดไม่สำเร็จ: '+message);return;}applySettings();toast(r.message,'success',faviconChanged?'บันทึก Favicon แล้ว กรุณารีเฟรชหน้าเว็บไซต์ 1 ครั้งเพื่อให้อัปเดตไอคอนบนแท็บเบราว์เซอร์':'การตั้งค่าร้านค้าถูกบันทึกและโหลดกลับมาแล้ว');});
       },false);
     }
+    function socialLoginOriginsMarkup(){
+      var origins=[];
+      function addOrigin(value){
+        value=String(value||'').trim();if(!value)return;
+        var anchor=document.createElement('a');anchor.href=value;
+        if(anchor.protocol&&anchor.host){
+          var origin=anchor.protocol+'//'+anchor.host;
+          if(origins.indexOf(origin)<0)origins.push(origin);
+        }
+      }
+      try{addOrigin(window.location.href);}catch(e){}
+      try{addOrigin(document.body.getAttribute('data-web-app-url')||'');}catch(e){}
+      if(!origins.length)return '<span class="muted">ไม่สามารถอ่าน Origin อัตโนมัติได้ กรุณาเปิดหน้านี้จาก Web App URL</span>';
+      return origins.map(function(origin){
+        var anchor=document.createElement('a');anchor.href=origin;
+        return '<div class="social-login-origin-row"><code>'+esc(origin)+'</code><small>Domain: '+esc(anchor.hostname||'')+'</small></div>';
+      }).join('');
+    }
+
+    function loadSocialLoginAdminConfig(){
+      var host=document.getElementById('socialLoginAdminConfig');if(!host)return;
+      apiCall('getSocialLoginAdminConfig',[APP.adminToken],function(r){
+        if(!host.isConnected)return;
+        if(!r||!r.success){
+          host.innerHTML='<div class="empty-state"><p>'+esc(r&&r.message||'โหลดการตั้งค่า Social Login ไม่สำเร็จ')+'</p><button type="button" class="btn btn-outline btn-small" onclick="loadSocialLoginAdminConfig()">ลองอีกครั้ง</button></div>';
+          return;
+        }
+        var d=r.data||{};
+        var googleState=d.googleEnabled?'<span class="status-pill active">Google พร้อมตั้งค่าแล้ว</span>':'<span class="status-pill warning">ยังไม่ได้ตั้งค่า Google</span>';
+        var facebookState=d.facebookEnabled?'<span class="status-pill active">Facebook พร้อมตั้งค่าแล้ว</span>':'<span class="status-pill warning">ยังไม่ได้ตั้งค่า Facebook</span>';
+        var html='<div class="social-login-provider-status">'+googleState+facebookState+'</div>'+
+          '<div class="form-grid social-login-config-grid">'+
+            '<div class="field full"><label for="socialLoginGoogleClientId">Google OAuth 2.0 Web Client ID</label><input id="socialLoginGoogleClientId" type="text" autocomplete="off" spellcheck="false" value="'+esc(d.googleClientId||'')+'" placeholder="1234567890-xxxxx.apps.googleusercontent.com"><small class="modal-help">ใช้ Web application OAuth Client ID จาก Google Cloud Console ไม่ใช่ API Key</small></div>'+
+            '<div class="field"><label for="socialLoginFacebookAppId">Facebook App ID</label><input id="socialLoginFacebookAppId" type="text" inputmode="numeric" autocomplete="off" value="'+esc(d.facebookAppId||'')+'" placeholder="ตัวเลข App ID"></div>'+
+            '<div class="field"><label for="socialLoginFacebookGraphVersion">Facebook Graph API Version</label><input id="socialLoginFacebookGraphVersion" type="text" value="'+esc(d.facebookGraphVersion||'v27.0')+'" placeholder="v27.0"><small class="modal-help">กำหนดรูปแบบ vXX.0 ตามเวอร์ชันที่แอปรองรับ</small></div>'+
+            '<div class="field full"><label for="socialLoginFacebookAppSecret">Facebook App Secret</label><input id="socialLoginFacebookAppSecret" type="password" autocomplete="new-password" value="" placeholder="'+(d.facebookSecretConfigured?'มี Secret บันทึกไว้อยู่แล้ว · เว้นว่างเพื่อใช้ค่าเดิม':'กรอก App Secret จาก Meta App Dashboard')+'"><small class="modal-help">Secret จะถูกเก็บใน Script Properties ฝั่งเซิร์ฟเวอร์ และจะไม่ถูกส่งกลับมาแสดงในหน้าเว็บ</small></div>'+
+            '<div class="field full"><label class="admin-switch-row" for="socialLoginClearFacebookSecret"><span class="admin-switch-copy"><b>ลบ Facebook App Secret เดิม</b><small>ใช้เมื่อยกเลิกการเชื่อมต่อหรือต้องการนำ Secret ออก</small></span><input id="socialLoginClearFacebookSecret" type="checkbox" class="admin-switch-input"><span class="admin-switch-track"><i></i></span></label></div>'+
+          '</div>'+
+          '<div class="social-login-origins"><b>Origin / Domain ของ Web App ปัจจุบัน</b><p class="muted">เพิ่ม Origin ที่แสดงใน Google Cloud → Authorized JavaScript origins และเพิ่ม Domain ใน Meta App → App Domains / Website Platform ให้ตรงกับ URL ที่ใช้งานจริง</p>'+socialLoginOriginsMarkup()+'</div>'+
+          '<div class="social-login-setup-guide"><b>ขั้นตอนการตั้งค่า</b><ol>'+
+            '<li>Google: สร้าง OAuth Client แบบ Web application ใน <a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noopener">Google Cloud Console</a> แล้วเพิ่ม Origin ด้านบนใน Authorized JavaScript origins</li>'+
+            '<li>Facebook: สร้างแอปใน <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener">Meta for Developers</a> เพิ่มผลิตภัณฑ์ Facebook Login และตั้ง App Domains / Website URL ให้ตรงกับ Web App</li>'+
+            '<li>คัดลอก Google Client ID, Facebook App ID และ App Secret มาใส่ที่นี่ แล้วกดบันทึก</li>'+
+            '<li>หากแอป Facebook ยังอยู่ Development Mode จะให้เฉพาะผู้ดูแล นักพัฒนา และผู้ทดสอบของแอปเข้าสู่ระบบได้ เมื่อต้องการเปิดให้ผู้ใช้ทั่วไปต้องตั้งค่าโหมดและข้อกำหนดของ Meta ให้ครบ</li>'+
+          '</ol><p class="modal-help">หลังบันทึก ให้ปิดและเปิดหน้าเข้าสู่ระบบใหม่เพื่อโหลดการตั้งค่าผู้ให้บริการล่าสุด</p></div>'+
+          '<div class="social-login-actions"><button type="button" class="btn btn-primary" onclick="saveSocialLoginAdminConfig(this)"><i class="fa-solid fa-floppy-disk"></i> บันทึกการตั้งค่า Google / Facebook</button></div>';
+        host.innerHTML=html;
+        var badge=document.getElementById('socialLoginConfigStatus');
+        if(badge){badge.textContent=d.googleEnabled&&d.facebookEnabled?'Google + Facebook ตั้งค่าแล้ว':(d.googleEnabled||d.facebookEnabled?'ตั้งค่าแล้วบางส่วน':'ยังไม่ได้ตั้งค่า');badge.className='status-pill '+(d.googleEnabled&&d.facebookEnabled?'active':(d.googleEnabled||d.facebookEnabled?'warning':''));}
+      },false,'',true);
+    }
+
+    function saveSocialLoginAdminConfig(button){
+      var google=document.getElementById('socialLoginGoogleClientId');
+      var facebook=document.getElementById('socialLoginFacebookAppId');
+      var secret=document.getElementById('socialLoginFacebookAppSecret');
+      var graph=document.getElementById('socialLoginFacebookGraphVersion');
+      var clear=document.getElementById('socialLoginClearFacebookSecret');
+      if(!google||!facebook||!secret||!graph){alertError('ไม่พบฟอร์มตั้งค่า Google / Facebook');return;}
+      var data={
+        googleClientId:google.value.trim(),
+        facebookAppId:facebook.value.trim(),
+        facebookAppSecret:secret.value,
+        clearFacebookAppSecret:!!(clear&&clear.checked),
+        facebookGraphVersion:graph.value.trim()
+      };
+      var busy=setInlineButtonBusy(button,'กำลังบันทึก...');
+      apiCall('saveSocialLoginAdminConfig',[APP.adminToken,data],function(r){
+        if(!r||!r.success){restoreInlineButton(busy);alertError(r&&r.message||'บันทึกการตั้งค่า Social Login ไม่สำเร็จ');return;}
+        restoreInlineButton(busy);
+        toast('บันทึกการตั้งค่า Google / Facebook แล้ว','success','Secret ถูกเก็บไว้ฝั่งเซิร์ฟเวอร์โดยไม่แสดงกลับในหน้าเว็บ');
+        loadSocialLoginAdminConfig();
+      },true,'กำลังบันทึกข้อมูลผู้ให้บริการ...');
+    }
+
     function refreshEmailOtpServiceStatus(){apiCall('getEmailOtpServiceStatus',[],function(r){var el=document.getElementById('emailOtpServiceStatus');if(!el)return;if(r&&r.success&&r.data&&r.data.configured){el.textContent='MailApp พร้อมใช้งานในขณะนี้ · โควตาผู้รับอีเมลคงเหลือ '+Number(r.data.remainingRecipients||0)+' ราย';el.style.color='var(--success)';}else{el.textContent='ยังไม่ได้อนุญาต MailApp หรือไม่สามารถตรวจสอบโควตาได้ กรุณา Run authorizeEmailOtpService() จาก Apps Script';el.style.color='var(--warning)';}});}
 
     function loadAdminReports(){var html='<div class="panel"><div class="section-head"><div><h3>รายงานยอดขาย</h3><p class="muted">ข้อมูลจาก Orders ที่ยืนยันการชำระเงินแล้ว</p></div><div class="admin-toolbar"><input id="reportStart" type="date" style="padding:7px;border:1px solid var(--border);border-radius:8px"><input id="reportEnd" type="date" style="padding:7px;border:1px solid var(--border);border-radius:8px"><button class="btn btn-primary btn-small" onclick="runSalesReport()">ค้นหา</button><button class="btn btn-outline btn-small" onclick="downloadSalesReport(\'csv\')">CSV</button><button class="btn btn-outline btn-small" onclick="downloadSalesReport(\'xlsx\')">XLSX</button><button class="btn btn-outline btn-small" onclick="downloadSalesReport(\'pdf\')">PDF</button></div></div><div id="reportResult"><div class="empty-state">เลือกช่วงวันที่เพื่อดูรายงาน</div></div></div>';document.getElementById('adminContent').innerHTML=html;document.getElementById('adminContent').setAttribute('aria-busy','false');}
@@ -14324,6 +14402,23 @@ function startGlobalDataSync_(){
   .store-login-screen .shop-login-campaign-foot{z-index:2}
   .admin-settings-subheading{grid-column:1/-1;margin:12px 0 0;padding:10px 0 7px;border-bottom:1px solid var(--border)}
   .admin-settings-subheading h4{margin:0;color:var(--text);font-size:13px;font-weight:800}
+  .admin-social-login-card{margin-top:18px;padding:18px 20px;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:0 4px 15px rgba(20,30,45,.035)}
+  .admin-social-login-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
+  .admin-social-login-head h3{margin:0 0 4px;font-size:15px;color:var(--ink)}
+  .admin-social-login-head p{margin:0;font-size:12px;color:var(--muted)}
+  .social-login-provider-status{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+  .social-login-config-grid{margin-bottom:14px}
+  .social-login-origins,.social-login-setup-guide{padding:13px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);margin-top:12px}
+  .social-login-origins>b,.social-login-setup-guide>b{display:block;margin-bottom:5px;color:var(--ink);font-size:12px}
+  .social-login-origins p,.social-login-setup-guide p{margin:5px 0 8px;font-size:11px;color:var(--muted)}
+  .social-login-origin-row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px dashed var(--border);flex-wrap:wrap}
+  .social-login-origin-row code{font-size:11px;overflow-wrap:anywhere}
+  .social-login-origin-row small{font-size:10px;color:var(--muted)}
+  .social-login-setup-guide ol{margin:8px 0 4px 18px;padding:0;font-size:11px;line-height:1.65;color:var(--ink)}
+  .social-login-setup-guide a{color:var(--primary);font-weight:700}
+  .social-login-actions{display:flex;justify-content:flex-end;margin-top:14px}
+  .admin-social-login-card .admin-switch-row{max-width:440px}
+  @media(max-width:640px){.admin-social-login-card{padding:14px}.admin-social-login-head{flex-direction:column}}
 </style>
 
 </body>
