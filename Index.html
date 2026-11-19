@@ -7171,7 +7171,12 @@ function adjustInventoryDialog(productId,variantId){
     }
 
     function loadAdminSettings(onLoaded){
+      // Preserve the selected settings tab when a live refresh or a parallel
+      // settings request rebuilds the settings view.
+      var loadRequestId=Number(APP.adminSettingsLoadRequestId||0)+1;
+      APP.adminSettingsLoadRequestId=loadRequestId;
       apiCall('getAdminSettings',[APP.adminToken],function(r){
+        if(loadRequestId!==Number(APP.adminSettingsLoadRequestId||0))return;
         if(!r.success){showAdminError(r.message);if(typeof onLoaded==='function')onLoaded(false,r.message);return;}
         var d=r.data||{};
         var groups=[
@@ -7295,10 +7300,38 @@ function adjustInventoryDialog(productId,variantId){
         });html+='</div></section>';});
         html+='<section class="admin-settings-section admin-home-banner-settings" data-settings-panel="homepage" hidden><header><h3>จัดการป้ายและแบนเนอร์หน้าร้าน</h3><p>เพิ่มรูปและกำหนดตำแหน่ง Hero Banner, โปรโมชั่น 3 ช่อง, SHOPEE MALL และ Vertical Promo Banner พร้อมตั้งค่าลิงก์ปลายทางได้จากส่วนนี้</p></header><div id="adminHeroBannerManager"><div class="admin-skeleton" aria-label="กำลังโหลดรายการแบนเนอร์">'+adminSkeleton('banners')+'</div></div></section>';
         html+='<section class="admin-settings-section" data-settings-panel="members" hidden><header><h3>การยืนยันตัวตนสมาชิก</h3><p>ระบบสมัครสมาชิกใช้ Email OTP ผ่าน Google Apps Script MailApp ไม่มี SMS OTP หรือ Twilio</p></header><div class="admin-email-otp-card"><span class="status-pill active">Email OTP</span><p class="muted" id="emailOtpServiceStatus">กำลังตรวจสอบสถานะ MailApp...</p><button type="button" class="btn btn-outline btn-small" onclick="refreshEmailOtpServiceStatus()">ตรวจสอบโควตาอีเมล</button></div></section></div>';
-        document.getElementById('adminContent').innerHTML=html;document.getElementById('adminContent').setAttribute('aria-busy','false');APP.editSettingsKeys=allKeys;refreshEmailOtpServiceStatus();loadAdminHeroBanners();if(typeof onLoaded==='function')onLoaded(true,'');
+        document.getElementById('adminContent').innerHTML=html;document.getElementById('adminContent').setAttribute('aria-busy','false');APP.editSettingsKeys=allKeys;
+        var activeSettingsTab=String(APP.adminSettingsActiveTab||'brand');
+        if(settingsTabIds.indexOf(activeSettingsTab)<0&&activeSettingsTab!=='members')activeSettingsTab='brand';
+        APP.adminSettingsActiveTab=activeSettingsTab;
+        switchAdminSettingsTab(activeSettingsTab,document.querySelector('#adminContent [data-settings-tab="'+activeSettingsTab+'"]'));
+        refreshEmailOtpServiceStatus();loadAdminHeroBanners();if(typeof onLoaded==='function')onLoaded(true,'');
       });
     }
-    function switchAdminSettingsTab(tabId,button){var panels=document.querySelectorAll('#adminContent [data-settings-panel]');panels.forEach(function(panel){panel.hidden=panel.getAttribute('data-settings-panel')!==tabId;});var tabs=document.querySelectorAll('#adminContent [data-settings-tab]');tabs.forEach(function(tab){var active=tab.getAttribute('data-settings-tab')===tabId;tab.setAttribute('aria-selected',active?'true':'false');tab.style.background=active?'var(--primary,#2563eb)':'var(--surface,#fff)';tab.style.color=active?'#fff':'var(--text)';tab.style.borderColor=active?'var(--primary,#2563eb)':'var(--border)';});if(button&&button.scrollIntoView)button.scrollIntoView({block:'nearest',inline:'nearest'});}
+    function switchAdminSettingsTab(tabId,button){
+      var allowed=['brand','contact','sales','payments','appearance','policies','homepage','auth','members'];
+      tabId=allowed.indexOf(String(tabId||''))>=0?String(tabId):'brand';
+      APP.adminSettingsActiveTab=tabId;
+      var panels=document.querySelectorAll('#adminContent [data-settings-panel]');
+      panels.forEach(function(panel){panel.hidden=panel.getAttribute('data-settings-panel')!==tabId;});
+      var tabs=document.querySelectorAll('#adminContent [data-settings-tab]');
+      tabs.forEach(function(tab){
+        var active=tab.getAttribute('data-settings-tab')===tabId;
+        tab.setAttribute('aria-selected',active?'true':'false');
+        tab.style.background=active?'var(--primary,#2563eb)':'var(--surface,#fff)';
+        tab.style.color=active?'#fff':'var(--text)';
+        tab.style.borderColor=active?'var(--primary,#2563eb)':'var(--border)';
+      });
+      // Do not call scrollIntoView here: it can scroll the whole admin page
+      // back to the first settings section while only horizontal nav scrolling
+      // is intended. Keep the selected tab visible inside its own nav strip.
+      var nav=button&&button.closest?button.closest('.admin-settings-tabs'):null;
+      if(nav&&button){
+        var left=button.offsetLeft,right=left+button.offsetWidth;
+        if(left<nav.scrollLeft)nav.scrollLeft=left;
+        else if(right>nav.scrollLeft+nav.clientWidth)nav.scrollLeft=right-nav.clientWidth;
+      }
+    }
     function updateCurrencySymbolFromCurrency(){var currency=document.getElementById('setting_currency'),symbol=document.getElementById('setting_currencySymbol');if(!currency||!symbol)return;var map={THB:'฿',MMK:'K',USD:'$',SGD:'S$',MYR:'RM',JPY:'¥',EUR:'€',GBP:'£'};symbol.value=map[currency.value]||symbol.value;}
     function saveAdminSettings(button){
       var d={};safeArray(APP.editSettingsKeys).forEach(function(k){var e=document.getElementById('setting_'+k);if(k==='homeSections'){d[k]=JSON.stringify(safeArray(APP.homeSectionDraft).map(function(item){return {id:item.id,enabled:!!item.enabled};}));return;}if(k==='mallStoreIds'){d[k]=JSON.stringify(Array.prototype.map.call(document.querySelectorAll('#adminMallStoreOptions input[name="adminMallStoreIds"]:checked'),function(input){return input.value;}));return;}if(!e)return;if(e.type==='checkbox')d[k]=e.checked?'true':'false';else if(k==='paymentMethods')d[k]=JSON.stringify(Array.prototype.slice.call(e.selectedOptions||[]).map(function(o){return o.value;}));else if(e.isContentEditable)d[k]=getRichEditorHtml('setting_'+k);else d[k]=e.value;});
