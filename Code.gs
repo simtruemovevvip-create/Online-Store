@@ -1526,69 +1526,58 @@ function saveSocialLoginAdminConfig(token, data) {
     var oldFacebookAppId = props.getProperty('FACEBOOK_APP_ID') || '';
     var oldFacebookSecret = props.getProperty('FACEBOOK_APP_SECRET') || '';
 
-    if (Object.prototype.hasOwnProperty.call(data, 'googleClientId')) {
-      var googleClientId = text_(data.googleClientId, 255).trim();
-      if (googleClientId && !/^[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(googleClientId)) {
-        throw new Error('Google Client ID ไม่ถูกต้อง ต้องเป็น Web OAuth Client ID ที่ลงท้ายด้วย .apps.googleusercontent.com');
-      }
+    // Validate every submitted value before changing Script Properties. This
+    // prevents a partial save if one credential or API version is invalid.
+    var hasGoogle = Object.prototype.hasOwnProperty.call(data, 'googleClientId');
+    var googleClientId = hasGoogle ? text_(data.googleClientId, 255).trim() : '';
+    if (hasGoogle && googleClientId && !/^[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(googleClientId)) {
+      throw new Error('Google Client ID ไม่ถูกต้อง ต้องเป็น Web OAuth Client ID ที่ลงท้ายด้วย .apps.googleusercontent.com');
+    }
+
+    var hasFacebookAppId = Object.prototype.hasOwnProperty.call(data, 'facebookAppId');
+    var facebookAppId = hasFacebookAppId ? text_(data.facebookAppId, 40).trim() : oldFacebookAppId;
+    if (hasFacebookAppId && facebookAppId && !/^[0-9]{5,30}$/.test(facebookAppId)) {
+      throw new Error('Facebook App ID ต้องเป็นตัวเลข 5–30 หลัก');
+    }
+    var appChanged = hasFacebookAppId && facebookAppId !== oldFacebookAppId;
+    var incomingSecret = text_(data.facebookAppSecret, 256).trim();
+    var clearSecret = data.clearFacebookAppSecret === true || String(data.clearFacebookAppSecret).toLowerCase() === 'true';
+    if (incomingSecret && clearSecret) throw new Error('เลือกกรอก App Secret ใหม่ หรือเลือกนำ Secret เดิมออก อย่างใดอย่างหนึ่ง');
+    if (incomingSecret && !/^[A-Za-z0-9_-]{16,256}$/.test(incomingSecret)) {
+      throw new Error('รูปแบบ Facebook App Secret ไม่ถูกต้อง');
+    }
+    if (facebookAppId && appChanged && oldFacebookSecret && !incomingSecret) {
+      throw new Error('คุณเปลี่ยน Facebook App ID แล้ว กรุณากรอก App Secret ของ App ใหม่นี้ด้วย');
+    }
+
+    var hasGraphVersion = Object.prototype.hasOwnProperty.call(data, 'facebookGraphVersion');
+    var graphVersion = hasGraphVersion ? text_(data.facebookGraphVersion, 20).trim() : (props.getProperty('FACEBOOK_GRAPH_VERSION') || 'v27.0');
+    if (hasGraphVersion && !/^v[0-9]+\.0$/.test(graphVersion)) {
+      throw new Error('Graph API Version ต้องอยู่ในรูปแบบ v27.0');
+    }
+
+    // Apply only after all validations pass.
+    if (hasGoogle) {
       if (googleClientId) props.setProperty('GOOGLE_CLIENT_ID', googleClientId);
       else props.deleteProperty('GOOGLE_CLIENT_ID');
     }
-
-    if (Object.prototype.hasOwnProperty.call(data, 'facebookAppId')) {
-      var facebookAppId = text_(data.facebookAppId, 40).trim();
-      if (facebookAppId && !/^[0-9]{5,30}$/.test(facebookAppId)) {
-        throw new Error('Facebook App ID ต้องเป็นตัวเลข 5–30 หลัก');
-      }
-      var appChanged = facebookAppId !== oldFacebookAppId;
-      var incomingSecret = text_(data.facebookAppSecret, 256).trim();
-      var clearSecret = data.clearFacebookAppSecret === true || String(data.clearFacebookAppSecret).toLowerCase() === 'true';
-
-      if (facebookAppId && appChanged && oldFacebookSecret && !incomingSecret) {
-        throw new Error('คุณเปลี่ยน Facebook App ID แล้ว กรุณากรอก App Secret ของ App ใหม่นี้ด้วย');
-      }
-      if (incomingSecret && clearSecret) throw new Error('เลือกกรอก App Secret ใหม่ หรือเลือกนำ Secret เดิมออก อย่างใดอย่างหนึ่ง');
-
+    if (hasFacebookAppId) {
       if (facebookAppId) {
         props.setProperty('FACEBOOK_APP_ID', facebookAppId);
-        if (incomingSecret) {
-          if (!/^[A-Za-z0-9_-]{16,256}$/.test(incomingSecret)) throw new Error('รูปแบบ Facebook App Secret ไม่ถูกต้อง');
-          props.setProperty('FACEBOOK_APP_SECRET', incomingSecret);
-        } else if (clearSecret) {
-          props.deleteProperty('FACEBOOK_APP_SECRET');
-        }
+        if (incomingSecret) props.setProperty('FACEBOOK_APP_SECRET', incomingSecret);
+        else if (clearSecret) props.deleteProperty('FACEBOOK_APP_SECRET');
       } else {
         props.deleteProperty('FACEBOOK_APP_ID');
         props.deleteProperty('FACEBOOK_APP_SECRET');
       }
-    } else if (String(data.clearFacebookAppSecret).toLowerCase() === 'true') {
+    } else if (clearSecret) {
       props.deleteProperty('FACEBOOK_APP_SECRET');
     }
-
-    if (Object.prototype.hasOwnProperty.call(data, 'facebookGraphVersion')) {
-      var graphVersion = text_(data.facebookGraphVersion, 20).trim();
-      if (!/^v[0-9]+\.0$/.test(graphVersion)) throw new Error('Graph API Version ต้องอยู่ในรูปแบบ v27.0');
-      props.setProperty('FACEBOOK_GRAPH_VERSION', graphVersion);
-    }
+    if (hasGraphVersion) props.setProperty('FACEBOOK_GRAPH_VERSION', graphVersion);
 
     clearRuntimeCaches_();
     log_('Update Social Login Config', 'Settings', 'Updated Google/Facebook login provider configuration', user.username);
     return getSocialLoginAdminConfig(token);
-  } catch (e) { return fail_(safeError_(e)); }
-}
-
-function customerSocialLogin(provider, credential) {
-  try {
-    provider = String(provider || '').toLowerCase();
-    credential = text_(credential, 10000);
-    if (!credential) throw new Error('ไม่พบข้อมูลยืนยันตัวตนจากผู้ให้บริการ');
-    var profile;
-    if (provider === 'google') profile = verifyGoogleCustomerCredential_(credential);
-    else if (provider === 'facebook') profile = verifyFacebookCustomerCredential_(credential);
-    else throw new Error('ไม่รองรับผู้ให้บริการเข้าสู่ระบบนี้');
-    var customer = socialLoginOrCreateCustomer_(provider, profile);
-    var session = createSession_(customer, 'customer');
-    return ok_({ token: session.token, expiresAt: session.expiresAt, customer: publicCustomer_(customer) }, 'เข้าสู่ระบบสำเร็จ');
   } catch (e) { return fail_(safeError_(e)); }
 }
 
