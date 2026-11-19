@@ -5311,7 +5311,7 @@ function loadPublicData(onComplete){
 
     function ensureFacebookSdk(appId,graphVersion,callback){
       appId=String(appId||'').trim();
-      graphVersion=/^v[0-9]+\\.0$/.test(String(graphVersion||''))?String(graphVersion):'v27.0';
+      graphVersion=/^v[0-9]+\.0$/.test(String(graphVersion||''))?String(graphVersion):'v27.0';
       callback=typeof callback==='function'?callback:function(){};
       if(!appId){callback(false,'ไม่พบ Facebook App ID');return;}
       if(window.FBReady&&window.FBAppId===appId){callback(true,'');return;}
