@@ -6,7 +6,7 @@
 const SHEET_ID = "1SoVIYhoHNQ8YdV2CbvkJRI_TYQxbyU8rJPnxVyk8h7w";
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwArhL3V9EYMLj6EDzRj66-ruRAEbHpMEgDX0XcUxvH5RzSKYOiRUp2K33SiSbXDKYnYA/exec";
 const FOLDER_ID = "1WowUHSERuWRl95J8rNCJHGL9KwVbWd-c";
-const ADMIN_PASSWORD = "1234";
+const ADMIN_INITIAL_PASSWORD_PROPERTY_ = 'INITIAL_ADMIN_PASSWORD';
 
 var APP_VERSION_ = '1.0.0';
 var SESSION_HOURS_ = 8;
@@ -306,14 +306,36 @@ function setupSystem() {
     });
     migrateLegacySmsOtpArtifacts_();
     var users = readTable_('Users', false);
-    var adminExists = users.some(function(u) { return String(u.username).toLowerCase() === 'admin'; });
-    if (!adminExists) {
+    var adminUser = users.filter(function(u) {
+      return String(u.username).toLowerCase() === 'admin';
+    })[0] || null;
+    var scriptProperties = PropertiesService.getScriptProperties();
+    var initialAdminPassword = String(scriptProperties.getProperty(ADMIN_INITIAL_PASSWORD_PROPERTY_) || '');
+
+    if (initialAdminPassword && initialAdminPassword.length < 12) {
+      throw new Error('INITIAL_ADMIN_PASSWORD ต้องมีอย่างน้อย 12 ตัวอักษร');
+    }
+
+    if (!adminUser) {
+      if (!initialAdminPassword) {
+        throw new Error('กรุณากำหนด Script Property INITIAL_ADMIN_PASSWORD (อย่างน้อย 12 ตัวอักษร) ก่อนสร้างบัญชีผู้ดูแลครั้งแรก');
+      }
       var now = now_();
       appendRecord_('Users', {
-        id: newId_('USR'), username: 'admin', email: '', passwordHash: hashPassword_(ADMIN_PASSWORD),
+        id: newId_('USR'), username: 'admin', email: '', passwordHash: hashPassword_(initialAdminPassword),
         name: 'Store Administrator', role: 'Super Admin', permissions: JSON.stringify(['*']), status: 'Active',
         mustChangePassword: true, createdAt: now, updatedAt: now
       });
+      scriptProperties.deleteProperty(ADMIN_INITIAL_PASSWORD_PROPERTY_);
+    } else if (initialAdminPassword) {
+      // Supplying the one-time property intentionally rotates the existing
+      // bootstrap admin password and requires a password change after login.
+      updateRecord_('Users', adminUser.id, {
+        passwordHash: hashPassword_(initialAdminPassword),
+        mustChangePassword: true,
+        updatedAt: now_()
+      });
+      scriptProperties.deleteProperty(ADMIN_INITIAL_PASSWORD_PROPERTY_);
     }
     clearRuntimeCaches_();
     result.success = true;
@@ -326,8 +348,7 @@ function setupSystem() {
 }
 
 function validateConfig_() {
-  if (!SHEET_ID || !FOLDER_ID || !WEB_APP_URL || !ADMIN_PASSWORD) throw new Error('กรุณาตรวจสอบ Configuration ทั้ง 4 ค่า');
-  if (String(ADMIN_PASSWORD).length < 4) throw new Error('ADMIN_PASSWORD ต้องมีอย่างน้อย 4 ตัวอักษร');
+  if (!SHEET_ID || !FOLDER_ID || !WEB_APP_URL) throw new Error('กรุณาตรวจสอบ Configuration ของ SHEET_ID, FOLDER_ID และ WEB_APP_URL');
   getSpreadsheet_().getId();
   DriveApp.getFolderById(FOLDER_ID).getId();
 }

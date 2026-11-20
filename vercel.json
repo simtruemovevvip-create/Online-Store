@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "destination": "https://script.google.com/macros/s/AKfycbwArhL3V9EYMLj6EDzRj66-ruRAEbHpMEgDX0XcUxvH5RzSKYOiRUp2K33SiSbXDKYnYA/exec",
+      "statusCode": 307
+    }
+  ]
+}
