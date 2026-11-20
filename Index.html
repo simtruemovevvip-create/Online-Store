@@ -2832,7 +2832,7 @@ function marketplacePageTransitionSkeletonMarkup(){
       'getMarketplaceStorefront','getMarketplaceFlashDeals','getMarketplaceVouchers',
       'getMarketplaceLiveRooms','getFavorites','getMyStore',
       // Owner and seller pages.
-      'getAdminSettings','getDashboardStats','getSalesReports','getAdminGridPage',
+      'getAdminSettings','getDashboardStats','getSalesReports','getAdminGridPage','adminGetOfficialStore','getBannerStoreOptions','getEmailOtpServiceStatus',
       'sellerDashboard','sellerGetProducts','sellerGetOrders','sellerGetCustomers',
       'sellerGetVouchers','sellerGetFlashDeals','sellerGetReturns','sellerGetPayouts',
       'sellerGetLiveRooms','sellerGetStoreProfile',
@@ -5617,7 +5617,7 @@ function loadPublicData(onComplete){
       if(APP.adminChatPollTimer){clearInterval(APP.adminChatPollTimer);APP.adminChatPollTimer=null;}
       if(page==='sellerChat'){loadAdminChatPage('seller');return;}
       if(page==='officialChat'){loadAdminChatPage('official');return;}
-      if(page==='dashboard'){loadAdminDashboard();return;}if(page==='officialStore'){loadOfficialStoreAdmin();return;}if(page==='settings'){loadAdminSettings();return;}if(page==='reports'){loadAdminReports();return;}if(page==='demo'){renderDemoAdmin();if(document.documentElement.hasAttribute('data-store-browser-reload'))window.setTimeout(finishBrowserRefreshSkeleton,90);return;}if(page==='backup'){loadBackupAdmin();return;}if(page==='shipping'){loadShippingAdmin();return;}if(['sellers','flashDeals','marketplaceReturns','marketplacePayouts'].indexOf(page)>=0){loadMarketplaceAdmin(page);return;}loadAdminModule(page);
+      if(page==='dashboard'){loadAdminDashboard(!!(cached&&cached.html));return;}if(page==='officialStore'){loadOfficialStoreAdmin();return;}if(page==='settings'){loadAdminSettings();return;}if(page==='reports'){loadAdminReports();return;}if(page==='demo'){renderDemoAdmin();if(document.documentElement.hasAttribute('data-store-browser-reload'))window.setTimeout(finishBrowserRefreshSkeleton,90);return;}if(page==='backup'){loadBackupAdmin();return;}if(page==='shipping'){loadShippingAdmin();return;}if(['sellers','flashDeals','marketplaceReturns','marketplacePayouts'].indexOf(page)>=0){loadMarketplaceAdmin(page);return;}loadAdminModule(page);
     }
     function adminLogout(){
       var token=APP.adminToken;
@@ -12209,10 +12209,11 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
     var SIDEBAR_BADGE_FRESH_MS=20000;
     var SIDEBAR_BADGE_STATE_={
       admin:{token:'',at:0,inFlight:false,requestId:0},
-      seller:{token:'',at:0,inFlight:false,requestId:0}
+      seller:{token:'',at:0,inFlight:false,requestId:0},
+      customer:{token:'',at:0,inFlight:false,requestId:0}
     };
     function invalidateSidebarBadgeFreshness_(){
-      ['admin','seller'].forEach(function(portal){
+      ['admin','seller','customer'].forEach(function(portal){
         var state=SIDEBAR_BADGE_STATE_[portal];
         state.at=0;state.inFlight=false;state.requestId++;
       });
@@ -12249,15 +12250,22 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
         });
       },false,'',true);
     }
-    function loadCustomerSidebarBadges(){
+    function loadCustomerSidebarBadges(force){
       if(!APP||!APP.customerToken||!document.getElementById('customerPortalLayout'))return;
-      apiCall('getCustomerSidebarBadgeCounts',[APP.customerToken],function(r){
+      var token=String(APP.customerToken),state=SIDEBAR_BADGE_STATE_.customer;
+      if(state.token!==token){state.token=token;state.at=0;state.inFlight=false;state.requestId++;}
+      if(state.inFlight||(!force&&state.at&&Date.now()-state.at<SIDEBAR_BADGE_FRESH_MS))return;
+      state.inFlight=true;var requestId=++state.requestId;
+      apiCall('getCustomerSidebarBadgeCounts',[token],function(r){
+        if(state.requestId!==requestId||state.token!==token)return;
+        state.inFlight=false;
         if(!r||!r.success||!r.data)return;
+        state.at=Date.now();
         ['purchase','orderNotices','promoNotices','allNotices','returns','chat'].forEach(function(key){
           setSidebarBadge_('customerBadge_'+key,r.data[key],key==='chat'?' ข้อความที่ยังไม่อ่าน':' รายการที่ยังไม่อ่าน');
         });
         setSidebarBadge_('customerBadge_notifications',r.data.allNotices,' การแจ้งเตือนที่ยังไม่อ่าน');
-      },false);
+      },false,'',true);
     }
     function startSidebarBadgePolling_(portal){
       if(SIDEBAR_BADGE_POLLERS_[portal])window.clearInterval(SIDEBAR_BADGE_POLLERS_[portal]);
