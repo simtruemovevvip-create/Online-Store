@@ -23,7 +23,7 @@ var SCHEMA_ = {
   EmailOtpChallenges: ['id','email','purpose','userId','codeHash','status','attempts','expiresAt','lastSentAt','registrationTicketHash','registrationTicketExpiresAt','verifiedAt','consumedAt','createdAt'],
   Sessions: ['id','tokenHash','userId','username','accountType','role','permissions','expiresAt','createdAt','revokedAt'],
   Categories: ['id','name','slug','description','image','parentId','order','status','createdAt','updatedAt'],
-  Products: ['id','sku','barcode','name','slug','categoryId','brand','summary','description','coverImage','images','price','salePrice','costPrice','stock','unit','weight','featured','featuredLabel','bestSeller','sellerId','tags','status','createdAt','updatedAt','quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart'],
+  Products: ['id','sku','barcode','name','slug','categoryId','brand','summary','description','coverImage','images','price','salePrice','costPrice','stock','unit','weight','featured','featuredLabel','bestSeller','sellerId','tags','status','createdAt','updatedAt','quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart'],
   ProductVariants: ['id','productId','sku','variantName','attributes','price','salePrice','stock','status','mergedIntoVariantId','createdAt','updatedAt'],
   Carts: ['id','customerId','sessionId','items','updatedAt'],
   Orders: ['id','orderNumber','customerId','customerName','phone','email','shippingAddress','subtotal','discount','shippingFee','tax','grandTotal','paymentMethod','paymentStatus','orderStatus','shippingStatus','trackingNumber','note','idempotencyKey','guestAccessToken','createdAt','updatedAt','paidAt','completedAt','grossSubtotal','quantityPromoDiscount'],
@@ -145,12 +145,14 @@ function doGet(e) {
   page.qrLoginChallenge = qrChallenge;
   page.portalEntry = portalEntry;
   page.webAppUrl = getWebAppUrl_();
-  var output = page.evaluate().setTitle(getInitialPageTitle_());
+  var initialSettingsResult = getSettings();
+  var initialSettings = initialSettingsResult && initialSettingsResult.success ? (initialSettingsResult.data || {}) : {};
+  var output = page.evaluate().setTitle(getInitialPageTitle_(initialSettings));
   // Apps Script must receive the favicon URL from HtmlOutput.setFaviconUrl();
   // a <link rel=icon> added by client JavaScript is inside the sandbox iframe
   // and does not reliably control the browser tab icon.
   try {
-    var browserFaviconUrl = getInitialFaviconUrl_();
+    var browserFaviconUrl = getInitialFaviconUrl_(initialSettings);
     if (browserFaviconUrl) {
       output.setFaviconUrl(browserFaviconUrl);
       // Confirm Apps Script accepted the icon URL; never block page rendering.
@@ -173,10 +175,12 @@ function doGet(e) {
  * not Google Drive link sharing. Accept the selected Website asset regardless
  * of that registry flag so older/private asset records keep working too.
  */
-function getInitialFaviconUrl_() {
+function getInitialFaviconUrl_(providedSettings) {
   try {
-    var result = getSettings();
-    var settings = result && result.success ? (result.data || {}) : {};
+    var settings = providedSettings && typeof providedSettings === 'object' ? providedSettings : (function() {
+      var result = getSettings();
+      return result && result.success ? (result.data || {}) : {};
+    })();
     var configured = String(settings.setFaviconUrl || settings.favicon || '').trim();
     if (!configured) return '';
 
@@ -246,10 +250,12 @@ function getInitialFaviconUrl_() {
  * Uses the configured browser title (SEO Title) or store name for the initial
  * document title. Client-side applySettings() applies the same value after load.
  */
-function getInitialPageTitle_() {
+function getInitialPageTitle_(providedSettings) {
   try {
-    var result = getSettings();
-    var settings = result && result.success ? (result.data || {}) : {};
+    var settings = providedSettings && typeof providedSettings === 'object' ? providedSettings : (function() {
+      var result = getSettings();
+      return result && result.success ? (result.data || {}) : {};
+    })();
     var title = String(settings.seoTitle || settings.storeName || 'Online Store')
       .replace(/[\r\n\t]+/g, ' ').trim().substring(0, 120);
     return title || 'Online Store';
