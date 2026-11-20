@@ -23,7 +23,7 @@ var SCHEMA_ = {
   EmailOtpChallenges: ['id','email','purpose','userId','codeHash','status','attempts','expiresAt','lastSentAt','registrationTicketHash','registrationTicketExpiresAt','verifiedAt','consumedAt','createdAt'],
   Sessions: ['id','tokenHash','userId','username','accountType','role','permissions','expiresAt','createdAt','revokedAt'],
   Categories: ['id','name','slug','description','image','parentId','order','status','createdAt','updatedAt'],
-  Products: ['id','sku','barcode','name','slug','categoryId','brand','summary','description','coverImage','images','price','salePrice','costPrice','stock','unit','weight','featured','featuredLabel','bestSeller','sellerId','tags','status','createdAt','updatedAt','quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','featuredLabel','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart'],
+  Products: ['id','sku','barcode','name','slug','categoryId','brand','summary','description','coverImage','images','price','salePrice','costPrice','stock','unit','weight','featured','featuredLabel','bestSeller','sellerId','tags','status','createdAt','updatedAt','quantityPromoEnabled','quantityPromoQty','quantityPromoDiscount','mallBadgeEnabled','mallBadgeText','videoUrl','campaignLabel','campaignImage','promoTag','originProvince','freeShippingMinimum','sizeChart'],
   ProductVariants: ['id','productId','sku','variantName','attributes','price','salePrice','stock','status','mergedIntoVariantId','createdAt','updatedAt'],
   Carts: ['id','customerId','sessionId','items','updatedAt'],
   Orders: ['id','orderNumber','customerId','customerName','phone','email','shippingAddress','subtotal','discount','shippingFee','tax','grandTotal','paymentMethod','paymentStatus','orderStatus','shippingStatus','trackingNumber','note','idempotencyKey','guestAccessToken','createdAt','updatedAt','paidAt','completedAt','grossSubtotal','quantityPromoDiscount'],
@@ -145,12 +145,14 @@ function doGet(e) {
   page.qrLoginChallenge = qrChallenge;
   page.portalEntry = portalEntry;
   page.webAppUrl = getWebAppUrl_();
-  var output = page.evaluate().setTitle(getInitialPageTitle_());
+  var initialSettingsResult = getSettings();
+  var initialSettings = initialSettingsResult && initialSettingsResult.success ? (initialSettingsResult.data || {}) : {};
+  var output = page.evaluate().setTitle(getInitialPageTitle_(initialSettings));
   // Apps Script must receive the favicon URL from HtmlOutput.setFaviconUrl();
   // a <link rel=icon> added by client JavaScript is inside the sandbox iframe
   // and does not reliably control the browser tab icon.
   try {
-    var browserFaviconUrl = getInitialFaviconUrl_();
+    var browserFaviconUrl = getInitialFaviconUrl_(initialSettings);
     if (browserFaviconUrl) {
       output.setFaviconUrl(browserFaviconUrl);
       // Confirm Apps Script accepted the icon URL; never block page rendering.
@@ -173,10 +175,12 @@ function doGet(e) {
  * not Google Drive link sharing. Accept the selected Website asset regardless
  * of that registry flag so older/private asset records keep working too.
  */
-function getInitialFaviconUrl_() {
+function getInitialFaviconUrl_(providedSettings) {
   try {
-    var result = getSettings();
-    var settings = result && result.success ? (result.data || {}) : {};
+    var settings = providedSettings && typeof providedSettings === 'object' ? providedSettings : (function() {
+      var result = getSettings();
+      return result && result.success ? (result.data || {}) : {};
+    })();
     var configured = String(settings.setFaviconUrl || settings.favicon || '').trim();
     if (!configured) return '';
 
@@ -246,10 +250,12 @@ function getInitialFaviconUrl_() {
  * Uses the configured browser title (SEO Title) or store name for the initial
  * document title. Client-side applySettings() applies the same value after load.
  */
-function getInitialPageTitle_() {
+function getInitialPageTitle_(providedSettings) {
   try {
-    var result = getSettings();
-    var settings = result && result.success ? (result.data || {}) : {};
+    var settings = providedSettings && typeof providedSettings === 'object' ? providedSettings : (function() {
+      var result = getSettings();
+      return result && result.success ? (result.data || {}) : {};
+    })();
     var title = String(settings.seoTitle || settings.storeName || 'Online Store')
       .replace(/[\r\n\t]+/g, ' ').trim().substring(0, 120);
     return title || 'Online Store';
@@ -1744,6 +1750,35 @@ function getCategories(options) {
     rows.sort(function(a,b) { return number_(a.order, 0) - number_(b.order, 0); });
     return ok_(rows);
   } catch (e) { return fail_(safeError_(e)); }
+}
+
+/** Batch the critical and below-the-fold public homepage datasets into two RPCs. */
+function getPublicHomeBundle(group) {
+  try {
+    group = String(group || 'primary').toLowerCase();
+    var loaders = {
+      categories: function(){ return getCategories({}); },
+      banners: function(){ return getBanners({}); },
+      products: function(){ return getProducts({page:1,pageSize:100,sort:'relevance'}); },
+      promotions: function(){ return getPromotions(''); },
+      stores: function(){ return getMarketplaceStores({page:1,pageSize:12}); },
+      flashDeals: function(){ return getMarketplaceFlashDeals(); },
+      vouchers: function(){ return getMarketplaceVouchers(); },
+      liveRooms: function(){ return getMarketplaceLiveRooms(); }
+    };
+    var names = group === 'secondary'
+      ? ['promotions','stores','flashDeals','vouchers','liveRooms']
+      : ['categories','banners','products'];
+    var datasets = {}, errors = {};
+    names.forEach(function(name){
+      try {
+        var response = loaders[name]();
+        if (response && response.success) datasets[name] = response.data;
+        else errors[name] = response && response.message || 'โหลดข้อมูลไม่สำเร็จ';
+      } catch (loadError) { errors[name] = safeError_(loadError); }
+    });
+    return ok_({group:group,datasets:datasets,errors:errors}, 'โหลดข้อมูลหน้าแรกแล้ว');
+  } catch (error) { return fail_(safeError_(error)); }
 }
 
 function productPublicMetrics_(products) {
@@ -3508,26 +3543,44 @@ function legacyPublicImageIsReferenced_(fileId,folderName){
 
 function getDriveImageDataBatch(token,assetTokens){
   try{
-    var ids=safeArray_(assetTokens).map(function(x){return text_(x,100);}).filter(Boolean).slice(0,3);
-    var assets=readTable_('DriveAssets',true);
+    var requests=safeArray_(assetTokens).map(function(value){
+      var raw=text_(value,120),parts=raw.split('|');
+      return {requestKey:raw,key:parts[0],variant:parts[1]==='thumb'?'thumb':'full'};
+    }).filter(function(item){return !!item.key;}).slice(0,3);
+    var assets=readTable_('DriveAssets',true),assetById=Object.create(null);
+    assets.forEach(function(asset){
+      if(!asset||asset.status!=='Active')return;
+      if(asset.id)assetById[String(asset.id)]=asset;
+      if(asset.fileId)assetById[String(asset.fileId)]=asset;
+    });
     var customer=null,adminCustomer=null,adminChat=null,sellerContext=null;
-    if(token){try{customer=requireCustomer_(token);}catch(ignoreCustomer){}try{adminCustomer=requireAdmin_(token,'customers.view');}catch(ignoreAdmin){}try{adminChat=requireAdmin_(token,'sellers.manage');}catch(ignoreAdminChat){}try{sellerContext=requireSeller_(token);}catch(ignoreSeller){}}
-    var output=[],totalBytes=0,folderIdMemo=Object.create(null);
-    ids.forEach(function(key){
+    if(token){
+      try{customer=requireCustomer_(token);}catch(ignoreCustomer){}
+      try{adminCustomer=requireAdmin_(token,'customers.view');}catch(ignoreAdmin){}
+      try{adminChat=requireAdmin_(token,'sellers.manage');}catch(ignoreAdminChat){}
+      try{sellerContext=requireSeller_(token);}catch(ignoreSeller){}
+    }
+    var output=[],totalBytes=0,folderIdMemo=Object.create(null),cache=CacheService.getScriptCache();
+    requests.forEach(function(request){
       try{
-        var asset=assets.filter(function(a){return (a.id===key||a.fileId===key)&&a.status==='Active';})[0];
-        var fileId=asset?asset.fileId:key;
+        var key=request.key,variant=request.variant,asset=assetById[key]||null;
+        var fileId=asset?String(asset.fileId||''):key;
         if(!/^[A-Za-z0-9_-]{10,100}$/.test(fileId))throw new Error('รหัสรูปภาพไม่ถูกต้อง');
-        var file=DriveApp.getFileById(fileId);if(file.isTrashed())throw new Error('ไม่พบรูปภาพ');
-        var mime=String(file.getMimeType()||'').toLowerCase();if(mime.indexOf('image/')!==0)throw new Error('อนุญาตเฉพาะไฟล์รูปภาพ');
-        var allowed=false,folderName=asset?asset.folder:'';
+        var file=DriveApp.getFileById(fileId);
+        if(file.isTrashed())throw new Error('ไม่พบรูปภาพ');
+        var mime=String(file.getMimeType()||'').toLowerCase();
+        if(mime.indexOf('image/')!==0)throw new Error('อนุญาตเฉพาะไฟล์รูปภาพ');
+
+        // Authorization is checked before a cached image can be returned.
+        var allowed=false,folderName=asset?String(asset.folder||''):'';
         var publicFolders=['Products','Categories','Banners','Website'];
         if(asset){
-          if(asset.access==='public'&&publicFolders.indexOf(folderName)>=0&&isFileInSystemFolder_(file,folderName,folderIdMemo))allowed=true;
-          else if(asset.access==='owner'&&folderName==='Customers'&&isFileInSystemFolder_(file,'Customers',folderIdMemo)){
+          if(asset.access==='public'&&publicFolders.indexOf(folderName)>=0&&isFileInSystemFolder_(file,folderName,folderIdMemo)){
+            allowed=true;
+          }else if(asset.access==='owner'&&folderName==='Customers'&&isFileInSystemFolder_(file,'Customers',folderIdMemo)){
             if(customer&&asset.ownerType==='customer'&&asset.ownerId===customer.id)allowed=true;
             if(adminCustomer)allowed=true;
-          }else if(asset.access==='chat'&&folderName==='ChatMessages'&&isFileInSystemFolder_(file,'ChatMessages')){
+          }else if(asset.access==='chat'&&folderName==='ChatMessages'&&isFileInSystemFolder_(file,'ChatMessages',folderIdMemo)){
             var chatThreadId=String(asset.purpose||'').indexOf('chat:')===0?String(asset.purpose).substring(5):'';
             var chatThread=chatThreadId?readTable_('ChatThreads',true).filter(function(t){return t.id===chatThreadId;})[0]:null;
             if(chatThread&&customer&&chatThread.customerId===customer.id&&((asset.ownerType==='customer'&&asset.ownerId===customer.id)||(asset.ownerType==='seller'&&asset.ownerId===chatThread.sellerId)||(asset.ownerType==='admin'&&String(chatThread.sellerId)==='PLATFORM')))allowed=true;
@@ -3535,35 +3588,65 @@ function getDriveImageDataBatch(token,assetTokens){
             if(chatThread&&(adminCustomer||adminChat))allowed=true;
           }
         }else{
-          // Backward compatibility for legacy URLs: allow only files referenced
-          // by public catalogue/settings records, never arbitrary Drive IDs.
-          for(var i=0;i<publicFolders.length;i++){if(isFileInSystemFolder_(file,publicFolders[i],folderIdMemo)&&legacyPublicImageIsReferenced_(fileId,publicFolders[i])){allowed=true;break;}}
+          for(var i=0;i<publicFolders.length;i++){
+            if(isFileInSystemFolder_(file,publicFolders[i],folderIdMemo)&&legacyPublicImageIsReferenced_(fileId,publicFolders[i])){
+              allowed=true;folderName=publicFolders[i];break;
+            }
+          }
           if(!allowed&&isFileInSystemFolder_(file,'Customers',folderIdMemo)){
             var desc=String(file.getDescription()||'');
             if(customer&&desc==='EcommerceCustomerProfile|'+customer.id)allowed=true;
-            if(!allowed&&customer){allowed=readTable_('Customers',true).some(function(c){return c.id===customer.id&&extractDriveIdFromAssetValue_(c.profileImage)===fileId;});}
+            if(!allowed&&customer){
+              allowed=readTable_('Customers',true).some(function(c){return c.id===customer.id&&extractDriveIdFromAssetValue_(c.profileImage)===fileId;});
+            }
             if(adminCustomer)allowed=true;
+            if(allowed)folderName='Customers';
           }
         }
         if(!allowed)throw new Error('ไม่มีสิทธิ์ดูรูปภาพนี้');
+
         var isCurrentFavicon=folderName==='Website'&&extractDriveIdFromAssetValue_(getSettingValue_('setFaviconUrl')||getSettingValue_('favicon'))===fileId;
-        var size=file.getSize();if(size>MAX_UPLOAD_BYTES_)throw new Error('รูปภาพมีขนาดเกินกำหนด 5 MB');
-        if(totalBytes+size>9*1024*1024)throw new Error('ชุดรูปภาพมีขนาดรวมมากเกินไป กรุณาโหลดใหม่อีกครั้ง');
-        totalBytes+=size;
-        var imageBlob=file.getBlob();
-        if(isCurrentFavicon&&mime!=='image/png'){
-          try{imageBlob=imageBlob.getAs('image/png');mime='image/png';}
-          catch(faviconConvertReadError){/* Keep the original MIME; the browser will try a client-side PNG conversion. */}
+        var originalSize=file.getSize();
+        if(originalSize>MAX_UPLOAD_BYTES_)throw new Error('รูปภาพมีขนาดเกินกำหนด 5 MB');
+        var useThumbnail=variant==='thumb'&&!isCurrentFavicon&&publicFolders.indexOf(folderName)>=0;
+        var modifiedAt=0;
+        try{modifiedAt=file.getLastUpdated().getTime();}catch(modifiedError){}
+        var cacheVariant=useThumbnail?'thumb':'full';
+        var cacheKey='drive_image_v3_'+fileId+'_'+cacheVariant+'_'+String(modifiedAt||0);
+        var cached=null;
+        try{var cachedRaw=cache.get(cacheKey);if(cachedRaw)cached=JSON.parse(cachedRaw);}catch(cacheReadError){}
+        if(cached&&cached.base64&&cached.mimeType){
+          var cachedSize=number_(cached.size,0);
+          if(totalBytes+cachedSize>9*1024*1024)throw new Error('ชุดรูปภาพมีขนาดรวมมากเกินไป กรุณาโหลดใหม่อีกครั้ง');
+          totalBytes+=cachedSize;
+          output.push({key:request.requestKey,success:true,mimeType:cached.mimeType,base64:cached.base64,size:cachedSize,variant:cacheVariant,cached:true});
+          return;
         }
-        var imageBytes=imageBlob.getBytes();
+        var imageBlob=null;
+        if(useThumbnail){try{imageBlob=file.getThumbnail();}catch(thumbnailError){imageBlob=null;}}
+        if(!imageBlob){
+          imageBlob=file.getBlob();
+          if(isCurrentFavicon&&mime!=='image/png'){
+            try{imageBlob=imageBlob.getAs('image/png');mime='image/png';}
+            catch(faviconConvertReadError){}
+          }
+        }
+        var responseMime=String(imageBlob.getContentType()||mime||'image/jpeg').toLowerCase();
+        if(responseMime.indexOf('image/')!==0)responseMime=mime||'image/jpeg';
+        var imageBytes=imageBlob.getBytes(),byteSize=imageBytes.length;
+        if(totalBytes+byteSize>9*1024*1024)throw new Error('ชุดรูปภาพมีขนาดรวมมากเกินไป กรุณาโหลดใหม่อีกครั้ง');
+        totalBytes+=byteSize;
         var b64=Utilities.base64Encode(imageBytes);
-        output.push({key:key,success:true,mimeType:mime,base64:b64,size:imageBytes.length});
-      }catch(itemError){output.push({key:key,success:false,message:String(itemError&&itemError.message?itemError.message:'ไม่สามารถเปิดรูปภาพได้').substring(0,180)});}
+        var payload={base64:b64,mimeType:responseMime,size:byteSize};
+        try{var serialized=JSON.stringify(payload);if(serialized.length<85000)cache.put(cacheKey,serialized,21600);}catch(cacheWriteError){}
+        output.push({key:request.requestKey,success:true,mimeType:responseMime,base64:b64,size:byteSize,variant:cacheVariant,cached:false});
+      }catch(itemError){
+        output.push({key:request.requestKey,success:false,message:String(itemError&&itemError.message?itemError.message:'ไม่สามารถเปิดรูปภาพได้').substring(0,180)});
+      }
     });
     return ok_(output,'โหลดรูปภาพแล้ว');
   }catch(e){return fail_(safeError_(e));}
 }
-
 function getProductVideoData(token,productId){
   try{
     var product=readTable_('Products',true).filter(function(p){return String(p.id)===String(productId);})[0];

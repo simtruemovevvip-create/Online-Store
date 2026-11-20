@@ -2659,7 +2659,7 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
   <input type="file" id="adminUploadInput" accept="image/*" style="display:none" onchange="handleAdminUpload(this)">
   <script>
     var APP = {
-      settings:{}, categories:[], products:[], banners:[], promotions:[], stores:[], flashDeals:[], vouchers:[], liveRooms:[], cart:{items:[],subtotal:0,count:0},
+      settings:{}, categories:[], products:[], banners:[], promotions:[], stores:[], flashDeals:[], vouchers:[], liveRooms:[], publicDataLoaded:false, publicDataSecondaryLoaded:false, publicVisitorRecorded:false, cart:{items:[],subtotal:0,count:0},
       sessionId:'', customerToken:'', customer:null, adminToken:'', adminUser:null, adminPage:'dashboard', adminData:[],
       currentProduct:null, currentVariants:[], selectedVariant:'', currentQuantity:1, currentView:'home', chart:null, uploadTarget:null, productPage:1, productPageSize:20, productTotal:0, addresses:[], currentStore:null, sellerStore:null, sellerPage:'dashboard', chatThread:null, chatMode:'customer', customerChatStores:[], customerChatActiveStoreId:'', customerChatPollTimer:null, customerChatListPollTimer:null, sellerChatPollTimer:null, sellerChatListPollTimer:null, chatVisibilityListenerBound:false, chatLastMessageAt:'', chatLastReadAt:'', chatSeenMessageIds:{}, chatOutbox:{}, chatSending:false, chatPollBusy:false, chatPendingFile:null, chatPendingPreviewUrl:'', qrLoginChallenge:'', authProviders:null,
       authDestination: 'customer', registration:null, registrationTimer:null, accessMode:'guest', pageLoadingCount:0, lastActionButton:null, lastActionAt:0, lastActionIsNavigation:false, pendingInitialAccount:false, adminRequestId:0, driveImageCache:{}
@@ -2675,17 +2675,19 @@ body.dark .vm-add-group{background:#2a1d1a;border-color:#694233;color:#ff9a7c}
     function esc(value){return String(value===null||value===undefined?'':value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
     function money(value){var symbol=APP.settings.currencySymbol||'฿';return symbol+Number(value||0).toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:2});}
     function extractDriveAssetKey(url){var s=String(url||'').trim(),m;if(!s)return '';m=s.match(/^drive-asset:\/\/([A-Za-z0-9_-]{20,80})$/i);if(m)return m[1];m=s.match(/^drive-private:\/\/([A-Za-z0-9_-]{10,100})$/i);if(m)return m[1];m=s.match(/lh\d*\.googleusercontent\.com\/d\/([A-Za-z0-9_-]{10,100})/i);if(m)return m[1];m=s.match(/drive\.google\.com\/file\/d\/([A-Za-z0-9_-]{10,100})/i);if(m)return m[1];m=s.match(/[?&]id=([A-Za-z0-9_-]{10,100})/i);if(m)return m[1];return '';}
-    function driveImagePlaceholder(key){var svg='<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450"><rect width="100%" height="100%" fill="#eef2f7"/><g fill="#94a3b8"><path d="M250 150h100v90H250z"/><circle cx="280" cy="180" r="12"/><path d="M250 230l35-35 22 22 18-18 25 31z"/></g><text x="300" y="300" text-anchor="middle" font-family="Arial" font-size="18" fill="#64748b">LOADING IMAGE</text></svg>';return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg)+'#gasdriveasset='+encodeURIComponent(key);}
-    function imageUrl(url){var candidate=String(url||'').trim();if(/^data:image\//i.test(candidate))return candidate;var key=extractDriveAssetKey(candidate);if(key)return driveImagePlaceholder(key);if(/^(https?:\/\/|\/)/i.test(candidate))return esc(candidate);return driveImagePlaceholder('');}
+    function driveImagePlaceholder(key,variant){if(!key)return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450"><rect width="100%" height="100%" fill="#e8eef6"/><text x="50%" y="50%" font-family="Arial" font-size="18" text-anchor="middle" fill="#64748b">IMAGE UNAVAILABLE</text></svg>');var svg='<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450"><rect width="100%" height="100%" fill="#eef2f7"/><g fill="#94a3b8"><path d="M250 150h100v90H250z"/><circle cx="280" cy="180" r="12"/><path d="M250 230l35-35 22 22 18-18 25 31z"/></g><text x="300" y="300" text-anchor="middle" font-family="Arial" font-size="18" fill="#64748b">LOADING IMAGE</text></svg>';return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg)+'#gasdriveasset='+encodeURIComponent(key)+'|'+(variant==='thumb'?'thumb':'full');}
+    function imageUrl(url,variant){var candidate=String(url||'').trim();if(/^data:image\//i.test(candidate))return candidate;var key=extractDriveAssetKey(candidate);if(key)return driveImagePlaceholder(key,variant||'full');if(/^(https?:\/\/|\/)/i.test(candidate))return esc(candidate);return driveImagePlaceholder('',variant||'full');}
+    function driveImageMarkerFromSrc(src){var m=String(src||'').match(/#gasdriveasset=([A-Za-z0-9_-]{10,100})(?:\|(thumb|full))?/);if(!m)return null;var key=decodeURIComponent(m[1]),variant=m[2]==='thumb'?'thumb':'full';return {key:key,variant:variant,requestKey:key+'|'+variant};}
     function imageFallback(el){if(!el)return;var src=el.getAttribute('src')||'';if(src.indexOf('#gasdriveasset=')>=0){scanDriveImageNodes(el.parentNode||document);return;}if(el.dataset&&el.dataset.failed!=='1'){el.dataset.failed='1';el.src='data:image/svg+xml;charset=UTF-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450"><rect width="100%" height="100%" fill="#e8eef6"/><text x="50%" y="50%" font-family="Arial" font-size="18" text-anchor="middle" fill="#64748b">IMAGE UNAVAILABLE</text></svg>');}}
-    var DRIVE_IMAGE_QUEUE={},DRIVE_IMAGE_IN_FLIGHT=false,DRIVE_IMAGE_TIMER=null,DRIVE_IMAGE_CACHE_ORDER=[],DRIVE_IMAGE_CACHE_BYTES=0,DRIVE_IMAGE_CACHE_LIMIT=12*1024*1024;
-    function driveImageMarkerFromSrc(src){var m=String(src||'').match(/#gasdriveasset=([A-Za-z0-9_-]{10,100})/);return m?decodeURIComponent(m[1]):'';}
-    function applyDriveImageToNodes(key,dataUri){var nodes=document.querySelectorAll('img[src*="#gasdriveasset="]');for(var i=0;i<nodes.length;i++){var img=nodes[i],found=driveImageMarkerFromSrc(img.getAttribute('src'));if(found===key){img.removeAttribute('data-drive-pending');img.src=dataUri;}}}
-    function driveImageFallbackForKey(key){var nodes=document.querySelectorAll('img[src*="#gasdriveasset="]');var fallback='data:image/svg+xml;charset=UTF-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450"><rect width="100%" height="100%" fill="#e8eef6"/><g fill="#94a3b8"><path d="M250 150h100v90H250z"/><circle cx="280" cy="180" r="12"/><path d="M250 230l35-35 22 22 18-18 25 31z"/></g><text x="300" y="300" text-anchor="middle" font-family="Arial" font-size="18" fill="#64748b">IMAGE UNAVAILABLE</text></svg>');for(var i=0;i<nodes.length;i++){var img=nodes[i];if(driveImageMarkerFromSrc(img.getAttribute('src'))===key){img.removeAttribute('data-drive-pending');img.src=fallback;}}}
-    function cacheDriveImage(key,dataUri){var size=dataUri.length;if(size>DRIVE_IMAGE_CACHE_LIMIT)return;while(DRIVE_IMAGE_CACHE_ORDER.length&&DRIVE_IMAGE_CACHE_BYTES+size>DRIVE_IMAGE_CACHE_LIMIT){var oldKey=DRIVE_IMAGE_CACHE_ORDER.shift(),old=APP.driveImageCache[oldKey];if(old){DRIVE_IMAGE_CACHE_BYTES-=old.length;delete APP.driveImageCache[oldKey];}}if(!APP.driveImageCache[key]){APP.driveImageCache[key]=dataUri;DRIVE_IMAGE_CACHE_ORDER.push(key);DRIVE_IMAGE_CACHE_BYTES+=size;}}
-    function scanDriveImageNodes(root){if(!root)return;var nodes=[];if(root.tagName==='IMG')nodes.push(root);if(root.querySelectorAll){var found=root.querySelectorAll('img[src*="#gasdriveasset="]');for(var i=0;i<found.length;i++)nodes.push(found[i]);}for(var j=0;j<nodes.length;j++){var img=nodes[j],key=driveImageMarkerFromSrc(img.getAttribute('src'));if(!key)continue;var cached=APP.driveImageCache[key];if(cached){img.src=cached;continue;}if(img.getAttribute('data-drive-pending')==='1')continue;img.setAttribute('data-drive-pending','1');DRIVE_IMAGE_QUEUE[key]=true;}if(Object.keys(DRIVE_IMAGE_QUEUE).length&&!DRIVE_IMAGE_TIMER&&!DRIVE_IMAGE_IN_FLIGHT)DRIVE_IMAGE_TIMER=setTimeout(flushDriveImageQueue,40);}
-    function flushDriveImageQueue(){DRIVE_IMAGE_TIMER=null;if(DRIVE_IMAGE_IN_FLIGHT)return;var keys=Object.keys(DRIVE_IMAGE_QUEUE).slice(0,2);if(!keys.length)return;keys.forEach(function(k){delete DRIVE_IMAGE_QUEUE[k];});DRIVE_IMAGE_IN_FLIGHT=true;var token=APP.customerToken||APP.adminToken||'';apiCall('getDriveImageDataBatch',[token,keys],function(r){var items=r&&r.success?safeArray(r.data):[];var indexed={};items.forEach(function(item){indexed[item.key]=item;});keys.forEach(function(key){var item=indexed[key];if(item&&item.success&&item.base64){var uri='data:'+(item.mimeType||'image/jpeg')+';base64,'+item.base64;cacheDriveImage(key,uri);applyDriveImageToNodes(key,uri);}else{driveImageFallbackForKey(key);}});DRIVE_IMAGE_IN_FLIGHT=false;if(Object.keys(DRIVE_IMAGE_QUEUE).length&&!DRIVE_IMAGE_TIMER)DRIVE_IMAGE_TIMER=setTimeout(flushDriveImageQueue,20);},false);}
-    function startDriveImageObserver(){if(!document.body)return;scanDriveImageNodes(document.body);if(!window.MutationObserver)return;var observer=new MutationObserver(function(mutations){for(var i=0;i<mutations.length;i++){var m=mutations[i];if(m.type==='childList'){for(var j=0;j<m.addedNodes.length;j++){if(m.addedNodes[j].nodeType===1)scanDriveImageNodes(m.addedNodes[j]);}}else if(m.type==='attributes'&&m.target&&m.target.tagName==='IMG'){scanDriveImageNodes(m.target);}}});observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['src']});}
+    var DRIVE_IMAGE_QUEUE=Object.create(null),DRIVE_IMAGE_IN_FLIGHT=Object.create(null),DRIVE_IMAGE_TIMER=null,DRIVE_IMAGE_CACHE_ORDER=[],DRIVE_IMAGE_CACHE_BYTES=0,DRIVE_IMAGE_CACHE_LIMIT=18*1024*1024,DRIVE_IMAGE_MAX_CONCURRENT=2,DRIVE_IMAGE_BATCH_SIZE=3,DRIVE_IMAGE_BATCH_ID=0,DRIVE_IMAGE_SESSION_GENERATION=0,DRIVE_IMAGE_OBSERVER=null;
+    function applyDriveImageToNodes(requestKey,dataUri){var nodes=document.querySelectorAll('img[src*="#gasdriveasset="]');for(var i=0;i<nodes.length;i++){var img=nodes[i],marker=driveImageMarkerFromSrc(img.getAttribute('src'));if(marker&&marker.requestKey===requestKey){img.removeAttribute('data-drive-pending');img.removeAttribute('data-drive-queued');img.src=dataUri;}}}
+    function driveImageFallbackForKey(requestKey){var nodes=document.querySelectorAll('img[src*="#gasdriveasset="]');var fallback='data:image/svg+xml;charset=UTF-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450"><rect width="100%" height="100%" fill="#e8eef6"/><g fill="#94a3b8"><path d="M250 150h100v90H250z"/><circle cx="280" cy="180" r="12"/><path d="M250 230l35-35 22 22 18-18 25 31z"/></g><text x="300" y="300" text-anchor="middle" font-family="Arial" font-size="18" fill="#64748b">IMAGE UNAVAILABLE</text></svg>');for(var i=0;i<nodes.length;i++){var img=nodes[i],marker=driveImageMarkerFromSrc(img.getAttribute('src'));if(marker&&marker.requestKey===requestKey){img.removeAttribute('data-drive-pending');img.removeAttribute('data-drive-queued');img.src=fallback;}}}
+    function cacheDriveImage(requestKey,dataUri){var size=dataUri.length;if(size>DRIVE_IMAGE_CACHE_LIMIT)return;while(DRIVE_IMAGE_CACHE_ORDER.length&&DRIVE_IMAGE_CACHE_BYTES+size>DRIVE_IMAGE_CACHE_LIMIT){var oldKey=DRIVE_IMAGE_CACHE_ORDER.shift(),old=APP.driveImageCache[oldKey];if(old){DRIVE_IMAGE_CACHE_BYTES-=old.length;delete APP.driveImageCache[oldKey];}}if(!APP.driveImageCache[requestKey]){APP.driveImageCache[requestKey]=dataUri;DRIVE_IMAGE_CACHE_ORDER.push(requestKey);DRIVE_IMAGE_CACHE_BYTES+=size;}}
+    function queueDriveImageRequest(requestKey){if(!requestKey||DRIVE_IMAGE_QUEUE[requestKey]||Object.keys(DRIVE_IMAGE_IN_FLIGHT).some(function(id){return DRIVE_IMAGE_IN_FLIGHT[id].indexOf(requestKey)>=0;}))return;DRIVE_IMAGE_QUEUE[requestKey]=true;var nodes=document.querySelectorAll('img[src*="#gasdriveasset="]');for(var i=0;i<nodes.length;i++){var marker=driveImageMarkerFromSrc(nodes[i].getAttribute('src'));if(marker&&marker.requestKey===requestKey)nodes[i].setAttribute('data-drive-queued','1');}if(!DRIVE_IMAGE_TIMER)DRIVE_IMAGE_TIMER=setTimeout(flushDriveImageQueue,20);}
+    function scanDriveImageNodes(root){if(!root)return;var nodes=[];if(root.tagName==='IMG')nodes.push(root);if(root.querySelectorAll){var found=root.querySelectorAll('img[src*="#gasdriveasset="]');for(var i=0;i<found.length;i++)nodes.push(found[i]);}for(var j=0;j<nodes.length;j++){var img=nodes[j],marker=driveImageMarkerFromSrc(img.getAttribute('src'));if(!marker)continue;img.decoding='async';var cached=APP.driveImageCache[marker.requestKey];if(cached){img.removeAttribute('data-drive-pending');img.src=cached;continue;}if(img.getAttribute('data-drive-pending')==='1'||img.getAttribute('data-drive-queued')==='1')continue;if(DRIVE_IMAGE_OBSERVER)DRIVE_IMAGE_OBSERVER.observe(img);else{img.setAttribute('data-drive-pending','1');queueDriveImageRequest(marker.requestKey);}}}
+    function flushDriveImageQueue(){DRIVE_IMAGE_TIMER=null;while(Object.keys(DRIVE_IMAGE_IN_FLIGHT).length<DRIVE_IMAGE_MAX_CONCURRENT){var keys=Object.keys(DRIVE_IMAGE_QUEUE).slice(0,DRIVE_IMAGE_BATCH_SIZE);if(!keys.length)break;keys.forEach(function(key){delete DRIVE_IMAGE_QUEUE[key];});var batchId=String(++DRIVE_IMAGE_BATCH_ID),generation=DRIVE_IMAGE_SESSION_GENERATION,requestToken=APP.customerToken||APP.adminToken||'';DRIVE_IMAGE_IN_FLIGHT[batchId]=keys;apiCall('getDriveImageDataBatch',[requestToken,keys],function(response){try{if(generation!==DRIVE_IMAGE_SESSION_GENERATION)return;var items=response&&response.success?safeArray(response.data):[],indexed={};items.forEach(function(item){indexed[item.key]=item;});keys.forEach(function(requestKey){var item=indexed[requestKey];if(item&&item.success&&item.base64){var uri='data:'+(item.mimeType||'image/jpeg')+';base64,'+item.base64;cacheDriveImage(requestKey,uri);applyDriveImageToNodes(requestKey,uri);}else{driveImageFallbackForKey(requestKey);}});}finally{delete DRIVE_IMAGE_IN_FLIGHT[batchId];if(Object.keys(DRIVE_IMAGE_QUEUE).length&&!DRIVE_IMAGE_TIMER)DRIVE_IMAGE_TIMER=setTimeout(flushDriveImageQueue,10);}},false,'',true);}}
+    function clearDriveImageCache(){DRIVE_IMAGE_SESSION_GENERATION++;APP.driveImageCache={};DRIVE_IMAGE_QUEUE=Object.create(null);DRIVE_IMAGE_IN_FLIGHT=Object.create(null);DRIVE_IMAGE_CACHE_ORDER=[];DRIVE_IMAGE_CACHE_BYTES=0;var nodes=document.querySelectorAll('img[data-drive-pending],img[data-drive-queued]');for(var i=0;i<nodes.length;i++){nodes[i].removeAttribute('data-drive-pending');nodes[i].removeAttribute('data-drive-queued');}}
+    function startDriveImageObserver(){if(!document.body)return;if(window.IntersectionObserver){DRIVE_IMAGE_OBSERVER=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(!entry.isIntersecting)return;var img=entry.target,marker=driveImageMarkerFromSrc(img.getAttribute('src'));DRIVE_IMAGE_OBSERVER.unobserve(img);if(marker&&!APP.driveImageCache[marker.requestKey]){img.setAttribute('data-drive-pending','1');queueDriveImageRequest(marker.requestKey);}});},{root:null,rootMargin:'500px 0px',threshold:0.01});}scanDriveImageNodes(document.body);if(!window.MutationObserver)return;var observer=new MutationObserver(function(mutations){for(var i=0;i<mutations.length;i++){var mutation=mutations[i];if(mutation.type==='childList'){for(var j=0;j<mutation.addedNodes.length;j++){if(mutation.addedNodes[j].nodeType===1)scanDriveImageNodes(mutation.addedNodes[j]);}}else if(mutation.type==='attributes'&&mutation.target&&mutation.target.tagName==='IMG'){scanDriveImageNodes(mutation.target);}}});observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['src']});}
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startDriveImageObserver);else startDriveImageObserver();
 
     function safeHref(value,fallback){var u=String(value||'').trim();return /^(https?:\/\/|mailto:|tel:|\/(?!\/)|#)/i.test(u)?esc(u):(fallback||'#');}
@@ -2823,11 +2825,35 @@ function marketplacePageTransitionSkeletonMarkup(){
     window.PORTAL_DATA_CACHE=PORTAL_DATA_CACHE;
     var PORTAL_DATA_CACHE_FRESH_MS=60000;
     var PORTAL_DATA_CACHE_MAX=120;
+    var PORTAL_DATA_CACHE_GENERATION_=0;
+    var PORTAL_DATA_CACHE_TTL_MS_={
+      getSettings:30000,getPublicHomeBundle:20000,getCategories:45000,getProducts:20000,
+      getProductById:30000,getProductVariants:30000,getBanners:45000,getPromotions:30000,
+      getReviews:20000,getMarketplaceStores:20000,getMarketplaceStore:20000,
+      getMarketplaceStorefront:20000,getMarketplaceFlashDeals:15000,getMarketplaceVouchers:20000,
+      getMarketplaceLiveRooms:15000,getFavorites:15000,getMyStore:30000,getCart:5000,
+      getAdminSettings:45000,getDashboardStats:15000,getSalesReports:20000,getAdminGridPage:20000,
+      adminGetOfficialStore:30000,adminGetSellers:15000,adminGetFlashDeals:15000,adminGetReturns:15000,adminGetSellerPayouts:15000,
+      getBannerStoreOptions:30000,getEmailOtpServiceStatus:30000,
+      sellerDashboard:15000,sellerGetProducts:20000,sellerGetOrders:15000,sellerGetCustomers:20000,
+      sellerGetVouchers:20000,sellerGetFlashDeals:15000,sellerGetReturns:15000,sellerGetPayouts:15000,
+      sellerGetLiveRooms:15000,sellerGetStoreProfile:30000,
+      getCustomerOrders:10000,getCustomerReturns:15000,getAddresses:45000,
+      getCustomerPreferences:45000,getCustomerBankAccounts:45000,getMyNotifications:10000,
+      getCustomerWallet:10000,getMyVouchers:20000,getFollowedStores:20000
+    };
     var PORTAL_DATA_CACHE_APIS=[
-      'getAdminSettings','getDashboardStats','getSalesReports','getAdminGridPage',
+      // Public browse pages: reuse recent results when visitors switch between views.
+      'getSettings','getPublicHomeBundle','getCategories','getProducts','getProductById','getProductVariants',
+      'getBanners','getPromotions','getReviews','getMarketplaceStores','getMarketplaceStore',
+      'getMarketplaceStorefront','getMarketplaceFlashDeals','getMarketplaceVouchers',
+      'getMarketplaceLiveRooms','getFavorites','getMyStore','getCart',
+      // Owner and seller pages.
+      'getAdminSettings','getDashboardStats','getSalesReports','getAdminGridPage','adminGetOfficialStore','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getBannerStoreOptions','getEmailOtpServiceStatus',
       'sellerDashboard','sellerGetProducts','sellerGetOrders','sellerGetCustomers',
       'sellerGetVouchers','sellerGetFlashDeals','sellerGetReturns','sellerGetPayouts',
       'sellerGetLiveRooms','sellerGetStoreProfile',
+      // Customer account pages.
       'getCustomerOrders','getCustomerReturns','getAddresses','getCustomerPreferences',
       'getCustomerBankAccounts','getMyNotifications','getCustomerWallet','getMyVouchers',
       'getFollowedStores'
@@ -2839,15 +2865,23 @@ function marketplacePageTransitionSkeletonMarkup(){
       return PORTAL_DATA_CACHE_APIS.indexOf(String(name||''))>=0;
     }
     function portalDataCacheKey_(name,args){
-      try{return String(APP.accessMode||'guest')+'|'+String(name||'')+'|'+JSON.stringify(safeArray(args));}
-      catch(error){return '';}
+      try{
+        var mode=String(APP.accessMode||'guest');
+        var token=mode==='owner'?String(APP.adminToken||''):
+          ((mode==='seller'||mode==='customer')?String(APP.customerToken||''):'');
+        var storeId=mode==='seller'?String(APP.sellerStore&&APP.sellerStore.id||''):'';
+        var guestSession=mode==='guest'?String(APP.sessionId||''):'';
+        var identity=[mode,token,storeId,guestSession].join('|');
+        return identity+'|'+String(name||'')+'|'+JSON.stringify(safeArray(args));
+      }catch(error){return '';}
     }
-    function portalDataCacheRead_(key){
+    function portalDataCacheRead_(key,name){
       if(!key)return null;
       var entry=PORTAL_DATA_CACHE[key];
       if(!entry)return null;
+      var ttl=Number(PORTAL_DATA_CACHE_TTL_MS_[String(name||'')]||PORTAL_DATA_CACHE_FRESH_MS);
       var age=Math.max(0,Date.now()-Number(entry.at||0));
-      if(age>PORTAL_DATA_CACHE_FRESH_MS){delete PORTAL_DATA_CACHE[key];return null;}
+      if(age>ttl){delete PORTAL_DATA_CACHE[key];return null;}
       return portalDataCacheClone_(entry.result);
     }
     function portalDataCacheWrite_(key,result){
@@ -2860,7 +2894,19 @@ function marketplacePageTransitionSkeletonMarkup(){
       }
     }
     function portalDataCacheClear_(){
+      PORTAL_DATA_CACHE_GENERATION_++;
       Object.keys(PORTAL_DATA_CACHE).forEach(function(key){delete PORTAL_DATA_CACHE[key];});
+    }
+    function portalDataClearUiSnapshots_(){
+      [
+        window.__STORE_PAGE_DOM_CACHE__,
+        window.ADMIN_PAGE_DOM_CACHE,
+        window.ADMIN_GRID_PAGE_CACHE,
+        window.SELLER_PAGE_CACHE
+      ].forEach(function(cache){
+        if(!cache||typeof cache!=='object')return;
+        Object.keys(cache).forEach(function(key){delete cache[key];});
+      });
     }
     function portalDataInflightFinish_(key,result){
       if(!key||!PORTAL_DATA_INFLIGHT[key])return;
@@ -2872,7 +2918,9 @@ function marketplacePageTransitionSkeletonMarkup(){
       });
     }
     function portalDataApiMutates_(name){
-      return /^(systemOwnerLogin|sellerLogin|customerLogin|customerSocialLogin|customerRegister|save|delete|update|create|add|remove|submit|verify|reject|adjust|cancel|confirm|mark|set|collect|follow|apply|request|resend|begin|customerComplete|adminResolve|adminSet|sellerRespond|sellerSave|sellerDelete|sellerUpdate|sellerSend|send|change|reset|logout|customerLogout|upload|clear|merge|subscribe|approve)/i.test(String(name||''));
+      // Treat owner/seller/customer-prefixed write APIs as mutations too, so
+      // fresh-page caches cannot survive a successful save or status change.
+      return /^(?:(?:systemOwner|admin|seller|customer)?(?:Login|SocialLogin|Register)|(?:admin|seller|customer)?(?:Save|Delete|Update|Create|Add|Remove|Submit|Verify|Reject|Adjust|Cancel|Confirm|Mark|Set|Collect|Follow|Apply|Request|Resend|Begin|Complete|Resolve|Respond|Send|Change|Reset|Logout|Upload|Clear|Merge|Subscribe|Approve|Toggle|Archive|Restore|Publish|Unpublish|Reconcile|Consume|Settle|Move|Import)|save|delete|update|create|add|remove|submit|verify|reject|adjust|cancel|confirm|mark|set|collect|follow|apply|request|resend|begin|complete|resolve|respond|send|change|reset|logout|upload|clear|merge|subscribe|approve|toggle|reconcile|consume|settle|move|import)/i.test(String(name||''));
     }
 
     function gsRun(method,...args){
@@ -2892,14 +2940,15 @@ function marketplacePageTransitionSkeletonMarkup(){
       args=safeArray(args);var done=typeof callback==='function'?callback:function(){};
       var portalSkeletonRequest=APP.customerPortalSkeletonPending&&name!=='getDataRevision'?Number(APP.customerPortalSkeletonRequestId||0):0;
       var pendingNavigation=!!(APP.lastActionButton&&Date.now()-Number(APP.lastActionAt||0)<1400&&APP.lastActionIsNavigation&&document.documentElement.contains(APP.lastActionButton));
-      var adminReadApis=['getAdminSidebarBadgeCounts','getAdminSellerChatThreads','getAdminOfficialStoreChatThreads','adminGetSellerChatMessages','adminGetOfficialStoreChatMessages','getBannerStoreOptions','getDashboardStats','getSalesReports','getAdminSettings','getEmailOtpServiceStatus','getProductsAdmin','getCategories','getInventory','getOrders','getPayments','getShippingMethods','getCustomers','getCoupons','getReviewsAdmin','getBannersAdmin','getPromotionsAdmin','getUsers','getLogs','getNewsletters','getBackups','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getAdminGridPage'];
+      var adminReadApis=['getAdminSellerChatThreads','getAdminOfficialStoreChatThreads','adminGetSellerChatMessages','adminGetOfficialStoreChatMessages','getBannerStoreOptions','getDashboardStats','getSalesReports','getAdminSettings','getEmailOtpServiceStatus','getProductsAdmin','getCategories','getInventory','getOrders','getPayments','getShippingMethods','getCustomers','getCoupons','getReviewsAdmin','getBannersAdmin','getPromotionsAdmin','getUsers','getLogs','getNewsletters','getBackups','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getAdminGridPage'];
       var guardAdminPage=APP.currentView==='admin'&&adminReadApis.indexOf(name)>=0&&!APP.dataPrefetchInProgress;
       var requestAdminPage=guardAdminPage?APP.adminPage:'';
       var requestAdminId=guardAdminPage?Number(APP.adminRequestId||0):0;
       var isStaleAdminPage=function(){return guardAdminPage&&(APP.currentView!=='admin'||APP.adminPage!==requestAdminPage||Number(APP.adminRequestId||0)!==requestAdminId);};
       var portalCacheable=portalDataCacheableApi_(name);
       var portalCacheKey=portalCacheable?portalDataCacheKey_(name,args):'';
-      var portalCacheHit=(!APP.dataPrefetchInProgress&&portalCacheable)?portalDataCacheRead_(portalCacheKey):null;
+      var portalCacheGeneration=PORTAL_DATA_CACHE_GENERATION_;
+      var portalCacheHit=(!APP.dataPrefetchInProgress&&portalCacheable)?portalDataCacheRead_(portalCacheKey,name):null;
       if(portalCacheHit){
         window.setTimeout(function(){
           if(isStaleAdminPage())return;
@@ -2940,8 +2989,8 @@ function marketplacePageTransitionSkeletonMarkup(){
       function finishRequest(){if(requestFinished)return false;requestFinished=true;if(requestTimer)clearTimeout(requestTimer);endApiLoading(loadHandle);endApiActivity(apiActivityHandle);return true;}
       var isPrefetchApiRequest=!!APP.dataPrefetchInProgress;
       function deliverApiResult(result){
-        if(portalCacheable&&result&&result.success===true)portalDataCacheWrite_(portalCacheKey,result);
-        else if(!isPrefetchApiRequest&&portalDataApiMutates_(name)&&result&&result.success===true)portalDataCacheClear_();
+        if(portalCacheable&&result&&result.success===true&&portalCacheGeneration===PORTAL_DATA_CACHE_GENERATION_)portalDataCacheWrite_(portalCacheKey,result);
+        else if(!isPrefetchApiRequest&&portalDataApiMutates_(name)&&result&&result.success===true){portalDataCacheClear_();portalDataClearUiSnapshots_();invalidateSidebarBadgeFreshness_();}
         try{done(result);}catch(callbackError){console.error('API callback failed: '+name,callbackError);if(!silentError)alertError('เกิดข้อผิดพลาดขณะเปิดหน้า กรุณาลองใหม่อีกครั้ง');}
         if(portalCacheable)portalDataInflightFinish_(portalCacheKey,result);
         if(!isPrefetchApiRequest&&document.documentElement.hasAttribute('data-store-browser-reload')){
@@ -2978,6 +3027,7 @@ function marketplacePageTransitionSkeletonMarkup(){
         case 'getSettings': requestPromise=gsRun('getSettings',); break;
         case 'getDriveImageDataBatch': requestPromise=gsRun('getDriveImageDataBatch',args[0],args[1]); break;
         case 'getProductVideoData': requestPromise=gsRun('getProductVideoData',args[0],args[1]); break;
+        case 'getPublicHomeBundle': requestPromise=gsRun('getPublicHomeBundle',args[0]); break;
         case 'getCategories': requestPromise=gsRun('getCategories',args[0]); break;
         case 'getProducts': requestPromise=gsRun('getProducts',args[0]); break;
         case 'getProductById': requestPromise=gsRun('getProductById',args[0],args[1]); break;
@@ -3361,68 +3411,95 @@ function marketplacePageTransitionSkeletonMarkup(){
     }
 
 function loadPublicData(onComplete){
-      var criticalPending=3,criticalComplete=false,completedCallback=false,secondaryStarted=false;
       var loadId=Number(APP.publicDataLoadRequestId||0)+1;
       APP.publicDataLoadRequestId=loadId;
-      APP.homeDataInitialPending=true;
-      APP.homePublicProductsLoaded=false;
-      APP.homeDailyDiscoverLoaded=false;
-      APP.homeDailyDiscoverLoading=false;
-      APP.homeDailyDiscoverFailed=false;
+      var hasWarmData=!!APP.publicDataLoaded;
+      APP.homeDataInitialPending=!hasWarmData;
+      if(!hasWarmData){
+        APP.homePublicProductsLoaded=false;
+        APP.homeDailyDiscoverLoaded=false;
+        APP.homeDailyDiscoverLoading=false;
+        APP.homeDailyDiscoverFailed=false;
+      }
       function isCurrentLoad(){return Number(APP.publicDataLoadRequestId||0)===loadId;}
       function isPublicHome(){return isCurrentLoad()&&(APP.accessMode==='guest'||APP.accessMode==='customer')&&APP.currentView==='home';}
       function renderPublicHome(){if(isPublicHome())renderHome();}
-      function finishCritical(){
-        if(!isCurrentLoad()||criticalComplete)return;
-        criticalPending--;
-        // Refresh the real page after each response rather than waiting for the slowest call.
-        renderPublicHome();
-        if(criticalPending<=0){
-          criticalComplete=true;
-          APP.homeDataInitialPending=false;
-          renderPublicHome();
-          if(document.documentElement.hasAttribute('data-store-browser-reload'))window.setTimeout(finishBrowserRefreshSkeleton,90);
-          if(!completedCallback&&typeof onComplete==='function'){
-            completedCallback=true;
-            try{onComplete();}catch(callbackError){console.error('Public data completion callback failed',callbackError);}
+      function complete(){if(typeof onComplete==='function'){try{onComplete();}catch(error){console.error('Public homepage completion callback failed',error);}}}
+      function applyPublicBundle(payload,group){
+        payload=payload||{};
+        var d=payload.datasets||{};
+        if(group==='primary'){
+          if(Object.prototype.hasOwnProperty.call(d,'categories'))applySharedCategoryRows(safeArray(d.categories),false);
+          if(Object.prototype.hasOwnProperty.call(d,'banners'))APP.banners=safeArray(d.banners);
+          if(Object.prototype.hasOwnProperty.call(d,'products')){
+            var p=d.products||{};
+            APP.products=Array.isArray(p.items)?p.items:safeArray(p);
+            APP.homePublicProductsLoaded=true;
           }
+          APP.publicDataLoaded=!!(APP.homePublicProductsLoaded||APP.categories.length||APP.banners.length);
+        }else{
+          if(Object.prototype.hasOwnProperty.call(d,'promotions'))APP.promotions=safeArray(d.promotions);
+          if(Object.prototype.hasOwnProperty.call(d,'stores')){
+            var stores=d.stores||{};
+            APP.stores=Array.isArray(stores.items)?stores.items:safeArray(stores);
+          }
+          if(Object.prototype.hasOwnProperty.call(d,'flashDeals'))APP.flashDeals=safeArray(d.flashDeals);
+          if(Object.prototype.hasOwnProperty.call(d,'vouchers'))APP.vouchers=safeArray(d.vouchers);
+          if(Object.prototype.hasOwnProperty.call(d,'liveRooms'))APP.liveRooms=safeArray(d.liveRooms);
+          APP.publicDataSecondaryLoaded=true;
         }
+        if(payload.errors&&Object.keys(payload.errors).length)console.warn('Some public homepage datasets could not be refreshed',payload.errors);
       }
-      function startSecondaryLoads(){
-        if(secondaryStarted||!isCurrentLoad())return;
-        secondaryStarted=true;
-        // Keep nonessential marketplace requests out of the first request burst.
-        apiCall('getPromotions',[{}],function(r){if(!isCurrentLoad())return;APP.promotions=r&&r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
-        apiCall('getMarketplaceStores',[{page:1,pageSize:12}],function(r){if(!isCurrentLoad())return;APP.stores=r&&r.success&&r.data?safeArray(r.data.items):[];if(criticalComplete)renderPublicHome();},false,'',true);
-        apiCall('getMarketplaceFlashDeals',[],function(r){if(!isCurrentLoad())return;APP.flashDeals=r&&r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
-        apiCall('getMarketplaceVouchers',[],function(r){if(!isCurrentLoad())return;APP.vouchers=r&&r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();refreshVisibleProductCardOffers();},false,'',true);
-        apiCall('getMarketplaceLiveRooms',[],function(r){if(!isCurrentLoad())return;APP.liveRooms=r&&r.success?safeArray(r.data):[];if(criticalComplete)renderPublicHome();},false,'',true);
+      function loadPrimaryLegacyFallback(){
+        var pending=3;
+        function done(){pending--;if(pending===0&&isCurrentLoad()){APP.publicDataLoaded=true;APP.homeDataInitialPending=false;renderPublicHome();complete();window.setTimeout(loadSecondaryBundle,250);}}
+        apiCall('getCategories',[{}],function(r){if(!isCurrentLoad())return;if(r&&r.success)applySharedCategoryRows(safeArray(r.data),false);done();},false,'',true);
+        apiCall('getBanners',[{}],function(r){if(!isCurrentLoad())return;if(r&&r.success)APP.banners=safeArray(r.data);done();},false,'',true);
+        apiCall('getProducts',[{page:1,pageSize:100,sort:'relevance'}],function(r){if(!isCurrentLoad())return;if(r&&r.success&&r.data){APP.products=safeArray(r.data.items);APP.homePublicProductsLoaded=true;}done();},false,'',true);
+      }
+      function loadSecondaryLegacyFallback(){
+        var pending=5;
+        function done(){pending--;if(pending===0&&isCurrentLoad()){APP.publicDataSecondaryLoaded=true;renderPublicHome();refreshVisibleProductCardOffers();}}
+        apiCall('getPromotions',[''],function(r){if(!isCurrentLoad())return;if(r&&r.success)APP.promotions=safeArray(r.data);done();},false,'',true);
+        apiCall('getMarketplaceStores',[{page:1,pageSize:12}],function(r){if(!isCurrentLoad())return;if(r&&r.success&&r.data)APP.stores=safeArray(r.data.items);done();},false,'',true);
+        apiCall('getMarketplaceFlashDeals',[],function(r){if(!isCurrentLoad())return;if(r&&r.success)APP.flashDeals=safeArray(r.data);done();},false,'',true);
+        apiCall('getMarketplaceVouchers',[],function(r){if(!isCurrentLoad())return;if(r&&r.success)APP.vouchers=safeArray(r.data);done();},false,'',true);
+        apiCall('getMarketplaceLiveRooms',[],function(r){if(!isCurrentLoad())return;if(r&&r.success)APP.liveRooms=safeArray(r.data);done();},false,'',true);
+      }
+      function loadSecondaryBundle(){
+        if(!isCurrentLoad())return;
+        apiCall('getPublicHomeBundle',['secondary'],function(response){
+          if(!isCurrentLoad())return;
+          if(response&&response.success){
+            var secondaryData=response.data||{},secondaryDatasets=secondaryData.datasets||{};
+            applyPublicBundle(secondaryData,'secondary');
+            if(Object.keys(secondaryDatasets).length<5)loadSecondaryLegacyFallback();
+            renderPublicHome();
+            refreshVisibleProductCardOffers();
+          }else if(!APP.publicDataSecondaryLoaded)loadSecondaryLegacyFallback();
+        },false,'',true);
+      }
+      renderPublicHome();
+      apiCall('getPublicHomeBundle',['primary'],function(response){
+        if(!isCurrentLoad())return;
+        if(response&&response.success){
+          var primaryData=response.data||{},primaryDatasets=primaryData.datasets||{};
+          applyPublicBundle(primaryData,'primary');
+          if(!primaryDatasets.categories||!primaryDatasets.banners||!primaryDatasets.products){loadPrimaryLegacyFallback();return;}
+        }else if(!APP.publicDataLoaded){loadPrimaryLegacyFallback();return;}
+        APP.homeDataInitialPending=false;
+        renderPublicHome();
+        refreshVisibleProductCardOffers();
+        complete();
+        window.setTimeout(loadSecondaryBundle,250);
+      },false,'',true);
+      if(!APP.publicVisitorRecorded){
         var visitorKey=localStorage.getItem('visitor_key');
         if(!visitorKey){visitorKey=makeKey();localStorage.setItem('visitor_key',visitorKey);}
         apiCall('recordVisitor',[visitorKey,navigator.userAgent],function(){},false,'',true);
-        refreshCartCount();
+        APP.publicVisitorRecorded=true;
       }
-      // Paint the homepage immediately so a slow Sheets query cannot block navigation.
-      renderPublicHome();
-      apiCall('getCategories',[{}],function(r){
-        if(!isCurrentLoad())return;
-        if(r&&r.success)applySharedCategoryRows(safeArray(r.data),false);
-        else{APP.categories=[];APP.sharedCategories=[];APP.sharedCategoriesFetchedAt=Date.now();}
-        finishCritical();
-      },false,'',true);
-      apiCall('getBanners',[{}],function(r){
-        if(!isCurrentLoad())return;
-        APP.banners=r&&r.success?safeArray(r.data):[];
-        finishCritical();
-      },false,'',true);
-      apiCall('getProducts',[{page:1,pageSize:100,sort:'relevance'}],function(r){
-        if(!isCurrentLoad())return;
-        APP.products=r&&r.success&&r.data?safeArray(r.data.items):[];
-        APP.homePublicProductsLoaded=!!(r&&r.success);
-        finishCritical();
-      },false,'',true);
-      // Delay the secondary data calls slightly to reduce Apps Script concurrency at startup.
-      window.setTimeout(startSecondaryLoads,900);
+      refreshCartCount();
     }
     function toggleMobileNav(){document.getElementById('mainNav').classList.toggle('open');}
     function toggleTheme(){document.body.classList.toggle('dark');var dark=document.body.classList.contains('dark');localStorage.setItem('store_theme',dark?'dark':'light');var icon=document.getElementById('themeIcon');if(icon)icon.className=dark?'fa-regular fa-sun':'fa-regular fa-moon';}
@@ -3458,7 +3535,7 @@ function loadPublicData(onComplete){
     }
     function productCardCampaignMarkup(product){
       var campaignImage=String(product&&product.campaignImage||'').trim();
-      if(campaignImage)return '<div class="product-campaign-ribbon product-campaign-image"><img src="'+imageUrl(campaignImage)+'" alt="แถบแคมเปญ" loading="lazy"></div>';
+      if(campaignImage)return '<div class="product-campaign-ribbon product-campaign-image"><img src="'+imageUrl(campaignImage,'thumb')+'" alt="แถบแคมเปญ" loading="lazy"></div>';
       var label=String(product&&product.campaignLabel||'').trim();
       if(!label){
         var minimum=Number(product&&product.freeShippingMinimum||0)||Number((APP.settings||{}).freeShippingMinimum||0);
@@ -3557,7 +3634,7 @@ function loadPublicData(onComplete){
       return '<article class="product-card '+(isCatalogCard?'catalog-product-card':'')+'" data-product-id="'+esc(p.id)+'">'+
         '<div class="product-image" role="button" tabindex="0" aria-label="ดูสินค้า '+esc(p.name)+'" onclick="viewProduct(\''+esc(p.id)+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \')viewProduct(\''+esc(p.id)+'\')">'+
           mallBadge+discountBadge+
-          '<img loading="lazy" src="'+imageUrl(p.coverImage)+'" alt="'+esc(p.name)+'" onerror="imageFallback(this)">'+
+          '<img loading="lazy" src="'+imageUrl(p.coverImage,'thumb')+'" alt="'+esc(p.name)+'" onerror="imageFallback(this)">'+
           campaign+videoButton+
         '</div>'+
         '<div class="product-info">'+
@@ -3599,7 +3676,7 @@ function loadPublicData(onComplete){
       var id=String(category&&category.id||''),name=String(category&&category.name||'หมวดหมู่');
       var image=String(category&&category.image||'').trim();
       var media=image
-        ? '<img src="'+imageUrl(image)+'" onerror="imageFallback(this)" alt="'+esc(name)+'" loading="lazy">'
+        ? '<img src="'+imageUrl(image,'thumb')+'" onerror="imageFallback(this)" alt="'+esc(name)+'" loading="lazy">'
         : '<i class="fa-solid fa-layer-group" aria-hidden="true"></i>';
       return '<button type="button" class="home-category-card" data-category-id="'+esc(id)+'" onclick="filterCategory(this.dataset.categoryId)" title="'+esc(name)+'"><span class="home-category-image">'+media+'</span><span class="home-category-name">'+esc(name)+'</span></button>';
     }
@@ -5011,6 +5088,7 @@ function loadPublicData(onComplete){
       }catch(ignoreUrl){}
     }
     function transitionToGuestHomeAfterLogout(message){
+      clearDriveImageCache();
       var root=document.getElementById('appRoot');
       APP.adminRequestId=Number(APP.adminRequestId||0)+1;
       APP.customerPortalSkeletonPending=false;
@@ -5577,7 +5655,7 @@ function loadPublicData(onComplete){
       if(APP.adminChatPollTimer){clearInterval(APP.adminChatPollTimer);APP.adminChatPollTimer=null;}
       if(page==='sellerChat'){loadAdminChatPage('seller');return;}
       if(page==='officialChat'){loadAdminChatPage('official');return;}
-      if(page==='dashboard'){loadAdminDashboard();return;}if(page==='officialStore'){loadOfficialStoreAdmin();return;}if(page==='settings'){loadAdminSettings();return;}if(page==='reports'){loadAdminReports();return;}if(page==='demo'){renderDemoAdmin();if(document.documentElement.hasAttribute('data-store-browser-reload'))window.setTimeout(finishBrowserRefreshSkeleton,90);return;}if(page==='backup'){loadBackupAdmin();return;}if(page==='shipping'){loadShippingAdmin();return;}if(['sellers','flashDeals','marketplaceReturns','marketplacePayouts'].indexOf(page)>=0){loadMarketplaceAdmin(page);return;}loadAdminModule(page);
+      if(page==='dashboard'){loadAdminDashboard(!!(cached&&cached.html));return;}if(page==='officialStore'){loadOfficialStoreAdmin();return;}if(page==='settings'){loadAdminSettings();return;}if(page==='reports'){loadAdminReports();return;}if(page==='demo'){renderDemoAdmin();if(document.documentElement.hasAttribute('data-store-browser-reload'))window.setTimeout(finishBrowserRefreshSkeleton,90);return;}if(page==='backup'){loadBackupAdmin();return;}if(page==='shipping'){loadShippingAdmin();return;}if(['sellers','flashDeals','marketplaceReturns','marketplacePayouts'].indexOf(page)>=0){loadMarketplaceAdmin(page);return;}loadAdminModule(page);
     }
     function adminLogout(){
       var token=APP.adminToken;
@@ -8688,127 +8766,11 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
 
     (function(){
 
-    /* ---------------- SPA NAVIGATION + SHORT-LIVED READ CACHE ---------------- */
+    /* ---------------- CLIENT-SIDE ROUTING + BROWSER HISTORY ---------------- */
     (function installStoreSpaNavigation(){
-      var STORE_SPA_NAV_CACHE_V1 = window.STORE_SPA_NAV_CACHE_V1 || {};
-      window.STORE_SPA_NAV_CACHE_V1 = STORE_SPA_NAV_CACHE_V1;
-      var STORE_SPA_READ_TTL = {
-        getSettings:60000,
-        getCategories:45000,
-        getProducts:20000,
-        getProductById:45000,
-        getProductVariants:45000,
-        getBanners:60000,
-        getPromotions:60000,
-        getMarketplaceStores:20000,
-        getMarketplaceStore:30000,
-        getMarketplaceFlashDeals:20000,
-        getMarketplaceVouchers:30000,
-        getMarketplaceLiveRooms:30000,
-        getCart:8000,
-        getCustomerOrders:15000,
-        getAddresses:60000,
-        getCustomerPreferences:60000,
-        getCustomerBankAccounts:60000,
-        getMyNotifications:15000,
-        getCustomerWallet:15000,
-        getMyVouchers:30000,
-        getCustomerReturns:15000,
-        getFollowedStores:30000,
-        getAdminGridPage:60000,
-        getAdminSettings:60000,
-        getDashboardStats:30000,
-        getSalesReports:30000,
-        sellerDashboard:30000,
-        sellerGetProducts:30000,
-        sellerGetOrders:20000,
-        sellerGetCustomers:30000,
-        sellerGetVouchers:30000,
-        sellerGetFlashDeals:20000,
-        sellerGetReturns:20000,
-        sellerGetPayouts:20000,
-        sellerGetLiveRooms:30000,
-        sellerGetStoreProfile:60000
-      };
-      var STORE_SPA_MUTATION = /^(save|delete|update|add|remove|clear|create|submit|verify|reject|approve|set|toggle|confirm|cancel|adjust|upload|register|customerLogin|sellerLogin|systemOwnerLogin|customerSocialLogin|customerLogout|logout|collect|follow|read|mark|apply|resolve|respond|send|request|restore|reconcile|change|reset|consume|settle|move|import|adminSet|adminResolve|sellerSave|sellerDelete|sellerUpdate)/i;
-      var STORE_SPA_ORIGINAL_API = apiCall;
+      /* API reads use the single session-aware PORTAL_DATA_CACHE in apiCall(). */
       var STORE_SPA_REPLAYING = false;
       var STORE_SPA_LAST_USER_ACTION = 0;
-      var STORE_SPA_MAX_CACHE_ENTRIES = 150;
-      var STORE_SPA_INFLIGHT = Object.create(null);
-      var STORE_SPA_CACHE_GENERATION = 0;
-
-      function storeSpaClone(value){
-        try{return JSON.parse(JSON.stringify(value));}catch(error){return value;}
-      }
-      function storeSpaCacheIdentity(){
-        return [
-          String(APP.accessMode||'guest'),
-          String(APP.adminToken||''),
-          String(APP.customerToken||''),
-          String(APP.sessionId||'')
-        ].join('|');
-      }
-      function storeSpaCacheKey(name,args){
-        var serialized='';
-        try{serialized=JSON.stringify(args||[]);}catch(error){serialized='';}
-        return storeSpaCacheIdentity()+'|'+String(name||'')+'|'+serialized;
-      }
-      function storeSpaClearReadCache(){
-        Object.keys(STORE_SPA_NAV_CACHE_V1).forEach(function(key){delete STORE_SPA_NAV_CACHE_V1[key];});
-      }
-      function storeSpaTrimReadCache(){
-        var keys=Object.keys(STORE_SPA_NAV_CACHE_V1);
-        if(keys.length<=STORE_SPA_MAX_CACHE_ENTRIES)return;
-        keys.sort(function(a,b){
-          return Number(STORE_SPA_NAV_CACHE_V1[a].at||0)-Number(STORE_SPA_NAV_CACHE_V1[b].at||0);
-        }).slice(0,keys.length-STORE_SPA_MAX_CACHE_ENTRIES).forEach(function(key){
-          delete STORE_SPA_NAV_CACHE_V1[key];
-        });
-      }
-
-      /* Session-scoped read cache covers guest, customer, seller and owner data.
-         In-flight reads are shared so a menu click can attach to a warm-up request. */
-      apiCall=function(name,args,callback,showLoading,loadingText,silentError){
-        var ttl=STORE_SPA_READ_TTL[name];
-        var isMutation=STORE_SPA_MUTATION.test(String(name||''));
-        if(ttl){
-          var key=storeSpaCacheKey(name,args),entry=STORE_SPA_NAV_CACHE_V1[key];
-          if(entry&&Date.now()-Number(entry.at||0)<=ttl){
-            var cachedResult=storeSpaClone(entry.result);
-            if(typeof callback==='function')window.setTimeout(function(){callback(cachedResult);},0);
-            return;
-          }
-          if(entry)delete STORE_SPA_NAV_CACHE_V1[key];
-          var pending=STORE_SPA_INFLIGHT[key];
-          if(pending){
-            if(typeof callback==='function')pending.callbacks.push(callback);
-            return;
-          }
-          var generation=STORE_SPA_CACHE_GENERATION;
-          pending={callbacks:[]};
-          if(typeof callback==='function')pending.callbacks.push(callback);
-          STORE_SPA_INFLIGHT[key]=pending;
-          return STORE_SPA_ORIGINAL_API(name,args,function(result){
-            if(result&&result.success&&generation===STORE_SPA_CACHE_GENERATION){
-              STORE_SPA_NAV_CACHE_V1[key]={at:Date.now(),result:storeSpaClone(result)};
-              storeSpaTrimReadCache();
-            }
-            var flight=STORE_SPA_INFLIGHT[key];
-            delete STORE_SPA_INFLIGHT[key];
-            var callbacks=flight?safeArray(flight.callbacks):[];
-            callbacks.forEach(function(fn){
-              try{fn(storeSpaClone(result));}
-              catch(callbackError){console.error('Cached API callback failed: '+name,callbackError);}
-            });
-          },showLoading,loadingText,silentError);
-        }
-        if(isMutation){
-          STORE_SPA_CACHE_GENERATION++;
-          storeSpaClearReadCache();
-        }
-        return STORE_SPA_ORIGINAL_API(name,args,callback,showLoading,loadingText,silentError);
-      };
 
       function storeSpaRouteSignature(route){
         try{return JSON.stringify(route||{});}catch(error){return '';}
@@ -8941,7 +8903,7 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
         storeSpaApplyRoute(state&&state.__storeSpa?state.route:{type:'default'});
       });
     })();
-    /* ---------------- END SPA NAVIGATION + SHORT-LIVED READ CACHE ---------------- */
+    /* ---------------- END CLIENT-SIDE ROUTING + BROWSER HISTORY ---------------- */
 
       var appStartupStarted=false;
       var tableEnhancerStarted=false;
@@ -10788,6 +10750,11 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
       function isRealtimePage(route){
         return !!route&&((route.type==='seller'&&route.page==='chat')||(route.type==='customer'&&route.page==='chat'));
       }
+      function isCacheableRoute(route){
+        if(!route||route.type!=='public')return false;
+        return ['home','products','detail','stores','store','flash','vouchers','live','promotions',
+          'about','contact','policy','recommended'].indexOf(String(route.page||''))>=0;
+      }
       function trimPageCache(){
         var keys=Object.keys(PAGE_CACHE);
         if(keys.length<=PAGE_CACHE_LIMIT)return;
@@ -10796,7 +10763,7 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
       }
       function rememberCurrentPage(){
         var route=currentPage();
-        if(isRealtimePage(route))return;
+        if(!isCacheableRoute(route)||isRealtimePage(route))return;
         var host=hostFor(route.type);
         if(!host)return;
         var html=String(host.innerHTML||'');
@@ -10832,7 +10799,7 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
         return null;
       }
       function restorePage(route){
-        if(!route||isRealtimePage(route))return false;
+        if(!isCacheableRoute(route)||isRealtimePage(route))return false;
         var key=pageKey(route.type,route.page,route.extra);
         var entry=PAGE_CACHE[key];
         if(!entry||!entry.html)return false;
@@ -10894,18 +10861,7 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
       if(typeof marketplaceOriginalSearchStores==='function')window.searchStores=marketplaceOriginalSearchStores;
       if(typeof marketplaceOriginalRelatedProducts==='function')window.loadRelatedProducts=marketplaceOriginalRelatedProducts;
 
-      /* A successful write invalidates snapshots so the next visit cannot show stale data. */
-      var priorApiCall=window.apiCall;
-      var writePattern=/^(save|delete|update|add|remove|clear|create|submit|verify|reject|approve|set|toggle|confirm|cancel|adjust|upload|register|customerLogin|sellerLogin|systemOwnerLogin|customerSocialLogin|customerLogout|logout|collect|follow|read|mark|apply|resolve|respond|send|request|restore|reconcile|change|reset|consume|settle|move|import|adminSet|adminResolve|sellerSave|sellerDelete|sellerUpdate)/i;
-      if(typeof priorApiCall==='function'){
-        window.apiCall=function(name,args,callback,showLoading,loadingText,silentError){
-          var isWrite=writePattern.test(String(name||''));
-          return priorApiCall.call(this,name,args,function(result){
-            if(isWrite&&result&&result.success)Object.keys(PAGE_CACHE).forEach(function(key){delete PAGE_CACHE[key];});
-            if(typeof callback==='function')callback(result);
-          },showLoading,loadingText,silentError);
-        };
-      }
+      /* UI snapshots are invalidated centrally by portalDataClearUiSnapshots_(). */
 
       /* Clear private page snapshots when a portal session ends. */
       var priorLogoutTransition=window.transitionToGuestHomeAfterLogout;
@@ -11090,111 +11046,109 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
 
   <script id="instant-menu-data-warmup-v1">
     (function(){
-      if(window.__STORE_INSTANT_MENU_DATA_WARMUP_V1__)return;
-      window.__STORE_INSTANT_MENU_DATA_WARMUP_V1__=true;
-      APP.dataPrefetchInProgress=false;
+      if(window.__STORE_INTENT_DATA_PREFETCH_V2__)return;
+      window.__STORE_INTENT_DATA_PREFETCH_V2__=true;
 
-      var adminWarmToken='',sellerWarmToken='',customerWarmToken='';
-      var adminGridPages=['products','officialProducts','officialOrders','orders','inventory','categories','customers','payments','shipping','banners','promotions','coupons','reviews','sellers','flashDeals','marketplaceReturns','marketplacePayouts','users','logs','newsletters','backup'];
-      var sellerPages=['dashboard','products','orders','customers','vouchers','deals','returns','payouts','live','store'];
-      var customerReads=['getCustomerOrders','getCustomerReturns','getAddresses','getCustomerPreferences','getCustomerBankAccounts','getMyNotifications','getCustomerWallet','getMyVouchers','getFollowedStores'];
+      /* Warm only the menu a user is about to open; never load every portal tab at login. */
+      var lastIntentButton=null,intentTimer=null,activePrefetch=0;
+      var attempted=Object.create(null),cooldownMs=8000;
+      var sellerApi={
+        dashboard:'sellerDashboard',products:'sellerGetProducts',orders:'sellerGetOrders',
+        customers:'sellerGetCustomers',vouchers:'sellerGetVouchers',deals:'sellerGetFlashDeals',
+        returns:'sellerGetReturns',payouts:'sellerGetPayouts',live:'sellerGetLiveRooms',store:'sellerGetStoreProfile'
+      };
+      var customerApi={
+        purchase:'getCustomerOrders',bank:'getCustomerBankAccounts',addresses:'getAddresses',
+        privacy:'getCustomerPreferences',notificationSettings:'getCustomerPreferences',
+        orderSettings:'getCustomerPreferences',orderNotices:'getMyNotifications',
+        promoNotices:'getMyNotifications',allNotices:'getMyNotifications',
+        discounts:'getMyVouchers',vouchers:'getMyVouchers',coins:'getCustomerWallet',
+        returns:'getCustomerReturns',following:'getFollowedStores'
+      };
+      var adminSpecial={
+        settings:'getAdminSettings',dashboard:'getDashboardStats',reports:'getSalesReports',
+        officialStore:'adminGetOfficialStore',sellers:'adminGetSellers',
+        flashDeals:'adminGetFlashDeals',marketplaceReturns:'adminGetReturns',
+        marketplacePayouts:'adminGetSellerPayouts'
+      };
 
-      function clone(value){try{return JSON.parse(JSON.stringify(value));}catch(error){return value;}}
-      function runQueue(tasks,valid,workers){
-        var cursor=0,active=0,finished=false;
-        workers=Math.max(1,Math.min(3,Number(workers)||2));
-        function pump(){
-          if(finished||!valid())return;
-          if(cursor>=tasks.length&&active===0){finished=true;return;}
-          while(active<workers&&cursor<tasks.length){
-            var task=tasks[cursor++];
-            active++;
-            (function(current){
-              try{current(function(){active--;window.setTimeout(pump,40);});}
-              catch(error){active--;window.setTimeout(pump,40);}
-            })(task);
-          }
-        }
-        pump();
+      function shouldSkipButton(button){
+        if(!button||button.disabled)return true;
+        if(window.Swal&&typeof Swal.isVisible==='function'&&Swal.isVisible())return true;
+        return button.classList.contains('active')||button.getAttribute('aria-current')==='page';
       }
-      function warmRead(name,args,done){
+      function prefetchRead(name,args){
+        if(!name||typeof window.apiCall!=='function'||activePrefetch>=1)return;
+        var key=portalDataCacheKey_(name,args);
+        if(!key||portalDataCacheRead_(key,name)||PORTAL_DATA_INFLIGHT[key])return;
+        if(Date.now()-Number(attempted[key]||0)<cooldownMs)return;
+        attempted[key]=Date.now();
+        activePrefetch++;
         var prior=!!APP.dataPrefetchInProgress;
         APP.dataPrefetchInProgress=true;
         try{
-          window.apiCall(name,args,function(){if(typeof done==='function')done();},false,'',true);
-        }finally{APP.dataPrefetchInProgress=prior;}
+          window.apiCall(name,args,function(result){
+            activePrefetch=Math.max(0,activePrefetch-1);
+            if(result&&result.success===true)delete attempted[key];
+          },false,'',true);
+        }catch(error){
+          activePrefetch=Math.max(0,activePrefetch-1);
+          console.warn('[Online Store] Menu data warm-up skipped',error);
+        }finally{
+          APP.dataPrefetchInProgress=prior;
+        }
       }
-      function adminTask(page){
-        return function(done){
-          if(!APP.adminToken||APP.accessMode!=='owner'){done();return;}
-          var state=adminGridState(page);
-          if(!state.options.sortKey)state.options.sortKey=page==='logs'?'timestamp':'createdAt';
-          var options=clone(state.options)||{};
-          warmRead('getAdminGridPage',[APP.adminToken,page,options],done);
-        };
+      function adminOptions(page){
+        var state=window.ADMIN_GRID_STATES&&window.ADMIN_GRID_STATES['admin_'+page];
+        if(state&&state.options)return JSON.parse(JSON.stringify(state.options));
+        return {page:1,pageSize:10,search:'',status:'',dateFrom:'',dateTo:'',
+          sortKey:page==='logs'?'timestamp':'createdAt',sortDir:'desc'};
       }
-      function startAdminWarm(){
-        var token=String(APP.adminToken||'');
-        if(!token||APP.accessMode!=='owner'||adminWarmToken===token)return;
-        adminWarmToken=token;
-        var tasks=[];
-        adminGridPages.forEach(function(page){if(page!==APP.adminPage)tasks.push(adminTask(page));});
-        if(APP.adminPage!=='settings')tasks.push(function(done){warmRead('getAdminSettings',[token],done);});
-        if(APP.adminPage!=='dashboard')tasks.push(function(done){warmRead('getDashboardStats',[token],done);});
-        if(APP.adminPage!=='dashboard')tasks.push(function(done){warmRead('getSalesReports',[token,{}],done);});
-        runQueue(tasks,function(){return APP.accessMode==='owner'&&String(APP.adminToken||'')===token;},4);
+      function prefetchButton(button){
+        if(shouldSkipButton(button))return;
+        if(button.id&&button.id.indexOf('nav_')===0&&APP.accessMode==='owner'&&APP.adminToken){
+          var page=button.id.slice(4),token=APP.adminToken;
+          if(!page||page===String(APP.adminPage||''))return;
+          var special=adminSpecial[page];
+          if(special)prefetchRead(special,[token].concat(page==='reports'?[{}]:[]));
+          else prefetchRead('getAdminGridPage',[token,page,adminOptions(page)]);
+          return;
+        }
+        if(button.id&&button.id.indexOf('sellerNav_')===0&&APP.accessMode==='seller'&&APP.customerToken){
+          var sellerPage=button.id.slice('sellerNav_'.length);
+          if(!sellerPage||sellerPage===String(APP.sellerPage||'')||sellerPage==='chat')return;
+          var sellerName=sellerApi[sellerPage];
+          if(!sellerName)return;
+          var sellerOptions=typeof sellerPageOptions_==='function'?sellerPageOptions_(sellerPage):{};
+          prefetchRead(sellerName,[APP.customerToken,sellerOptions||{}]);
+          return;
+        }
+        var customerId=button.getAttribute&&button.getAttribute('data-cp-nav');
+        if(customerId&&APP.accessMode==='customer'&&APP.customerToken){
+          if(customerId===String(APP.customerPortalActive||''))return;
+          var customerName=customerApi[customerId];
+          if(!customerName)return;
+          prefetchRead(customerName,[APP.customerToken]);
+        }
       }
-      function sellerTask(page,token,storeId){
-        return function(done){
-          if(APP.accessMode!=='seller'||String(APP.customerToken||'')!==token||String(APP.sellerStore&&APP.sellerStore.id||'')!==storeId){done();return;}
-          var apiMap={products:'sellerGetProducts',orders:'sellerGetOrders',customers:'sellerGetCustomers',vouchers:'sellerGetVouchers',deals:'sellerGetFlashDeals',returns:'sellerGetReturns',payouts:'sellerGetPayouts',live:'sellerGetLiveRooms',store:'sellerGetStoreProfile'};
-          var options=typeof sellerPageOptions_==='function'?sellerPageOptions_(page):{};
-          warmRead(apiMap[page],[token,options||{}],done);
-        };
+      function scheduleIntent(event){
+        var target=event&&event.target;
+        var button=target&&target.closest?target.closest('button[id^="nav_"],button[id^="sellerNav_"],button[data-cp-nav]'):null;
+        if(!button||button===lastIntentButton)return;
+        lastIntentButton=button;
+        if(intentTimer)window.clearTimeout(intentTimer);
+        intentTimer=window.setTimeout(function(){
+          intentTimer=null;
+          if(button.isConnected)prefetchButton(button);
+        },180);
       }
-      function startSellerWarm(){
-        var token=String(APP.customerToken||''),storeId=String(APP.sellerStore&&APP.sellerStore.id||'');
-        if(!token||!storeId||APP.accessMode!=='seller')return;
-        var key=token+'|'+storeId;
-        if(sellerWarmToken===key)return;
-        sellerWarmToken=key;
-        var tasks=sellerPages.filter(function(page){return page!==APP.sellerPage;}).map(function(page){return sellerTask(page,token,storeId);});
-        runQueue(tasks,function(){return APP.accessMode==='seller'&&String(APP.customerToken||'')===token&&String(APP.sellerStore&&APP.sellerStore.id||'')===storeId;},4);
-      }
-      function startCustomerWarm(){
-        var token=String(APP.customerToken||'');
-        if(!token||APP.accessMode!=='customer'||customerWarmToken===token)return;
-        customerWarmToken=token;
-        var tasks=customerReads.map(function(name){return function(done){warmRead(name,[token],done);};});
-        runQueue(tasks,function(){return APP.accessMode==='customer'&&String(APP.customerToken||'')===token;},3);
-      }
-
-      function wrapAfter(name,after){
-        var original=window[name];
-        if(typeof original!=='function'||original.__instantWarmWrapped)return;
-        var wrapped=function(){
-          var result=original.apply(this,arguments);
-          try{after.apply(this,arguments);}catch(error){console.warn('Warm-up scheduling skipped: '+name,error);}
-          return result;
-        };
-        wrapped.__instantWarmWrapped=true;
-        wrapped.__instantWarmOriginal=original;
-        window[name]=wrapped;
-      }
-      wrapAfter('loadAdminPage',function(){
-        if(APP.accessMode==='owner'&&APP.adminToken)window.setTimeout(startAdminWarm,220);
-      });
-      wrapAfter('loadSellerPage',function(){
-        if(APP.accessMode==='seller'&&APP.customerToken)window.setTimeout(startSellerWarm,220);
-      });
-      wrapAfter('openAccount',function(){
-        if(APP.customerToken&&APP.accessMode==='customer')window.setTimeout(startCustomerWarm,180);
-      });
-      wrapAfter('customerPortalNavigate',function(){
-        if(APP.customerToken&&APP.accessMode==='customer')window.setTimeout(startCustomerWarm,120);
-      });
-
-      /* All page datasets are prefetched once into PORTAL_DATA_CACHE at portal entry. */
+      document.addEventListener('pointerover',scheduleIntent,true);
+      document.addEventListener('focusin',scheduleIntent,true);
+      document.addEventListener('click',function(){
+        if(intentTimer)window.clearTimeout(intentTimer);
+        intentTimer=null;
+        lastIntentButton=null;
+      },true);
     })();
   </script>
 
@@ -12166,33 +12120,66 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
       node.title=count.toLocaleString('th-TH')+(label||' รายการที่ต้องติดตาม');
       node.setAttribute('aria-label',node.title);
     }
-    function loadAdminSidebarBadges(){
+    var SIDEBAR_BADGE_FRESH_MS=20000;
+    var SIDEBAR_BADGE_STATE_={
+      admin:{token:'',at:0,inFlight:false,requestId:0},
+      seller:{token:'',at:0,inFlight:false,requestId:0},
+      customer:{token:'',at:0,inFlight:false,requestId:0}
+    };
+    function invalidateSidebarBadgeFreshness_(){
+      ['admin','seller','customer'].forEach(function(portal){
+        var state=SIDEBAR_BADGE_STATE_[portal];
+        state.at=0;state.inFlight=false;state.requestId++;
+      });
+    }
+    function loadAdminSidebarBadges(force){
       if(!APP||!APP.adminToken||!document.getElementById('adminSidebar'))return;
-      apiCall('getAdminSidebarBadgeCounts',[APP.adminToken],function(r){
+      var token=String(APP.adminToken),state=SIDEBAR_BADGE_STATE_.admin;
+      if(state.token!==token){state.token=token;state.at=0;state.inFlight=false;state.requestId++;}
+      if(state.inFlight||(!force&&state.at&&Date.now()-state.at<SIDEBAR_BADGE_FRESH_MS))return;
+      state.inFlight=true;var requestId=++state.requestId;
+      apiCall('getAdminSidebarBadgeCounts',[token],function(r){
+        if(state.requestId!==requestId||state.token!==token)return;
+        state.inFlight=false;
         if(!r||!r.success||!r.data)return;
+        state.at=Date.now();
         ['products','inventory','orders','payments','sellers','sellerChat','officialChat','marketplaceReturns','marketplacePayouts','reviews'].forEach(function(key){
           setSidebarBadge_('adminBadge_'+key,r.data[key],' รายการที่ต้องดำเนินการ');
         });
-      },false);
+      },false,'',true);
     }
-    function loadSellerSidebarBadges(){
+    function loadSellerSidebarBadges(force){
       if(!APP||!APP.customerToken||!document.getElementById('sellerSidebar'))return;
-      apiCall('getSellerSidebarBadgeCounts',[APP.customerToken],function(r){
+      var token=String(APP.customerToken),state=SIDEBAR_BADGE_STATE_.seller;
+      if(state.token!==token){state.token=token;state.at=0;state.inFlight=false;state.requestId++;}
+      if(state.inFlight||(!force&&state.at&&Date.now()-state.at<SIDEBAR_BADGE_FRESH_MS))return;
+      state.inFlight=true;var requestId=++state.requestId;
+      apiCall('getSellerSidebarBadgeCounts',[token],function(r){
+        if(state.requestId!==requestId||state.token!==token)return;
+        state.inFlight=false;
         if(!r||!r.success||!r.data)return;
+        state.at=Date.now();
         ['products','orders','returns','chat','payouts'].forEach(function(key){
           setSidebarBadge_('sellerBadge_'+key,r.data[key],key==='chat'?' ข้อความที่ยังไม่อ่าน':' รายการที่ต้องติดตาม');
         });
-      },false);
+      },false,'',true);
     }
-    function loadCustomerSidebarBadges(){
+    function loadCustomerSidebarBadges(force){
       if(!APP||!APP.customerToken||!document.getElementById('customerPortalLayout'))return;
-      apiCall('getCustomerSidebarBadgeCounts',[APP.customerToken],function(r){
+      var token=String(APP.customerToken),state=SIDEBAR_BADGE_STATE_.customer;
+      if(state.token!==token){state.token=token;state.at=0;state.inFlight=false;state.requestId++;}
+      if(state.inFlight||(!force&&state.at&&Date.now()-state.at<SIDEBAR_BADGE_FRESH_MS))return;
+      state.inFlight=true;var requestId=++state.requestId;
+      apiCall('getCustomerSidebarBadgeCounts',[token],function(r){
+        if(state.requestId!==requestId||state.token!==token)return;
+        state.inFlight=false;
         if(!r||!r.success||!r.data)return;
+        state.at=Date.now();
         ['purchase','orderNotices','promoNotices','allNotices','returns','chat'].forEach(function(key){
           setSidebarBadge_('customerBadge_'+key,r.data[key],key==='chat'?' ข้อความที่ยังไม่อ่าน':' รายการที่ยังไม่อ่าน');
         });
         setSidebarBadge_('customerBadge_notifications',r.data.allNotices,' การแจ้งเตือนที่ยังไม่อ่าน');
-      },false);
+      },false,'',true);
     }
     function startSidebarBadgePolling_(portal){
       if(SIDEBAR_BADGE_POLLERS_[portal])window.clearInterval(SIDEBAR_BADGE_POLLERS_[portal]);
@@ -12553,6 +12540,7 @@ function liveRefreshCustomer_(tables,resync){
 function applyGlobalDataChanges_(events,resync){
  var tables=liveTables_(events);if(resync&&!tables.length)tables=['Products','Orders','Stores','ChatThreads','ChatMessages','Notifications','Settings'];if(!tables.length)return;
  portalDataCacheClear_();
+ portalDataClearUiSnapshots_();
  if(APP.accessMode==='owner')liveRefreshOwner_(tables,resync);else if(APP.accessMode==='seller')liveRefreshSeller_(tables,resync);else liveRefreshCustomer_(tables,resync);
  if(APP.currentView==='admin'&&typeof loadAdminSidebarBadges==='function')loadAdminSidebarBadges();
  if(APP.currentView==='seller'&&typeof loadSellerSidebarBadges==='function')loadSellerSidebarBadges();
