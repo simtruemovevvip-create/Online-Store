@@ -2826,10 +2826,17 @@ function marketplacePageTransitionSkeletonMarkup(){
     var PORTAL_DATA_CACHE_FRESH_MS=60000;
     var PORTAL_DATA_CACHE_MAX=120;
     var PORTAL_DATA_CACHE_APIS=[
+      // Public browse pages: reuse recent results when visitors switch between views.
+      'getPublicHomeBundle','getCategories','getProducts','getProductById','getProductVariants',
+      'getBanners','getPromotions','getReviews','getMarketplaceStores','getMarketplaceStore',
+      'getMarketplaceStorefront','getMarketplaceFlashDeals','getMarketplaceVouchers',
+      'getMarketplaceLiveRooms','getFavorites','getMyStore',
+      // Owner and seller pages.
       'getAdminSettings','getDashboardStats','getSalesReports','getAdminGridPage',
       'sellerDashboard','sellerGetProducts','sellerGetOrders','sellerGetCustomers',
       'sellerGetVouchers','sellerGetFlashDeals','sellerGetReturns','sellerGetPayouts',
       'sellerGetLiveRooms','sellerGetStoreProfile',
+      // Customer account pages.
       'getCustomerOrders','getCustomerReturns','getAddresses','getCustomerPreferences',
       'getCustomerBankAccounts','getMyNotifications','getCustomerWallet','getMyVouchers',
       'getFollowedStores'
@@ -2874,7 +2881,9 @@ function marketplacePageTransitionSkeletonMarkup(){
       });
     }
     function portalDataApiMutates_(name){
-      return /^(systemOwnerLogin|sellerLogin|customerLogin|customerSocialLogin|customerRegister|save|delete|update|create|add|remove|submit|verify|reject|adjust|cancel|confirm|mark|set|collect|follow|apply|request|resend|begin|customerComplete|adminResolve|adminSet|sellerRespond|sellerSave|sellerDelete|sellerUpdate|sellerSend|send|change|reset|logout|customerLogout|upload|clear|merge|subscribe|approve)/i.test(String(name||''));
+      // Treat owner/seller/customer-prefixed write APIs as mutations too, so
+      // fresh-page caches cannot survive a successful save or status change.
+      return /^(?:(?:systemOwner|admin|seller|customer)?(?:Login|SocialLogin|Register)|(?:admin|seller|customer)?(?:Save|Delete|Update|Create|Add|Remove|Submit|Verify|Reject|Adjust|Cancel|Confirm|Mark|Set|Collect|Follow|Apply|Request|Resend|Begin|Complete|Resolve|Respond|Send|Change|Reset|Logout|Upload|Clear|Merge|Subscribe|Approve|Toggle|Archive|Restore|Publish|Unpublish)|save|delete|update|create|add|remove|submit|verify|reject|adjust|cancel|confirm|mark|set|collect|follow|apply|request|resend|begin|complete|resolve|respond|send|change|reset|logout|upload|clear|merge|subscribe|approve|toggle)/i.test(String(name||''));
     }
 
     function gsRun(method,...args){
@@ -2894,7 +2903,7 @@ function marketplacePageTransitionSkeletonMarkup(){
       args=safeArray(args);var done=typeof callback==='function'?callback:function(){};
       var portalSkeletonRequest=APP.customerPortalSkeletonPending&&name!=='getDataRevision'?Number(APP.customerPortalSkeletonRequestId||0):0;
       var pendingNavigation=!!(APP.lastActionButton&&Date.now()-Number(APP.lastActionAt||0)<1400&&APP.lastActionIsNavigation&&document.documentElement.contains(APP.lastActionButton));
-      var adminReadApis=['getAdminSidebarBadgeCounts','getAdminSellerChatThreads','getAdminOfficialStoreChatThreads','adminGetSellerChatMessages','adminGetOfficialStoreChatMessages','getBannerStoreOptions','getDashboardStats','getSalesReports','getAdminSettings','getEmailOtpServiceStatus','getProductsAdmin','getCategories','getInventory','getOrders','getPayments','getShippingMethods','getCustomers','getCoupons','getReviewsAdmin','getBannersAdmin','getPromotionsAdmin','getUsers','getLogs','getNewsletters','getBackups','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getAdminGridPage'];
+      var adminReadApis=['getAdminSellerChatThreads','getAdminOfficialStoreChatThreads','adminGetSellerChatMessages','adminGetOfficialStoreChatMessages','getBannerStoreOptions','getDashboardStats','getSalesReports','getAdminSettings','getEmailOtpServiceStatus','getProductsAdmin','getCategories','getInventory','getOrders','getPayments','getShippingMethods','getCustomers','getCoupons','getReviewsAdmin','getBannersAdmin','getPromotionsAdmin','getUsers','getLogs','getNewsletters','getBackups','adminGetSellers','adminGetFlashDeals','adminGetReturns','adminGetSellerPayouts','getAdminGridPage'];
       var guardAdminPage=APP.currentView==='admin'&&adminReadApis.indexOf(name)>=0&&!APP.dataPrefetchInProgress;
       var requestAdminPage=guardAdminPage?APP.adminPage:'';
       var requestAdminId=guardAdminPage?Number(APP.adminRequestId||0):0;
@@ -2943,7 +2952,7 @@ function marketplacePageTransitionSkeletonMarkup(){
       var isPrefetchApiRequest=!!APP.dataPrefetchInProgress;
       function deliverApiResult(result){
         if(portalCacheable&&result&&result.success===true)portalDataCacheWrite_(portalCacheKey,result);
-        else if(!isPrefetchApiRequest&&portalDataApiMutates_(name)&&result&&result.success===true)portalDataCacheClear_();
+        else if(!isPrefetchApiRequest&&portalDataApiMutates_(name)&&result&&result.success===true){portalDataCacheClear_();invalidateSidebarBadgeFreshness_();}
         try{done(result);}catch(callbackError){console.error('API callback failed: '+name,callbackError);if(!silentError)alertError('เกิดข้อผิดพลาดขณะเปิดหน้า กรุณาลองใหม่อีกครั้ง');}
         if(portalCacheable)portalDataInflightFinish_(portalCacheKey,result);
         if(!isPrefetchApiRequest&&document.documentElement.hasAttribute('data-store-browser-reload')){
@@ -12197,23 +12206,48 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
       node.title=count.toLocaleString('th-TH')+(label||' รายการที่ต้องติดตาม');
       node.setAttribute('aria-label',node.title);
     }
-    function loadAdminSidebarBadges(){
+    var SIDEBAR_BADGE_FRESH_MS=20000;
+    var SIDEBAR_BADGE_STATE_={
+      admin:{token:'',at:0,inFlight:false,requestId:0},
+      seller:{token:'',at:0,inFlight:false,requestId:0}
+    };
+    function invalidateSidebarBadgeFreshness_(){
+      ['admin','seller'].forEach(function(portal){
+        var state=SIDEBAR_BADGE_STATE_[portal];
+        state.at=0;state.inFlight=false;state.requestId++;
+      });
+    }
+    function loadAdminSidebarBadges(force){
       if(!APP||!APP.adminToken||!document.getElementById('adminSidebar'))return;
-      apiCall('getAdminSidebarBadgeCounts',[APP.adminToken],function(r){
+      var token=String(APP.adminToken),state=SIDEBAR_BADGE_STATE_.admin;
+      if(state.token!==token){state.token=token;state.at=0;state.inFlight=false;state.requestId++;}
+      if(state.inFlight||(!force&&state.at&&Date.now()-state.at<SIDEBAR_BADGE_FRESH_MS))return;
+      state.inFlight=true;var requestId=++state.requestId;
+      apiCall('getAdminSidebarBadgeCounts',[token],function(r){
+        if(state.requestId!==requestId||state.token!==token)return;
+        state.inFlight=false;
         if(!r||!r.success||!r.data)return;
+        state.at=Date.now();
         ['products','inventory','orders','payments','sellers','sellerChat','officialChat','marketplaceReturns','marketplacePayouts','reviews'].forEach(function(key){
           setSidebarBadge_('adminBadge_'+key,r.data[key],' รายการที่ต้องดำเนินการ');
         });
-      },false);
+      },false,'',true);
     }
-    function loadSellerSidebarBadges(){
+    function loadSellerSidebarBadges(force){
       if(!APP||!APP.customerToken||!document.getElementById('sellerSidebar'))return;
-      apiCall('getSellerSidebarBadgeCounts',[APP.customerToken],function(r){
+      var token=String(APP.customerToken),state=SIDEBAR_BADGE_STATE_.seller;
+      if(state.token!==token){state.token=token;state.at=0;state.inFlight=false;state.requestId++;}
+      if(state.inFlight||(!force&&state.at&&Date.now()-state.at<SIDEBAR_BADGE_FRESH_MS))return;
+      state.inFlight=true;var requestId=++state.requestId;
+      apiCall('getSellerSidebarBadgeCounts',[token],function(r){
+        if(state.requestId!==requestId||state.token!==token)return;
+        state.inFlight=false;
         if(!r||!r.success||!r.data)return;
+        state.at=Date.now();
         ['products','orders','returns','chat','payouts'].forEach(function(key){
           setSidebarBadge_('sellerBadge_'+key,r.data[key],key==='chat'?' ข้อความที่ยังไม่อ่าน':' รายการที่ต้องติดตาม');
         });
-      },false);
+      },false,'',true);
     }
     function loadCustomerSidebarBadges(){
       if(!APP||!APP.customerToken||!document.getElementById('customerPortalLayout'))return;
