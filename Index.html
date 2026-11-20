@@ -2825,12 +2825,28 @@ function marketplacePageTransitionSkeletonMarkup(){
     window.PORTAL_DATA_CACHE=PORTAL_DATA_CACHE;
     var PORTAL_DATA_CACHE_FRESH_MS=60000;
     var PORTAL_DATA_CACHE_MAX=120;
+    var PORTAL_DATA_CACHE_GENERATION_=0;
+    var PORTAL_DATA_CACHE_TTL_MS_={
+      getSettings:30000,getPublicHomeBundle:20000,getCategories:45000,getProducts:20000,
+      getProductById:30000,getProductVariants:30000,getBanners:45000,getPromotions:30000,
+      getReviews:20000,getMarketplaceStores:20000,getMarketplaceStore:20000,
+      getMarketplaceStorefront:20000,getMarketplaceFlashDeals:15000,getMarketplaceVouchers:20000,
+      getMarketplaceLiveRooms:15000,getFavorites:15000,getMyStore:30000,getCart:5000,
+      getAdminSettings:45000,getDashboardStats:15000,getSalesReports:20000,getAdminGridPage:20000,
+      adminGetOfficialStore:30000,getBannerStoreOptions:30000,getEmailOtpServiceStatus:30000,
+      sellerDashboard:15000,sellerGetProducts:20000,sellerGetOrders:15000,sellerGetCustomers:20000,
+      sellerGetVouchers:20000,sellerGetFlashDeals:15000,sellerGetReturns:15000,sellerGetPayouts:15000,
+      sellerGetLiveRooms:15000,sellerGetStoreProfile:30000,
+      getCustomerOrders:10000,getCustomerReturns:15000,getAddresses:45000,
+      getCustomerPreferences:45000,getCustomerBankAccounts:45000,getMyNotifications:10000,
+      getCustomerWallet:10000,getMyVouchers:20000,getFollowedStores:20000
+    };
     var PORTAL_DATA_CACHE_APIS=[
       // Public browse pages: reuse recent results when visitors switch between views.
-      'getPublicHomeBundle','getCategories','getProducts','getProductById','getProductVariants',
+      'getSettings','getPublicHomeBundle','getCategories','getProducts','getProductById','getProductVariants',
       'getBanners','getPromotions','getReviews','getMarketplaceStores','getMarketplaceStore',
       'getMarketplaceStorefront','getMarketplaceFlashDeals','getMarketplaceVouchers',
-      'getMarketplaceLiveRooms','getFavorites','getMyStore',
+      'getMarketplaceLiveRooms','getFavorites','getMyStore','getCart',
       // Owner and seller pages.
       'getAdminSettings','getDashboardStats','getSalesReports','getAdminGridPage','adminGetOfficialStore','getBannerStoreOptions','getEmailOtpServiceStatus',
       'sellerDashboard','sellerGetProducts','sellerGetOrders','sellerGetCustomers',
@@ -2848,15 +2864,23 @@ function marketplacePageTransitionSkeletonMarkup(){
       return PORTAL_DATA_CACHE_APIS.indexOf(String(name||''))>=0;
     }
     function portalDataCacheKey_(name,args){
-      try{return String(APP.accessMode||'guest')+'|'+String(name||'')+'|'+JSON.stringify(safeArray(args));}
-      catch(error){return '';}
+      try{
+        var mode=String(APP.accessMode||'guest');
+        var token=mode==='owner'?String(APP.adminToken||''):
+          ((mode==='seller'||mode==='customer')?String(APP.customerToken||''):'');
+        var storeId=mode==='seller'?String(APP.sellerStore&&APP.sellerStore.id||''):'';
+        var guestSession=mode==='guest'?String(APP.sessionId||''):'';
+        var identity=[mode,token,storeId,guestSession].join('|');
+        return identity+'|'+String(name||'')+'|'+JSON.stringify(safeArray(args));
+      }catch(error){return '';}
     }
-    function portalDataCacheRead_(key){
+    function portalDataCacheRead_(key,name){
       if(!key)return null;
       var entry=PORTAL_DATA_CACHE[key];
       if(!entry)return null;
+      var ttl=Number(PORTAL_DATA_CACHE_TTL_MS_[String(name||'')]||PORTAL_DATA_CACHE_FRESH_MS);
       var age=Math.max(0,Date.now()-Number(entry.at||0));
-      if(age>PORTAL_DATA_CACHE_FRESH_MS){delete PORTAL_DATA_CACHE[key];return null;}
+      if(age>ttl){delete PORTAL_DATA_CACHE[key];return null;}
       return portalDataCacheClone_(entry.result);
     }
     function portalDataCacheWrite_(key,result){
@@ -2869,7 +2893,19 @@ function marketplacePageTransitionSkeletonMarkup(){
       }
     }
     function portalDataCacheClear_(){
+      PORTAL_DATA_CACHE_GENERATION_++;
       Object.keys(PORTAL_DATA_CACHE).forEach(function(key){delete PORTAL_DATA_CACHE[key];});
+    }
+    function portalDataClearUiSnapshots_(){
+      [
+        window.__STORE_PAGE_DOM_CACHE__,
+        window.ADMIN_PAGE_DOM_CACHE,
+        window.ADMIN_GRID_PAGE_CACHE,
+        window.SELLER_PAGE_CACHE
+      ].forEach(function(cache){
+        if(!cache||typeof cache!=='object')return;
+        Object.keys(cache).forEach(function(key){delete cache[key];});
+      });
     }
     function portalDataInflightFinish_(key,result){
       if(!key||!PORTAL_DATA_INFLIGHT[key])return;
@@ -2883,7 +2919,7 @@ function marketplacePageTransitionSkeletonMarkup(){
     function portalDataApiMutates_(name){
       // Treat owner/seller/customer-prefixed write APIs as mutations too, so
       // fresh-page caches cannot survive a successful save or status change.
-      return /^(?:(?:systemOwner|admin|seller|customer)?(?:Login|SocialLogin|Register)|(?:admin|seller|customer)?(?:Save|Delete|Update|Create|Add|Remove|Submit|Verify|Reject|Adjust|Cancel|Confirm|Mark|Set|Collect|Follow|Apply|Request|Resend|Begin|Complete|Resolve|Respond|Send|Change|Reset|Logout|Upload|Clear|Merge|Subscribe|Approve|Toggle|Archive|Restore|Publish|Unpublish)|save|delete|update|create|add|remove|submit|verify|reject|adjust|cancel|confirm|mark|set|collect|follow|apply|request|resend|begin|complete|resolve|respond|send|change|reset|logout|upload|clear|merge|subscribe|approve|toggle)/i.test(String(name||''));
+      return /^(?:(?:systemOwner|admin|seller|customer)?(?:Login|SocialLogin|Register)|(?:admin|seller|customer)?(?:Save|Delete|Update|Create|Add|Remove|Submit|Verify|Reject|Adjust|Cancel|Confirm|Mark|Set|Collect|Follow|Apply|Request|Resend|Begin|Complete|Resolve|Respond|Send|Change|Reset|Logout|Upload|Clear|Merge|Subscribe|Approve|Toggle|Archive|Restore|Publish|Unpublish|Reconcile|Consume|Settle|Move|Import)|save|delete|update|create|add|remove|submit|verify|reject|adjust|cancel|confirm|mark|set|collect|follow|apply|request|resend|begin|complete|resolve|respond|send|change|reset|logout|upload|clear|merge|subscribe|approve|toggle|reconcile|consume|settle|move|import)/i.test(String(name||''));
     }
 
     function gsRun(method,...args){
@@ -2910,7 +2946,8 @@ function marketplacePageTransitionSkeletonMarkup(){
       var isStaleAdminPage=function(){return guardAdminPage&&(APP.currentView!=='admin'||APP.adminPage!==requestAdminPage||Number(APP.adminRequestId||0)!==requestAdminId);};
       var portalCacheable=portalDataCacheableApi_(name);
       var portalCacheKey=portalCacheable?portalDataCacheKey_(name,args):'';
-      var portalCacheHit=(!APP.dataPrefetchInProgress&&portalCacheable)?portalDataCacheRead_(portalCacheKey):null;
+      var portalCacheGeneration=PORTAL_DATA_CACHE_GENERATION_;
+      var portalCacheHit=(!APP.dataPrefetchInProgress&&portalCacheable)?portalDataCacheRead_(portalCacheKey,name):null;
       if(portalCacheHit){
         window.setTimeout(function(){
           if(isStaleAdminPage())return;
@@ -2951,8 +2988,8 @@ function marketplacePageTransitionSkeletonMarkup(){
       function finishRequest(){if(requestFinished)return false;requestFinished=true;if(requestTimer)clearTimeout(requestTimer);endApiLoading(loadHandle);endApiActivity(apiActivityHandle);return true;}
       var isPrefetchApiRequest=!!APP.dataPrefetchInProgress;
       function deliverApiResult(result){
-        if(portalCacheable&&result&&result.success===true)portalDataCacheWrite_(portalCacheKey,result);
-        else if(!isPrefetchApiRequest&&portalDataApiMutates_(name)&&result&&result.success===true){portalDataCacheClear_();invalidateSidebarBadgeFreshness_();}
+        if(portalCacheable&&result&&result.success===true&&portalCacheGeneration===PORTAL_DATA_CACHE_GENERATION_)portalDataCacheWrite_(portalCacheKey,result);
+        else if(!isPrefetchApiRequest&&portalDataApiMutates_(name)&&result&&result.success===true){portalDataCacheClear_();portalDataClearUiSnapshots_();invalidateSidebarBadgeFreshness_();}
         try{done(result);}catch(callbackError){console.error('API callback failed: '+name,callbackError);if(!silentError)alertError('เกิดข้อผิดพลาดขณะเปิดหน้า กรุณาลองใหม่อีกครั้ง');}
         if(portalCacheable)portalDataInflightFinish_(portalCacheKey,result);
         if(!isPrefetchApiRequest&&document.documentElement.hasAttribute('data-store-browser-reload')){
@@ -8728,127 +8765,11 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
 
     (function(){
 
-    /* ---------------- SPA NAVIGATION + SHORT-LIVED READ CACHE ---------------- */
+    /* ---------------- CLIENT-SIDE ROUTING + BROWSER HISTORY ---------------- */
     (function installStoreSpaNavigation(){
-      var STORE_SPA_NAV_CACHE_V1 = window.STORE_SPA_NAV_CACHE_V1 || {};
-      window.STORE_SPA_NAV_CACHE_V1 = STORE_SPA_NAV_CACHE_V1;
-      var STORE_SPA_READ_TTL = {
-        getSettings:60000,
-        getCategories:45000,
-        getProducts:20000,
-        getProductById:45000,
-        getProductVariants:45000,
-        getBanners:60000,
-        getPromotions:60000,
-        getMarketplaceStores:20000,
-        getMarketplaceStore:30000,
-        getMarketplaceFlashDeals:20000,
-        getMarketplaceVouchers:30000,
-        getMarketplaceLiveRooms:30000,
-        getCart:8000,
-        getCustomerOrders:15000,
-        getAddresses:60000,
-        getCustomerPreferences:60000,
-        getCustomerBankAccounts:60000,
-        getMyNotifications:15000,
-        getCustomerWallet:15000,
-        getMyVouchers:30000,
-        getCustomerReturns:15000,
-        getFollowedStores:30000,
-        getAdminGridPage:60000,
-        getAdminSettings:60000,
-        getDashboardStats:30000,
-        getSalesReports:30000,
-        sellerDashboard:30000,
-        sellerGetProducts:30000,
-        sellerGetOrders:20000,
-        sellerGetCustomers:30000,
-        sellerGetVouchers:30000,
-        sellerGetFlashDeals:20000,
-        sellerGetReturns:20000,
-        sellerGetPayouts:20000,
-        sellerGetLiveRooms:30000,
-        sellerGetStoreProfile:60000
-      };
-      var STORE_SPA_MUTATION = /^(save|delete|update|add|remove|clear|create|submit|verify|reject|approve|set|toggle|confirm|cancel|adjust|upload|register|customerLogin|sellerLogin|systemOwnerLogin|customerSocialLogin|customerLogout|logout|collect|follow|read|mark|apply|resolve|respond|send|request|restore|reconcile|change|reset|consume|settle|move|import|adminSet|adminResolve|sellerSave|sellerDelete|sellerUpdate)/i;
-      var STORE_SPA_ORIGINAL_API = apiCall;
+      /* API reads use the single session-aware PORTAL_DATA_CACHE in apiCall(). */
       var STORE_SPA_REPLAYING = false;
       var STORE_SPA_LAST_USER_ACTION = 0;
-      var STORE_SPA_MAX_CACHE_ENTRIES = 150;
-      var STORE_SPA_INFLIGHT = Object.create(null);
-      var STORE_SPA_CACHE_GENERATION = 0;
-
-      function storeSpaClone(value){
-        try{return JSON.parse(JSON.stringify(value));}catch(error){return value;}
-      }
-      function storeSpaCacheIdentity(){
-        return [
-          String(APP.accessMode||'guest'),
-          String(APP.adminToken||''),
-          String(APP.customerToken||''),
-          String(APP.sessionId||'')
-        ].join('|');
-      }
-      function storeSpaCacheKey(name,args){
-        var serialized='';
-        try{serialized=JSON.stringify(args||[]);}catch(error){serialized='';}
-        return storeSpaCacheIdentity()+'|'+String(name||'')+'|'+serialized;
-      }
-      function storeSpaClearReadCache(){
-        Object.keys(STORE_SPA_NAV_CACHE_V1).forEach(function(key){delete STORE_SPA_NAV_CACHE_V1[key];});
-      }
-      function storeSpaTrimReadCache(){
-        var keys=Object.keys(STORE_SPA_NAV_CACHE_V1);
-        if(keys.length<=STORE_SPA_MAX_CACHE_ENTRIES)return;
-        keys.sort(function(a,b){
-          return Number(STORE_SPA_NAV_CACHE_V1[a].at||0)-Number(STORE_SPA_NAV_CACHE_V1[b].at||0);
-        }).slice(0,keys.length-STORE_SPA_MAX_CACHE_ENTRIES).forEach(function(key){
-          delete STORE_SPA_NAV_CACHE_V1[key];
-        });
-      }
-
-      /* Session-scoped read cache covers guest, customer, seller and owner data.
-         In-flight reads are shared so a menu click can attach to a warm-up request. */
-      apiCall=function(name,args,callback,showLoading,loadingText,silentError){
-        var ttl=STORE_SPA_READ_TTL[name];
-        var isMutation=STORE_SPA_MUTATION.test(String(name||''));
-        if(ttl){
-          var key=storeSpaCacheKey(name,args),entry=STORE_SPA_NAV_CACHE_V1[key];
-          if(entry&&Date.now()-Number(entry.at||0)<=ttl){
-            var cachedResult=storeSpaClone(entry.result);
-            if(typeof callback==='function')window.setTimeout(function(){callback(cachedResult);},0);
-            return;
-          }
-          if(entry)delete STORE_SPA_NAV_CACHE_V1[key];
-          var pending=STORE_SPA_INFLIGHT[key];
-          if(pending){
-            if(typeof callback==='function')pending.callbacks.push(callback);
-            return;
-          }
-          var generation=STORE_SPA_CACHE_GENERATION;
-          pending={callbacks:[]};
-          if(typeof callback==='function')pending.callbacks.push(callback);
-          STORE_SPA_INFLIGHT[key]=pending;
-          return STORE_SPA_ORIGINAL_API(name,args,function(result){
-            if(result&&result.success&&generation===STORE_SPA_CACHE_GENERATION){
-              STORE_SPA_NAV_CACHE_V1[key]={at:Date.now(),result:storeSpaClone(result)};
-              storeSpaTrimReadCache();
-            }
-            var flight=STORE_SPA_INFLIGHT[key];
-            delete STORE_SPA_INFLIGHT[key];
-            var callbacks=flight?safeArray(flight.callbacks):[];
-            callbacks.forEach(function(fn){
-              try{fn(storeSpaClone(result));}
-              catch(callbackError){console.error('Cached API callback failed: '+name,callbackError);}
-            });
-          },showLoading,loadingText,silentError);
-        }
-        if(isMutation){
-          STORE_SPA_CACHE_GENERATION++;
-          storeSpaClearReadCache();
-        }
-        return STORE_SPA_ORIGINAL_API(name,args,callback,showLoading,loadingText,silentError);
-      };
 
       function storeSpaRouteSignature(route){
         try{return JSON.stringify(route||{});}catch(error){return '';}
@@ -8981,7 +8902,7 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
         storeSpaApplyRoute(state&&state.__storeSpa?state.route:{type:'default'});
       });
     })();
-    /* ---------------- END SPA NAVIGATION + SHORT-LIVED READ CACHE ---------------- */
+    /* ---------------- END CLIENT-SIDE ROUTING + BROWSER HISTORY ---------------- */
 
       var appStartupStarted=false;
       var tableEnhancerStarted=false;
@@ -10828,6 +10749,11 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
       function isRealtimePage(route){
         return !!route&&((route.type==='seller'&&route.page==='chat')||(route.type==='customer'&&route.page==='chat'));
       }
+      function isCacheableRoute(route){
+        if(!route||route.type!=='public')return false;
+        return ['home','products','detail','stores','store','flash','vouchers','live','promotions',
+          'about','contact','policy','recommended'].indexOf(String(route.page||''))>=0;
+      }
       function trimPageCache(){
         var keys=Object.keys(PAGE_CACHE);
         if(keys.length<=PAGE_CACHE_LIMIT)return;
@@ -10836,7 +10762,7 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
       }
       function rememberCurrentPage(){
         var route=currentPage();
-        if(isRealtimePage(route))return;
+        if(!isCacheableRoute(route)||isRealtimePage(route))return;
         var host=hostFor(route.type);
         if(!host)return;
         var html=String(host.innerHTML||'');
@@ -10872,7 +10798,7 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
         return null;
       }
       function restorePage(route){
-        if(!route||isRealtimePage(route))return false;
+        if(!isCacheableRoute(route)||isRealtimePage(route))return false;
         var key=pageKey(route.type,route.page,route.extra);
         var entry=PAGE_CACHE[key];
         if(!entry||!entry.html)return false;
@@ -10934,18 +10860,7 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
       if(typeof marketplaceOriginalSearchStores==='function')window.searchStores=marketplaceOriginalSearchStores;
       if(typeof marketplaceOriginalRelatedProducts==='function')window.loadRelatedProducts=marketplaceOriginalRelatedProducts;
 
-      /* A successful write invalidates snapshots so the next visit cannot show stale data. */
-      var priorApiCall=window.apiCall;
-      var writePattern=/^(save|delete|update|add|remove|clear|create|submit|verify|reject|approve|set|toggle|confirm|cancel|adjust|upload|register|customerLogin|sellerLogin|systemOwnerLogin|customerSocialLogin|customerLogout|logout|collect|follow|read|mark|apply|resolve|respond|send|request|restore|reconcile|change|reset|consume|settle|move|import|adminSet|adminResolve|sellerSave|sellerDelete|sellerUpdate)/i;
-      if(typeof priorApiCall==='function'){
-        window.apiCall=function(name,args,callback,showLoading,loadingText,silentError){
-          var isWrite=writePattern.test(String(name||''));
-          return priorApiCall.call(this,name,args,function(result){
-            if(isWrite&&result&&result.success)Object.keys(PAGE_CACHE).forEach(function(key){delete PAGE_CACHE[key];});
-            if(typeof callback==='function')callback(result);
-          },showLoading,loadingText,silentError);
-        };
-      }
+      /* UI snapshots are invalidated centrally by portalDataClearUiSnapshots_(). */
 
       /* Clear private page snapshots when a portal session ends. */
       var priorLogoutTransition=window.transitionToGuestHomeAfterLogout;
@@ -11130,111 +11045,109 @@ function showMyWallet(onLoaded,silentRefresh){if(!APP.customerToken){openCustome
 
   <script id="instant-menu-data-warmup-v1">
     (function(){
-      if(window.__STORE_INSTANT_MENU_DATA_WARMUP_V1__)return;
-      window.__STORE_INSTANT_MENU_DATA_WARMUP_V1__=true;
-      APP.dataPrefetchInProgress=false;
+      if(window.__STORE_INTENT_DATA_PREFETCH_V2__)return;
+      window.__STORE_INTENT_DATA_PREFETCH_V2__=true;
 
-      var adminWarmToken='',sellerWarmToken='',customerWarmToken='';
-      var adminGridPages=['products','officialProducts','officialOrders','orders','inventory','categories','customers','payments','shipping','banners','promotions','coupons','reviews','sellers','flashDeals','marketplaceReturns','marketplacePayouts','users','logs','newsletters','backup'];
-      var sellerPages=['dashboard','products','orders','customers','vouchers','deals','returns','payouts','live','store'];
-      var customerReads=['getCustomerOrders','getCustomerReturns','getAddresses','getCustomerPreferences','getCustomerBankAccounts','getMyNotifications','getCustomerWallet','getMyVouchers','getFollowedStores'];
+      /* Warm only the menu a user is about to open; never load every portal tab at login. */
+      var lastIntentButton=null,intentTimer=null,activePrefetch=0;
+      var attempted=Object.create(null),cooldownMs=8000;
+      var sellerApi={
+        dashboard:'sellerDashboard',products:'sellerGetProducts',orders:'sellerGetOrders',
+        customers:'sellerGetCustomers',vouchers:'sellerGetVouchers',deals:'sellerGetFlashDeals',
+        returns:'sellerGetReturns',payouts:'sellerGetPayouts',live:'sellerGetLiveRooms',store:'sellerGetStoreProfile'
+      };
+      var customerApi={
+        purchase:'getCustomerOrders',bank:'getCustomerBankAccounts',addresses:'getAddresses',
+        privacy:'getCustomerPreferences',notificationSettings:'getCustomerPreferences',
+        orderSettings:'getCustomerPreferences',orderNotices:'getMyNotifications',
+        promoNotices:'getMyNotifications',allNotices:'getMyNotifications',
+        discounts:'getMyVouchers',vouchers:'getMyVouchers',coins:'getCustomerWallet',
+        returns:'getCustomerReturns',following:'getFollowedStores'
+      };
+      var adminSpecial={
+        settings:'getAdminSettings',dashboard:'getDashboardStats',reports:'getSalesReports',
+        officialStore:'adminGetOfficialStore',sellers:'adminGetSellers',
+        flashDeals:'adminGetFlashDeals',marketplaceReturns:'adminGetReturns',
+        marketplacePayouts:'adminGetSellerPayouts'
+      };
 
-      function clone(value){try{return JSON.parse(JSON.stringify(value));}catch(error){return value;}}
-      function runQueue(tasks,valid,workers){
-        var cursor=0,active=0,finished=false;
-        workers=Math.max(1,Math.min(3,Number(workers)||2));
-        function pump(){
-          if(finished||!valid())return;
-          if(cursor>=tasks.length&&active===0){finished=true;return;}
-          while(active<workers&&cursor<tasks.length){
-            var task=tasks[cursor++];
-            active++;
-            (function(current){
-              try{current(function(){active--;window.setTimeout(pump,40);});}
-              catch(error){active--;window.setTimeout(pump,40);}
-            })(task);
-          }
-        }
-        pump();
+      function shouldSkipButton(button){
+        if(!button||button.disabled)return true;
+        if(window.Swal&&typeof Swal.isVisible==='function'&&Swal.isVisible())return true;
+        return button.classList.contains('active')||button.getAttribute('aria-current')==='page';
       }
-      function warmRead(name,args,done){
+      function prefetchRead(name,args){
+        if(!name||typeof window.apiCall!=='function'||activePrefetch>=1)return;
+        var key=portalDataCacheKey_(name,args);
+        if(!key||portalDataCacheRead_(key,name)||PORTAL_DATA_INFLIGHT[key])return;
+        if(Date.now()-Number(attempted[key]||0)<cooldownMs)return;
+        attempted[key]=Date.now();
+        activePrefetch++;
         var prior=!!APP.dataPrefetchInProgress;
         APP.dataPrefetchInProgress=true;
         try{
-          window.apiCall(name,args,function(){if(typeof done==='function')done();},false,'',true);
-        }finally{APP.dataPrefetchInProgress=prior;}
+          window.apiCall(name,args,function(result){
+            activePrefetch=Math.max(0,activePrefetch-1);
+            if(result&&result.success===true)delete attempted[key];
+          },false,'',true);
+        }catch(error){
+          activePrefetch=Math.max(0,activePrefetch-1);
+          console.warn('[Online Store] Menu data warm-up skipped',error);
+        }finally{
+          APP.dataPrefetchInProgress=prior;
+        }
       }
-      function adminTask(page){
-        return function(done){
-          if(!APP.adminToken||APP.accessMode!=='owner'){done();return;}
-          var state=adminGridState(page);
-          if(!state.options.sortKey)state.options.sortKey=page==='logs'?'timestamp':'createdAt';
-          var options=clone(state.options)||{};
-          warmRead('getAdminGridPage',[APP.adminToken,page,options],done);
-        };
+      function adminOptions(page){
+        var state=window.ADMIN_GRID_STATES&&window.ADMIN_GRID_STATES['admin_'+page];
+        if(state&&state.options)return JSON.parse(JSON.stringify(state.options));
+        return {page:1,pageSize:10,search:'',status:'',dateFrom:'',dateTo:'',
+          sortKey:page==='logs'?'timestamp':'createdAt',sortDir:'desc'};
       }
-      function startAdminWarm(){
-        var token=String(APP.adminToken||'');
-        if(!token||APP.accessMode!=='owner'||adminWarmToken===token)return;
-        adminWarmToken=token;
-        var tasks=[];
-        adminGridPages.forEach(function(page){if(page!==APP.adminPage)tasks.push(adminTask(page));});
-        if(APP.adminPage!=='settings')tasks.push(function(done){warmRead('getAdminSettings',[token],done);});
-        if(APP.adminPage!=='dashboard')tasks.push(function(done){warmRead('getDashboardStats',[token],done);});
-        if(APP.adminPage!=='dashboard')tasks.push(function(done){warmRead('getSalesReports',[token,{}],done);});
-        runQueue(tasks,function(){return APP.accessMode==='owner'&&String(APP.adminToken||'')===token;},4);
+      function prefetchButton(button){
+        if(shouldSkipButton(button))return;
+        if(button.id&&button.id.indexOf('nav_')===0&&APP.accessMode==='owner'&&APP.adminToken){
+          var page=button.id.slice(4),token=APP.adminToken;
+          if(!page||page===String(APP.adminPage||''))return;
+          var special=adminSpecial[page];
+          if(special)prefetchRead(special,[token].concat(page==='reports'?[{}]:[]));
+          else prefetchRead('getAdminGridPage',[token,page,adminOptions(page)]);
+          return;
+        }
+        if(button.id&&button.id.indexOf('sellerNav_')===0&&APP.accessMode==='seller'&&APP.customerToken){
+          var sellerPage=button.id.slice('sellerNav_'.length);
+          if(!sellerPage||sellerPage===String(APP.sellerPage||'')||sellerPage==='chat')return;
+          var sellerName=sellerApi[sellerPage];
+          if(!sellerName)return;
+          var sellerOptions=typeof sellerPageOptions_==='function'?sellerPageOptions_(sellerPage):{};
+          prefetchRead(sellerName,[APP.customerToken,sellerOptions||{}]);
+          return;
+        }
+        var customerId=button.getAttribute&&button.getAttribute('data-cp-nav');
+        if(customerId&&APP.accessMode==='customer'&&APP.customerToken){
+          if(customerId===String(APP.customerPortalActive||''))return;
+          var customerName=customerApi[customerId];
+          if(!customerName)return;
+          prefetchRead(customerName,[APP.customerToken]);
+        }
       }
-      function sellerTask(page,token,storeId){
-        return function(done){
-          if(APP.accessMode!=='seller'||String(APP.customerToken||'')!==token||String(APP.sellerStore&&APP.sellerStore.id||'')!==storeId){done();return;}
-          var apiMap={products:'sellerGetProducts',orders:'sellerGetOrders',customers:'sellerGetCustomers',vouchers:'sellerGetVouchers',deals:'sellerGetFlashDeals',returns:'sellerGetReturns',payouts:'sellerGetPayouts',live:'sellerGetLiveRooms',store:'sellerGetStoreProfile'};
-          var options=typeof sellerPageOptions_==='function'?sellerPageOptions_(page):{};
-          warmRead(apiMap[page],[token,options||{}],done);
-        };
+      function scheduleIntent(event){
+        var target=event&&event.target;
+        var button=target&&target.closest?target.closest('button[id^="nav_"],button[id^="sellerNav_"],button[data-cp-nav]'):null;
+        if(!button||button===lastIntentButton)return;
+        lastIntentButton=button;
+        if(intentTimer)window.clearTimeout(intentTimer);
+        intentTimer=window.setTimeout(function(){
+          intentTimer=null;
+          if(button.isConnected)prefetchButton(button);
+        },180);
       }
-      function startSellerWarm(){
-        var token=String(APP.customerToken||''),storeId=String(APP.sellerStore&&APP.sellerStore.id||'');
-        if(!token||!storeId||APP.accessMode!=='seller')return;
-        var key=token+'|'+storeId;
-        if(sellerWarmToken===key)return;
-        sellerWarmToken=key;
-        var tasks=sellerPages.filter(function(page){return page!==APP.sellerPage;}).map(function(page){return sellerTask(page,token,storeId);});
-        runQueue(tasks,function(){return APP.accessMode==='seller'&&String(APP.customerToken||'')===token&&String(APP.sellerStore&&APP.sellerStore.id||'')===storeId;},4);
-      }
-      function startCustomerWarm(){
-        var token=String(APP.customerToken||'');
-        if(!token||APP.accessMode!=='customer'||customerWarmToken===token)return;
-        customerWarmToken=token;
-        var tasks=customerReads.map(function(name){return function(done){warmRead(name,[token],done);};});
-        runQueue(tasks,function(){return APP.accessMode==='customer'&&String(APP.customerToken||'')===token;},3);
-      }
-
-      function wrapAfter(name,after){
-        var original=window[name];
-        if(typeof original!=='function'||original.__instantWarmWrapped)return;
-        var wrapped=function(){
-          var result=original.apply(this,arguments);
-          try{after.apply(this,arguments);}catch(error){console.warn('Warm-up scheduling skipped: '+name,error);}
-          return result;
-        };
-        wrapped.__instantWarmWrapped=true;
-        wrapped.__instantWarmOriginal=original;
-        window[name]=wrapped;
-      }
-      wrapAfter('loadAdminPage',function(){
-        if(APP.accessMode==='owner'&&APP.adminToken)window.setTimeout(startAdminWarm,220);
-      });
-      wrapAfter('loadSellerPage',function(){
-        if(APP.accessMode==='seller'&&APP.customerToken)window.setTimeout(startSellerWarm,220);
-      });
-      wrapAfter('openAccount',function(){
-        if(APP.customerToken&&APP.accessMode==='customer')window.setTimeout(startCustomerWarm,180);
-      });
-      wrapAfter('customerPortalNavigate',function(){
-        if(APP.customerToken&&APP.accessMode==='customer')window.setTimeout(startCustomerWarm,120);
-      });
-
-      /* All page datasets are prefetched once into PORTAL_DATA_CACHE at portal entry. */
+      document.addEventListener('pointerover',scheduleIntent,true);
+      document.addEventListener('focusin',scheduleIntent,true);
+      document.addEventListener('click',function(){
+        if(intentTimer)window.clearTimeout(intentTimer);
+        intentTimer=null;
+        lastIntentButton=null;
+      },true);
     })();
   </script>
 
@@ -12626,6 +12539,7 @@ function liveRefreshCustomer_(tables,resync){
 function applyGlobalDataChanges_(events,resync){
  var tables=liveTables_(events);if(resync&&!tables.length)tables=['Products','Orders','Stores','ChatThreads','ChatMessages','Notifications','Settings'];if(!tables.length)return;
  portalDataCacheClear_();
+ portalDataClearUiSnapshots_();
  if(APP.accessMode==='owner')liveRefreshOwner_(tables,resync);else if(APP.accessMode==='seller')liveRefreshSeller_(tables,resync);else liveRefreshCustomer_(tables,resync);
  if(APP.currentView==='admin'&&typeof loadAdminSidebarBadges==='function')loadAdminSidebarBadges();
  if(APP.currentView==='seller'&&typeof loadSellerSidebarBadges==='function')loadSellerSidebarBadges();
