@@ -6,7 +6,7 @@
 const SHEET_ID = "1SoVIYhoHNQ8YdV2CbvkJRI_TYQxbyU8rJPnxVyk8h7w";
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwArhL3V9EYMLj6EDzRj66-ruRAEbHpMEgDX0XcUxvH5RzSKYOiRUp2K33SiSbXDKYnYA/exec";
 const FOLDER_ID = "1WowUHSERuWRl95J8rNCJHGL9KwVbWd-c";
-const ADMIN_INITIAL_PASSWORD_PROPERTY_ = 'INITIAL_ADMIN_PASSWORD';
+const ADMIN_PASSWORD = "1234";
 
 var APP_VERSION_ = '1.0.0';
 var SESSION_HOURS_ = 8;
@@ -74,65 +74,52 @@ var DEFAULT_SETTINGS_ = {
   primaryColor: '#ee4d2d', secondaryColor: '#0f172a', accentColor: '#f59e0b', footerText: 'ขอบคุณที่เลือกซื้อสินค้ากับเรา',
   seoTitle: 'Online Store', seoDescription: '', homeSections: '[]', mallStoreIds: '[]',
   marketplaceCommissionRate: '5', returnWindowDays: '7', coinRewardRate: '1', sellerRegistrationEnabled: 'true',
-  // Customer authentication page appearance and copy (editable from Store Settings).
-  authPageBackgroundColor: '#f6f6f6', authPageCardColor: '#ffffff', authPageTextColor: '#222222',
-  authPagePrimaryColor: '#ee4d2d', authPageCampaignColor: '#ee4d2d', authPageCardRadius: '4', authPageCardWidth: '400',
-  authPageLogo: '', authPageHelpLabel: 'ต้องการความช่วยเหลือ?',
-  authPageFooterText: '© Online Store. All rights reserved.',
-  authPageShowFooter: 'true', authPageShowHelp: 'true',
-  authLoginShowCampaign: 'true', authLoginShowQr: 'true', authLoginShowSocial: 'true',
-  authLoginShowRemember: 'true', authLoginShowLegal: 'true',
-  authLoginEyebrow: 'WELCOME BACK', authLoginTitle: 'เข้าสู่ระบบ',
-  authLoginDescription: 'เข้าสู่ระบบด้วยเบอร์โทรศัพท์ อีเมล หรือชื่อผู้ใช้ที่ลงทะเบียนไว้',
-  authLoginUserLabel: 'เบอร์โทรศัพท์ / อีเมล / ชื่อผู้ใช้',
-  authLoginUserPlaceholder: 'กรอกเบอร์โทรศัพท์ อีเมล หรือชื่อผู้ใช้',
-  authLoginPasswordLabel: 'รหัสผ่าน', authLoginPasswordPlaceholder: 'กรอกรหัสผ่าน',
-  authLoginForgotLabel: 'ลืมรหัสผ่าน?', authLoginSubmitLabel: 'เข้าสู่ระบบ',
-  authLoginRememberLabel: 'จดจำการเข้าสู่ระบบ', authLoginQrLabel: 'เข้าสู่ระบบด้วย QR code',
-  authLoginSocialLabel: 'หรือเข้าสู่ระบบด้วย', authLoginRegisterPrompt: 'ยังไม่มีบัญชี?',
-  authLoginRegisterLabel: 'สมัครสมาชิก',
-  authLoginSellerLinkLabel: 'เข้าสู่ระบบสำหรับร้านค้า / เจ้าของระบบ', authLoginShowSellerLink: 'true',
-  authLoginTermsLabel: 'เงื่อนไขการให้บริการ', authLoginPrivacyLabel: 'นโยบายความเป็นส่วนตัว',
-  authLoginLegalIntro: 'การเข้าสู่ระบบแสดงว่าคุณยอมรับ',
-  authLoginCampaignImage: '', authLoginCampaignKicker: 'MEGA SHOPPING FESTIVAL',
-  authLoginCampaignNumber: '11.11', authLoginCampaignHeadline: 'MEGA',
-  authLoginCampaignSubheadline: 'SALE', authLoginCampaignDiscountText: 'ลดสูงสุด',
-  authLoginCampaignDiscountValue: '90', authLoginCampaignTag: 'ดีลเด็ด ช้อปคุ้มทุกวัน',
-  authLoginCampaignFoot: 'ช้อปง่าย • ปลอดภัย • ส่งตรงถึงคุณ',
-  authRegisterShowProgress: 'true', authRegisterProgressEmailLabel: 'ยืนยันอีเมล', authRegisterProgressPasswordLabel: 'ตั้งรหัสผ่าน', authRegisterProgressDoneLabel: 'เสร็จสิ้น', authRegisterTitle: 'สมัครสมาชิก',
-  authRegisterDescription: 'กรอกอีเมลที่คุณใช้งานได้จริง ระบบจะส่งรหัส OTP เพื่อยืนยันก่อนตั้งรหัสผ่าน',
-  authRegisterEmailLabel: 'อีเมล', authRegisterEmailPlaceholder: 'name@example.com',
-  authRegisterSubmitLabel: 'ส่งรหัสยืนยันทางอีเมล',
-  authRegisterNote: 'ไม่ต้องใช้ SMS หรือหมายเลขโทรศัพท์ในขั้นตอนสมัคร สามารถเพิ่มเบอร์โทรและที่อยู่ภายหลังได้',
-  authRegisterLoginPrompt: 'มีบัญชีอยู่แล้ว?', authRegisterLoginLabel: 'เข้าสู่ระบบ',
-  authRegisterOtpTitle: 'ยืนยันอีเมล',
-  authRegisterOtpDescription: 'ระบบส่งรหัส OTP ไปยัง',
-  authRegisterOtpSubmitLabel: 'ยืนยันรหัสและดำเนินการต่อ', authRegisterOtpResendLabel: 'ส่งรหัสอีกครั้ง', authRegisterChangeEmailLabel: 'เปลี่ยนอีเมล',
-  authRegisterOtpNote: 'รหัสมีอายุ 5 นาที ใช้ได้ครั้งเดียว หากไม่พบอีเมลให้ตรวจสอบโฟลเดอร์ Spam',
-  authRegisterPasswordTitle: 'ตั้งรหัสผ่าน',
-  authRegisterPasswordDescription: 'กำหนดรหัสผ่านสำหรับบัญชี',
-  authRegisterPasswordLabel: 'รหัสผ่าน',
-  authRegisterPasswordPlaceholder: 'อย่างน้อย 8 ตัวอักษร',
-  authRegisterConfirmLabel: 'ยืนยันรหัสผ่าน',
-  authRegisterConfirmPlaceholder: 'กรอกรหัสผ่านอีกครั้ง',
-  authRegisterPasswordSubmitLabel: 'สร้างบัญชีสมาชิก',
-  authRegisterPasswordNote: 'ชื่อ เบอร์โทรศัพท์ และที่อยู่จัดส่ง สามารถเพิ่มภายหลังในหน้าบัญชีของฉัน',
-  authRegisterCompleteTitle: 'สมัครสมาชิกสำเร็จ',
-  authRegisterCompleteDescription: 'ยืนยันอีเมลและตั้งรหัสผ่านเรียบร้อยแล้ว คุณสามารถเพิ่มชื่อ เบอร์โทรศัพท์ และที่อยู่จัดส่งภายหลังได้',
-  authRegisterCompleteButtonLabel: 'เริ่มใช้งาน',
-  authForgotEyebrow: 'ACCOUNT RECOVERY', authForgotTitle: 'ลืมรหัสผ่าน',
-  authForgotDescription: 'กรอกอีเมลที่ใช้ลงทะเบียน ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ให้คุณ',
-  authForgotEmailLabel: 'อีเมลที่ลงทะเบียนไว้',
-  authForgotEmailPlaceholder: 'name@example.com',
-  authForgotSubmitLabel: 'ส่งลิงก์ตั้งรหัสผ่าน',
-  authForgotBackLabel: 'กลับไปเข้าสู่ระบบ',
-  authResetEyebrow: 'SECURE YOUR ACCOUNT', authResetTitle: 'ตั้งรหัสผ่านใหม่',
-  authResetDescription: 'กำหนดรหัสผ่านใหม่เพื่อกลับเข้าใช้งานบัญชีของคุณ',
-  authResetPasswordLabel: 'รหัสผ่านใหม่',
-  authResetPasswordPlaceholder: 'อย่างน้อย 8 ตัวอักษร',
-  authResetConfirmLabel: 'ยืนยันรหัสผ่าน',
-  authResetConfirmPlaceholder: 'กรอกรหัสผ่านอีกครั้ง',
-  authResetSubmitLabel: 'บันทึกรหัสผ่านใหม่', authResetBackLabel: 'กลับไปเข้าสู่ระบบ'
+  accountPageBgColor: '#f6f7fb', accountPageCardColor: '#ffffff', accountPageTextColor: '#1f2937',
+  accountPageMutedColor: '#64748b', accountPagePrimaryColor: '#ee4d2d', accountPageAccentColor: '#f59e0b',
+  accountPageLogo: '', accountPageBrandName: '', accountPageBrandSubtitle: '',
+  accountPageHelpText: 'ต้องการความช่วยเหลือ?', accountPageHelpUrl: '',
+  accountPageShowPromo: 'true', accountPagePromoImage: '', accountPagePromoEyebrow: 'ONLINE STORE',
+  accountPagePromoTitle: 'ช้อปง่าย ได้ครบ', accountPagePromoDescription: 'ค้นหาสินค้าคุณภาพและข้อเสนอพิเศษได้ในที่เดียว',
+  accountPagePromoBadge: 'ดีลพิเศษสำหรับคุณ', accountPagePromoFootnote: 'ช้อปง่าย • ปลอดภัย • ส่งตรงถึงคุณ',
+  accountPageFooterText: '', accountPageShowFooter: 'true', accountPageCardRadius: '8', accountPageButtonRadius: '6',
+  accountLoginTitle: 'เข้าสู่ระบบ',
+  accountLoginDescription: 'เจ้าของระบบ ร้านค้า และลูกค้า ใช้แบบฟอร์มเดียวกัน ระบบจะตรวจสอบประเภทบัญชีและสิทธิ์ให้อัตโนมัติ',
+  accountLoginIdentifierLabel: 'อีเมล / เบอร์โทรศัพท์ / ชื่อผู้ใช้',
+  accountLoginIdentifierPlaceholder: 'กรอกอีเมล เบอร์โทรศัพท์ หรือชื่อผู้ใช้',
+  accountLoginPasswordLabel: 'รหัสผ่าน', accountLoginPasswordPlaceholder: 'กรอกรหัสผ่าน',
+  accountLoginButtonText: 'เข้าสู่ระบบ', accountLoginRememberText: 'จดจำการเข้าสู่ระบบ',
+  accountLoginForgotText: 'ลืมรหัสผ่าน?', accountLoginRegisterPrompt: 'ยังไม่มีบัญชี?',
+  accountLoginRegisterLinkText: 'สมัครสมาชิกด้วยอีเมล', accountLoginSellerLinkText: 'สมัครเปิดร้านค้า',
+  accountLoginSocialText: 'หรือเข้าสู่ระบบด้วย',
+  accountLoginShowQr: 'true', accountLoginShowSocial: 'true', accountLoginShowGoogle: 'true',
+  accountLoginShowFacebook: 'true', accountLoginShowRemember: 'true',
+  accountLoginShowRegister: 'true', accountLoginShowSellerRegister: 'true',
+  accountRegisterTitle: 'สมัครสมาชิก',
+  accountRegisterDescription: 'กรอกอีเมลที่คุณใช้งานได้จริง ระบบจะส่งรหัส OTP เพื่อยืนยันก่อนตั้งรหัสผ่าน',
+  accountRegisterEmailLabel: 'อีเมล', accountRegisterEmailPlaceholder: 'name@example.com',
+  accountRegisterSendOtpText: 'ส่งรหัสยืนยันทางอีเมล',
+  accountRegisterNote: 'ไม่ต้องใช้ SMS หรือหมายเลขโทรศัพท์ในขั้นตอนสมัคร สามารถเพิ่มเบอร์โทรและที่อยู่ภายหลังได้',
+  accountRegisterStepEmailText: 'ยืนยันอีเมล', accountRegisterStepPasswordText: 'ตั้งรหัสผ่าน', accountRegisterStepCompleteText: 'เสร็จสิ้น',
+  accountRegisterOtpTitle: 'ยืนยันอีเมล', accountRegisterOtpDescription: 'ระบบส่งรหัส OTP ไปยัง',
+  accountRegisterOtpPlaceholder: '• • • • • •', accountRegisterOtpButtonText: 'ยืนยันรหัสและดำเนินการต่อ',
+  accountRegisterResendText: 'ส่งรหัสอีกครั้ง', accountRegisterChangeEmailText: 'เปลี่ยนอีเมล',
+  accountRegisterPasswordTitle: 'ตั้งรหัสผ่าน', accountRegisterPasswordDescription: 'กำหนดรหัสผ่านสำหรับบัญชี',
+  accountRegisterPasswordLabel: 'รหัสผ่าน', accountRegisterConfirmPasswordLabel: 'ยืนยันรหัสผ่าน',
+  accountRegisterCreateButtonText: 'สร้างบัญชีสมาชิก',
+  accountRegisterSuccessTitle: 'สมัครสมาชิกสำเร็จ',
+  accountRegisterSuccessDescription: 'ยืนยันอีเมลและตั้งรหัสผ่านเรียบร้อยแล้ว คุณสามารถเพิ่มชื่อ เบอร์โทรศัพท์ และที่อยู่จัดส่งภายหลังได้',
+  accountRegisterSuccessButtonText: 'เริ่มใช้งาน', accountRegisterBackToLoginText: 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ',
+  accountForgotTitle: 'ลืมรหัสผ่าน',
+  accountForgotDescription: 'กรอกอีเมลหรือชื่อผู้ใช้ที่ลงทะเบียน ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ให้คุณ',
+  accountForgotIdentifierLabel: 'อีเมลหรือชื่อผู้ใช้',
+  accountForgotIdentifierPlaceholder: 'กรอกอีเมลหรือชื่อผู้ใช้',
+  accountForgotSubmitText: 'ส่งลิงก์ตั้งรหัสผ่าน',
+  accountForgotBackText: 'กลับไปเข้าสู่ระบบ',
+  accountForgotSuccessMessage: 'หากพบบัญชีที่ตรงกัน ระบบจะส่งลิงก์ตั้งรหัสผ่านไปยังอีเมลที่ลงทะเบียน',
+  accountResetTitle: 'ตั้งรหัสผ่านใหม่',
+  accountResetDescription: 'กำหนดรหัสผ่านใหม่เพื่อกลับเข้าใช้งานบัญชีของคุณ',
+  accountResetPasswordLabel: 'รหัสผ่านใหม่', accountResetConfirmPasswordLabel: 'ยืนยันรหัสผ่าน',
+  accountResetSubmitText: 'บันทึกรหัสผ่านใหม่', accountResetBackText: 'กลับไปเข้าสู่ระบบ'
 };
 
 function doGet(e) {
@@ -306,36 +293,14 @@ function setupSystem() {
     });
     migrateLegacySmsOtpArtifacts_();
     var users = readTable_('Users', false);
-    var adminUser = users.filter(function(u) {
-      return String(u.username).toLowerCase() === 'admin';
-    })[0] || null;
-    var scriptProperties = PropertiesService.getScriptProperties();
-    var initialAdminPassword = String(scriptProperties.getProperty(ADMIN_INITIAL_PASSWORD_PROPERTY_) || '');
-
-    if (initialAdminPassword && initialAdminPassword.length < 12) {
-      throw new Error('INITIAL_ADMIN_PASSWORD ต้องมีอย่างน้อย 12 ตัวอักษร');
-    }
-
-    if (!adminUser) {
-      if (!initialAdminPassword) {
-        throw new Error('กรุณากำหนด Script Property INITIAL_ADMIN_PASSWORD (อย่างน้อย 12 ตัวอักษร) ก่อนสร้างบัญชีผู้ดูแลครั้งแรก');
-      }
+    var adminExists = users.some(function(u) { return String(u.username).toLowerCase() === 'admin'; });
+    if (!adminExists) {
       var now = now_();
       appendRecord_('Users', {
-        id: newId_('USR'), username: 'admin', email: '', passwordHash: hashPassword_(initialAdminPassword),
+        id: newId_('USR'), username: 'admin', email: '', passwordHash: hashPassword_(ADMIN_PASSWORD),
         name: 'Store Administrator', role: 'Super Admin', permissions: JSON.stringify(['*']), status: 'Active',
         mustChangePassword: true, createdAt: now, updatedAt: now
       });
-      scriptProperties.deleteProperty(ADMIN_INITIAL_PASSWORD_PROPERTY_);
-    } else if (initialAdminPassword) {
-      // Supplying the one-time property intentionally rotates the existing
-      // bootstrap admin password and requires a password change after login.
-      updateRecord_('Users', adminUser.id, {
-        passwordHash: hashPassword_(initialAdminPassword),
-        mustChangePassword: true,
-        updatedAt: now_()
-      });
-      scriptProperties.deleteProperty(ADMIN_INITIAL_PASSWORD_PROPERTY_);
     }
     clearRuntimeCaches_();
     result.success = true;
@@ -348,7 +313,8 @@ function setupSystem() {
 }
 
 function validateConfig_() {
-  if (!SHEET_ID || !FOLDER_ID || !WEB_APP_URL) throw new Error('กรุณาตรวจสอบ Configuration ของ SHEET_ID, FOLDER_ID และ WEB_APP_URL');
+  if (!SHEET_ID || !FOLDER_ID || !WEB_APP_URL || !ADMIN_PASSWORD) throw new Error('กรุณาตรวจสอบ Configuration ทั้ง 4 ค่า');
+  if (String(ADMIN_PASSWORD).length < 4) throw new Error('ADMIN_PASSWORD ต้องมีอย่างน้อย 4 ตัวอักษร');
   getSpreadsheet_().getId();
   DriveApp.getFolderById(FOLDER_ID).getId();
 }
@@ -944,7 +910,7 @@ function invalidateTable_(name) {
 }
 
 function upsertSetting_(key, value) {
-  if (['logo', 'favicon', 'setFaviconUrl', 'heroImage', 'bankQrImage'].indexOf(String(key)) >= 0 && typeof value === 'string' && value.indexOf('drive-asset://') >= 0) {
+  if (['logo', 'favicon', 'setFaviconUrl', 'heroImage', 'bankQrImage', 'accountPageLogo', 'accountPagePromoImage'].indexOf(String(key)) >= 0 && typeof value === 'string' && value.indexOf('drive-asset://') >= 0) {
     value = normalizeDriveAssetUrlValue_(value, getDriveAssetTokenMap_(), true);
   }
   var rows = readTable_('Settings', false);
@@ -1483,6 +1449,62 @@ function systemOwnerLogin(username, password) {
   } catch (e) { return fail_(safeError_(e)); }
 }
 
+
+/**
+ * Unified login for Super Admin, store owners and customers.
+ * The browser never supplies an account role; it is resolved from server data.
+ */
+function unifiedLogin(username, password) {
+  try {
+    var identifier = text_(username, 160).trim();
+    if (!identifier || !String(password || '')) throw new Error('กรุณากรอกข้อมูลเข้าสู่ระบบให้ครบถ้วน');
+
+    var platformUser = findRecordByExactColumn_('Users', 'username', identifier.toLowerCase());
+    if (!platformUser && identifier.indexOf('@') > 0) {
+      platformUser = findRecordByExactColumn_('Users', 'email', identifier.toLowerCase());
+    }
+    if (platformUser) {
+      var role = String(platformUser.role || '').toLowerCase();
+      if (role !== 'super admin' && role !== 'superadmin') {
+        throw new Error('บัญชีนี้ไม่มีสิทธิ์เข้าสู่ระบบเจ้าของระบบ');
+      }
+      if (platformUser.status !== 'Active') throw new Error('บัญชีผู้ดูแลถูกปิดใช้งาน');
+      var auth = loginPlatformUser_(platformUser.username, password, 'Super Admin');
+      if (!auth || !auth.success) return auth || fail_('เข้าสู่ระบบไม่สำเร็จ');
+      return ok_({
+        accountType: 'owner',
+        token: auth.data.token,
+        expiresAt: auth.data.expiresAt,
+        user: auth.data.user,
+        mustChangePassword: auth.data.mustChangePassword
+      }, 'เข้าสู่ระบบเจ้าของระบบสำเร็จ');
+    }
+
+    var customer = authenticateCustomerCredentials_(identifier, password);
+    var store = findRecordByExactColumn_('Stores', 'ownerCustomerId', customer.id);
+    if (store) {
+      var sellerSession = createSession_(customer, 'customer');
+      return ok_({
+        accountType: 'seller',
+        token: sellerSession.token,
+        expiresAt: sellerSession.expiresAt,
+        customer: publicCustomer_(customer),
+        store: publicStore_(store)
+      }, 'เข้าสู่ระบบร้านค้าสำเร็จ');
+    }
+
+    var customerSession = createSession_(customer, 'customer');
+    return ok_({
+      accountType: 'customer',
+      token: customerSession.token,
+      expiresAt: customerSession.expiresAt,
+      customer: publicCustomer_(customer)
+    }, 'เข้าสู่ระบบสำเร็จ');
+  } catch (e) {
+    return fail_(safeError_(e));
+  }
+}
+
 function authorizeSocialLoginServices() {
   try {
     // Run once from the Apps Script editor as the deployment owner to grant UrlFetch permission.
@@ -1701,9 +1723,7 @@ function saveSettings(token, data) {
   try {
     var user = requireAdmin_(token, 'settings.manage');
     data = data || {};
-    ['primaryColor','secondaryColor','accentColor','authPageBackgroundColor','authPageCardColor','authPageTextColor','authPagePrimaryColor','authPageCampaignColor'].forEach(function(k) { if (Object.prototype.hasOwnProperty.call(data,k) && data[k] && !/^#[0-9a-fA-F]{6}$/.test(String(data[k]))) throw new Error('รูปแบบสี '+k+' ไม่ถูกต้อง กรุณาใช้ Hex Color เช่น #EE4D2D'); });
-    if (Object.prototype.hasOwnProperty.call(data,'authPageCardRadius')) { var authRadius=Number(data.authPageCardRadius); if(!isFinite(authRadius)||authRadius<0||authRadius>32) throw new Error('ความโค้งของการ์ดต้องอยู่ระหว่าง 0 ถึง 32 พิกเซล'); data.authPageCardRadius=String(Math.round(authRadius)); }
-    if (Object.prototype.hasOwnProperty.call(data,'authPageCardWidth')) { var authWidth=Number(data.authPageCardWidth); if(!isFinite(authWidth)||authWidth<320||authWidth>600) throw new Error('ความกว้างของฟอร์มต้องอยู่ระหว่าง 320 ถึง 600 พิกเซล'); data.authPageCardWidth=String(Math.round(authWidth)); }
+    ['primaryColor','secondaryColor','accentColor','accountPageBgColor','accountPageCardColor','accountPageTextColor','accountPageMutedColor','accountPagePrimaryColor','accountPageAccentColor'].forEach(function(k) { if (Object.prototype.hasOwnProperty.call(data,k) && data[k] && !/^#[0-9a-fA-F]{6}$/.test(String(data[k]))) throw new Error('รูปแบบสี '+k+' ไม่ถูกต้อง กรุณาใช้ Hex Color เช่น #EE4D2D'); });
     if (Object.prototype.hasOwnProperty.call(data, 'setFaviconUrl') && data.setFaviconUrl) {
       var faviconSettingValue = String(data.setFaviconUrl).trim();
       var isDriveFaviconToken = /^drive-asset:\/\/[A-Za-z0-9_-]{20,80}$/i.test(faviconSettingValue);
@@ -4960,6 +4980,25 @@ function requestPasswordReset(email, accountType) {
     return ok_(true, 'หากพบอีเมลในระบบ ระบบจะส่งลิงก์ตั้งรหัสผ่านไปให้ กรุณาตรวจสอบกล่องจดหมาย');
   } catch (e) { return fail_(safeError_(e)); }
 }
+
+function requestUnifiedPasswordReset(identifier) {
+  try {
+    var value = text_(identifier, 160).trim().toLowerCase();
+    if (!value) throw new Error('กรุณากรอกอีเมลหรือชื่อผู้ใช้');
+    var owner = findRecordByExactColumn_('Users', 'username', value);
+    if (!owner && value.indexOf('@') > 0) owner = findRecordByExactColumn_('Users', 'email', value);
+    if (owner && ['super admin', 'superadmin'].indexOf(String(owner.role || '').toLowerCase()) >= 0) {
+      return requestPasswordReset(value, 'admin');
+    }
+    var customer = findRecordByExactColumn_('Customers', 'email', value);
+    if (!customer) customer = findRecordByExactColumn_('Customers', 'username', value);
+    if (customer && customer.email) return requestPasswordReset(customer.email, 'customer');
+    return ok_(true, 'หากพบบัญชีที่ตรงกัน ระบบจะส่งลิงก์ตั้งรหัสผ่านไปยังอีเมลที่ลงทะเบียน');
+  } catch (e) {
+    return fail_(safeError_(e));
+  }
+}
+
 function resetPassword(resetToken, newPassword) {
   try {
     if (String(newPassword || '').length < 8) throw new Error('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร');
