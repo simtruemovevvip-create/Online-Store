@@ -12535,8 +12535,9 @@ function startGlobalDataSync_(){
     var classNames=Array.isArray(popupClass)?popupClass.join(' '):String(popupClass||'');
     var title=typeof options.title==='string'?options.title.replace(/<[^>]*>/g,' ').trim():'';
     var html=typeof options.html==='string'?options.html:(options.html&&typeof options.html.outerHTML==='string'?options.html.outerHTML:'');
-    if(/\bauth(?:[-_][a-z0-9_-]+)?\b|\b(?:customer|seller)-auth\b|forgot-password|password-reset/i.test(classNames+' '+html))return true;
-    return /^(?:เข้าสู่ระบบ|สมัครสมาชิก|ลืมรหัสผ่าน|log\s?in|login|sign\s?in|sign\s?up|signup|register|forgot\s+password|password\s+reset)(?:\s|$)/i.test(title);
+    if(/(?:^|\s)(?:auth-popup|auth-(?:login|register|signup|customer|forgot|otp)-popup|(?:customer|seller)-auth)(?:\s|$)/i.test(classNames))return true;
+    if(/class=["'][^"']*\b(?:customer-auth|shop-customer-auth)\b/i.test(html))return true;
+    return /^(?:เข้าสู่ระบบ(?:ร้านค้า|ลูกค้า|ผู้ดูแลระบบ)?|สมัครสมาชิก(?:ร้านค้า|ลูกค้า)?|ลืมรหัสผ่าน|log\s?in|login|sign\s?in|sign\s?up|signup|register|forgot\s+password|password\s+reset)(?:[.!?]|\s|$)/i.test(title);
   }
   function isFormDialog(options){
     if(!options||typeof options!=='object'||options.toast||isAuthDialog(options))return false;
